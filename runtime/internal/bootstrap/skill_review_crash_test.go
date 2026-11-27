@@ -78,7 +78,7 @@ func TestSkillReviewCrashChild(t *testing.T) {
 			t.Fatal(err)
 		}
 		cut = `BEFORE UPDATE OF phase ON plugin_commands
-			WHEN OLD.method = '` + confirm.Name() + `' AND NEW.phase = '` + string(plugin.CommandDispatched) + `'
+			WHEN json_extract(OLD.binding_json, '$.method') = '` + confirm.Name() + `' AND NEW.phase = '` + string(plugin.CommandDispatched) + `'
 			`
 	}
 	questionCrashDatabase(t, home, `CREATE TRIGGER interrupt_skill_review_acknowledgement `+cut+`BEGIN SELECT test_skill_review_crash(); END`)

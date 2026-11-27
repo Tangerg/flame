@@ -25,42 +25,78 @@ func newPluginCommandStore(db *database, commit func(context.Context, []byte, fu
 	return &pluginCommandStore{db: db, commit: commit}
 }
 
+type storedPluginCommandBinding struct {
+	Method         string               `json:"method"`
+	Input          string               `json:"input"`
+	Contract       string               `json:"contract"`
+	InstallationID string               `json:"installationId"`
+	Digest         string               `json:"digest"`
+	Server         string               `json:"server"`
+	Contribution   string               `json:"contribution"`
+	Export         string               `json:"export"`
+	Invocation     framecall.Invocation `json:"invocation"`
+	Activation     string               `json:"activation"`
+}
+
+func (b storedPluginCommandBinding) provider() (plugin.Dependency, error) {
+	installation, err := flameidentity.ParseInstallation(b.InstallationID)
+	if err != nil {
+		return plugin.Dependency{}, err
+	}
+	digest, err := framevalue.ParseDigest(b.Digest)
+	if err != nil {
+		return plugin.Dependency{}, err
+	}
+	return plugin.Dependency{InstallationID: installation, Digest: digest}, nil
+}
+
+func (b storedPluginCommandBinding) restore(id string, phase plugin.CommandPhase) (*plugin.Command, error) {
+	record := plugin.CommandBinding{ID: id, Phase: phase, Method: b.Method, Export: b.Export, Invocation: b.Invocation}
+	var err error
+	if record.Input, err = framevalue.ParseJSON([]byte(b.Input)); err != nil {
+		return nil, err
+	}
+	if record.Contract, err = framevalue.ParseJSON([]byte(b.Contract)); err != nil {
+		return nil, err
+	}
+	if record.Provider, err = b.provider(); err != nil {
+		return nil, err
+	}
+	if record.Server, err = mcpserver.ParseServerName(b.Server); err != nil {
+		return nil, err
+	}
+	if record.Contribution, err = plugin.ParseContributionID(b.Contribution); err != nil {
+		return nil, err
+	}
+	if record.Activation, err = plugins.ReadActivation([]byte(b.Activation)); err != nil {
+		return nil, err
+	}
+	return plugin.RestoreCommand(record)
+}
+
 func (s *pluginCommandStore) Get(ctx context.Context, id string) (*plugin.Command, bool, error) {
 	return scopedPair(ctx, s.db.read, func(ctx context.Context) (*plugin.Command, bool, error) {
-		var record plugin.CommandBinding
-		var installation, digest, input, contract, server, contribution, invocation, activation string
-		err := s.db.connection(ctx).QueryRowContext(ctx, `SELECT id,method,business_input_json,contract_json,installation_id,release_digest,server_name,contribution_id,export_name,invocation_json,activation_json,phase FROM plugin_commands WHERE id=?`, id).Scan(&record.ID, &record.Method, &input, &contract, &installation, &digest, &server, &contribution, &record.Export, &invocation, &activation, &record.Phase)
+		var phase plugin.CommandPhase
+		var binding sql.NullString
+		err := s.db.connection(ctx).QueryRowContext(ctx, `SELECT phase,binding_json FROM plugin_commands WHERE id=?`, id).Scan(&phase, &binding)
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, false, nil
 		}
 		if err != nil {
 			return nil, false, err
 		}
-		if record.Input, err = framevalue.ParseJSON([]byte(input)); err != nil {
+		if !binding.Valid {
+			if phase != plugin.CommandRetired {
+				return nil, false, plugin.ErrInvalid
+			}
+			command, err := plugin.NewUnboundRetirement(id)
+			return command, err == nil, err
+		}
+		var record storedPluginCommandBinding
+		if err := json.Unmarshal([]byte(binding.String), &record, json.RejectUnknownMembers(true)); err != nil {
 			return nil, false, err
 		}
-		if record.Contract, err = framevalue.ParseJSON([]byte(contract)); err != nil {
-			return nil, false, err
-		}
-		if record.Provider.InstallationID, err = flameidentity.ParseInstallation(installation); err != nil {
-			return nil, false, err
-		}
-		if record.Provider.Digest, err = framevalue.ParseDigest(digest); err != nil {
-			return nil, false, err
-		}
-		if record.Server, err = mcpserver.ParseServerName(server); err != nil {
-			return nil, false, err
-		}
-		if record.Contribution, err = plugin.ParseContributionID(contribution); err != nil {
-			return nil, false, err
-		}
-		if err := json.Unmarshal([]byte(invocation), &record.Invocation, json.RejectUnknownMembers(true)); err != nil {
-			return nil, false, err
-		}
-		if record.Activation, err = decodeCommandActivation(activation); err != nil {
-			return nil, false, err
-		}
-		command, err := plugin.RestoreCommand(record)
+		command, err := record.restore(id, phase)
 		return command, err == nil, err
 	})
 }
@@ -70,23 +106,32 @@ func (s *pluginCommandStore) Save(ctx context.Context, command *plugin.Command) 
 		return plugin.ErrInvalid
 	}
 	record := command.Snapshot()
-	if _, err := plugins.DecodeActivation(record.Activation); err != nil {
-		return err
+	var binding sql.NullString
+	if command.HasBinding() {
+		if _, err := plugins.DecodeActivation(record.Activation); err != nil {
+			return err
+		}
+		encoded, err := json.Marshal(storedPluginCommandBinding{
+			Method:         record.Method,
+			Input:          record.Input.String(),
+			Contract:       record.Contract.String(),
+			InstallationID: record.Provider.InstallationID.String(),
+			Digest:         record.Provider.Digest.String(),
+			Server:         record.Server.String(),
+			Contribution:   record.Contribution.String(),
+			Export:         record.Export,
+			Invocation:     record.Invocation,
+			Activation:     record.Activation.Binding.String(),
+		})
+		if err != nil {
+			return err
+		}
+		binding = sql.NullString{String: string(encoded), Valid: true}
 	}
 	encoded, err := json.Marshal(struct {
-		ID           string               `json:"id"`
-		Method       string               `json:"method"`
-		Input        string               `json:"input"`
-		Contract     string               `json:"contract"`
-		Installation string               `json:"installation"`
-		Release      string               `json:"release"`
-		Server       string               `json:"server"`
-		Contribution string               `json:"contribution"`
-		Export       string               `json:"export"`
-		Invocation   framecall.Invocation `json:"invocation"`
-		Binding      string               `json:"binding"`
-		Phase        string               `json:"phase"`
-	}{record.ID, record.Method, record.Input.String(), record.Contract.String(), record.Provider.InstallationID.String(), record.Provider.Digest.String(), record.Server.String(), record.Contribution.String(), record.Export, record.Invocation, record.Activation.Binding.String(), string(record.Phase)})
+		Phase   plugin.CommandPhase `json:"phase"`
+		Binding string              `json:"binding"`
+	}{record.Phase, binding.String})
 	if err != nil {
 		return err
 	}
@@ -99,14 +144,11 @@ func (s *pluginCommandStore) Save(ctx context.Context, command *plugin.Command) 
 		return err
 	}
 	return s.commit(ctx, request, func(ctx context.Context) error {
-		return s.save(ctx, command)
+		return s.save(ctx, command, binding)
 	})
 }
 
-func (s *pluginCommandStore) save(ctx context.Context, command *plugin.Command) error {
-	if command == nil {
-		return plugin.ErrInvalid
-	}
+func (s *pluginCommandStore) save(ctx context.Context, command *plugin.Command, binding sql.NullString) error {
 	r := command.Snapshot()
 	return s.db.write(ctx, func(ctx context.Context) error {
 		previous, found, err := s.Get(ctx, r.ID)
@@ -120,24 +162,12 @@ func (s *pluginCommandStore) save(ctx context.Context, command *plugin.Command) 
 			_, err = s.db.connection(ctx).ExecContext(ctx, `UPDATE plugin_commands SET phase=? WHERE id=?`, r.Phase, r.ID)
 			return err
 		}
-		return s.insert(ctx, r)
+		if r.Phase != plugin.CommandPrepared && (r.Phase != plugin.CommandRetired || binding.Valid) {
+			return plugin.ErrInvalid
+		}
+		_, err = s.db.connection(ctx).ExecContext(ctx, `INSERT INTO plugin_commands(id,binding_json,phase) VALUES(?,?,?)`, r.ID, binding, r.Phase)
+		return err
 	})
-}
-
-func (s *pluginCommandStore) insert(ctx context.Context, r plugin.CommandBinding) error {
-	if r.Phase != plugin.CommandPrepared {
-		return plugin.ErrInvalid
-	}
-	invocation, err := json.Marshal(r.Invocation)
-	if err != nil {
-		return err
-	}
-	activation, err := encodeCommandActivation(r.Activation)
-	if err != nil {
-		return err
-	}
-	_, err = s.db.connection(ctx).ExecContext(ctx, `INSERT INTO plugin_commands(id,method,business_input_json,contract_json,installation_id,release_digest,server_name,contribution_id,export_name,invocation_json,activation_json,phase) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`, r.ID, r.Method, r.Input.String(), r.Contract.String(), r.Provider.InstallationID.String(), r.Provider.Digest.String(), r.Server.String(), r.Contribution.String(), r.Export, string(invocation), activation, r.Phase)
-	return err
 }
 
 func (s *pluginCommandStore) PendingCommandDependencies(ctx context.Context) ([]plugin.Dependency, error) {
@@ -163,39 +193,34 @@ func pendingCommandBindings(ctx context.Context, db *database) ([]plugin.Activat
 		for index, phase := range phases {
 			args[index] = phase
 		}
-		rows, err := db.connection(ctx).QueryContext(ctx, `SELECT installation_id,release_digest,activation_json FROM plugin_commands WHERE phase IN (`+placeholders(len(phases))+`) ORDER BY id`, args...)
+		rows, err := db.connection(ctx).QueryContext(ctx, `SELECT binding_json FROM plugin_commands WHERE phase IN (`+placeholders(len(phases))+`) ORDER BY id`, args...)
 		if err != nil {
 			return nil, err
 		}
 		defer rows.Close()
 		var bindings []plugin.Activation
 		for rows.Next() {
-			var installation, release, source string
-			if err := rows.Scan(&installation, &release, &source); err != nil {
+			var source string
+			if err := rows.Scan(&source); err != nil {
 				return nil, err
 			}
-			activation, err := decodeCommandActivation(source)
+			var binding storedPluginCommandBinding
+			if err := json.Unmarshal([]byte(source), &binding, json.RejectUnknownMembers(true)); err != nil {
+				return nil, err
+			}
+			provider, err := binding.provider()
 			if err != nil {
 				return nil, err
 			}
-			if !slices.ContainsFunc(activation.Dependencies, func(dependency plugin.Dependency) bool {
-				return dependency.InstallationID.String() == installation && dependency.Digest.String() == release
-			}) {
+			activation, err := plugins.ReadActivation([]byte(binding.Activation))
+			if err != nil {
+				return nil, err
+			}
+			if !slices.Contains(activation.Dependencies, provider) {
 				return nil, plugin.ErrInvalid
 			}
 			bindings = append(bindings, activation)
 		}
 		return bindings, rows.Err()
 	})
-}
-
-func encodeCommandActivation(activation plugin.Activation) (string, error) {
-	if _, err := plugins.DecodeActivation(activation); err != nil {
-		return "", err
-	}
-	return activation.Binding.String(), nil
-}
-
-func decodeCommandActivation(source string) (plugin.Activation, error) {
-	return plugins.ReadActivation([]byte(source))
 }

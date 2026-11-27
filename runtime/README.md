@@ -351,15 +351,15 @@ command records the same route shape and keeps the original input bytes.
 
 ## Never-dispatched command retirement
 
-Core `2026-10-16.1` exposes `plugins.retireCommand` and Go `RetirePluginCommand`
-using the original `PluginCommandRequest` namespace and key. Commands owns the
-`prepared -> retired` transition under the same Admission boundary as dispatch.
-Only a never-dispatched route can retire. Retirement retains the original identity
-and routing evidence permanently while releasing its executable dependencies;
-it is not a backend business result. Repeated retirement is idempotent.
+`plugins.retireCommand` and Go `RetirePluginCommand` use the original
+`PluginCommandRequest` namespace and key. Commands records retirement under the
+same Admission boundary as dispatch. For an identity that has yet to arrive, it
+records retirement before a delayed request can bind a route. A prepared route
+retains its original routing evidence permanently and releases its executable
+dependencies. Repeated retirement is idempotent.
 `plugins.getCommand`, unary calls and streams report `plugin_command_retired`
-without contacting the backend. Dispatched work remains receipt-only and cannot
-retire even when no receipt is available.
+before invoking the backend. Dispatched work remains receipt-only even when
+receipt evidence is unavailable.
 
 The public TS pending-command handle exposes `retire()`, including after client
 replacement. Plugin management offers the same operation without requiring the
@@ -793,8 +793,9 @@ reconciliation; it never revalidates an accepted command against a replacement
 provider. Storage, reply validation and other post-dispatch failures still retain
 execution uncertainty rather than becoming caller-input refusals.
 
-`plugin_commands.activation_json` is required immutable routing evidence containing
-that identity and its release projection. The former release-only column is removed.
+`plugin_commands.binding_json` retains the captured route with its activation and
+release evidence. A retirement recorded before binding has only the command
+identity and retired phase.
 Former Runtime databases are refused before writes; retain them separately and use
 a fresh Runtime data directory. Private plugin databases are unchanged. Existing
 waiting executions must finish under their original binary: model dependencies also

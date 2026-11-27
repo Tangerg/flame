@@ -3,6 +3,7 @@ import {
   asSessionId,
   MutationJournalOwnershipError,
   mutationSettlementIsUnknown,
+  type FlameClient,
 } from "@flame/runtime-client";
 import {
   HTTP_HEADERS,
@@ -18,18 +19,26 @@ import { within } from "./observation";
 describe("Schedules commands over Runtime HTTP", () => {
   const fixture = useRuntimeFixture("schedules");
 
-  it("keeps the original manual run across view withdrawal and reply loss", async () => {
+  const bindView = (runtime: FlameClient, signal: AbortSignal) => {
     const installed = fixture.managedOwners.get("schedules")!;
     const component = installed.selected.components.find(({ id }) => id === "schedules")!;
     const contribution = installed.selected.contributions.find(
       ({ id }) => id === component.contribution,
     )!;
-    const binding = {
-      installationId: installed.id,
-      digest: installed.selected.digest,
-      contribution: contribution.id,
-      contract: contribution.contract,
-    };
+    return bindScheduleOperations({
+      binding: {
+        installationId: installed.id,
+        digest: installed.selected.digest,
+        contribution: contribution.id,
+        contract: contribution.contract,
+      },
+      runtime,
+      signal,
+      track: (operation) => operation(signal),
+    });
+  };
+
+  it("keeps the original manual run across view withdrawal and reply loss", async () => {
     const committed = Promise.withResolvers<RunReference>();
     const dropReply = Promise.withResolvers<void>();
     const delivered: (string | null)[] = [];
@@ -58,18 +67,11 @@ describe("Schedules commands over Runtime HTTP", () => {
       await dropReply.promise;
       throw new TypeError("injected loss of the original Schedule response");
     });
-    const openView = (signal: AbortSignal) =>
-      bindScheduleOperations({
-        binding,
-        runtime: client,
-        signal,
-        track: (operation) => operation(signal),
-      });
     const originalLifetime = new AbortController();
     const replacementLifetime = new AbortController();
     let original: Promise<unknown> | undefined;
     try {
-      const first = openView(originalLifetime.signal);
+      const first = bindView(client, originalLifetime.signal);
       const schedule = await first.submit(METHODS.create, {
         title: "Manual run receipt",
         instructions: "Report the manual run receipt.",
@@ -93,7 +95,7 @@ describe("Schedules commands over Runtime HTTP", () => {
         ]),
         "the original Schedule run commit",
       );
-      const second = openView(replacementLifetime.signal);
+      const second = bindView(client, replacementLifetime.signal);
       expect(second.pendingCommand()).toBeUndefined();
       await expect(second.submit(METHODS.runNow, input)).rejects.toBeInstanceOf(
         MutationJournalOwnershipError,
@@ -122,6 +124,78 @@ describe("Schedules commands over Runtime HTTP", () => {
       replacementLifetime.abort();
       dropReply.resolve();
       await original;
+      await client.close();
+    }
+  }, 30_000);
+
+  it("retires a captured Schedule command before its first HTTP delivery", async () => {
+    const pendingDelivery = Promise.withResolvers<{
+      key: string;
+      send: () => Promise<Response>;
+    }>();
+    const originalLifetime = new AbortController();
+    const replacementLifetime = new AbortController();
+    let holdOriginal = true;
+    const client = fixture.createRuntimeClient((url, init) => {
+      const headers = new Headers(init?.headers);
+      if (!holdOriginal || headers.get(HTTP_HEADERS.method) !== "plugins.call")
+        return fetch(url, init);
+      const { params } = JSON.parse(String(init?.body)) as { params: CallPluginRequest };
+      if (params.route.method !== METHODS.create) return fetch(url, init);
+      holdOriginal = false;
+      const signal = init?.signal;
+      if (!signal) throw new Error("the original delivery has no lifetime");
+      pendingDelivery.resolve({
+        key: headers.get(HTTP_HEADERS.idempotencyKey)!,
+        send: () => fetch(url, { ...init, signal: undefined }),
+      });
+      return new Promise<never>((_, reject) => {
+        signal.addEventListener("abort", () => reject(signal.reason), { once: true });
+      });
+    });
+    let outstanding: Promise<unknown> | undefined;
+    try {
+      const first = bindView(client, originalLifetime.signal);
+      const draft = {
+        title: "Retired before HTTP delivery",
+        instructions: "Report the original delivery.",
+        cron: "0 0 1 1 *",
+        timeZone: "UTC",
+        cwd: fixture.root,
+        enabled: false,
+        modelSelection: { provider: "", model: "", reasoningEffort: "" },
+      };
+      const creating = first.submit(METHODS.create, draft);
+      if (!creating) throw new Error("the original command was not reserved");
+      outstanding = creating.catch((error: unknown) => error);
+      const delayed = await within(pendingDelivery.promise, "the withheld Schedule request");
+      originalLifetime.abort();
+      expect(mutationSettlementIsUnknown(await outstanding)).toBe(true);
+
+      const original = client.plugins
+        .pendingCommands()
+        .find(({ idempotencyKey }) => idempotencyKey === delayed.key);
+      if (!original) throw new Error("the SDK did not retain its undelivered command");
+      await original.retire(replacementLifetime.signal);
+      const replacement = bindView(client, replacementLifetime.signal);
+      expect(replacement.pendingCommand()).toBeUndefined();
+      const reply = await delayed.send();
+      await expect(reply.json()).resolves.toMatchObject({
+        error: { data: { problem: { type: "plugin_command_retired" } } },
+      });
+      const page = await replacement.query(METHODS.list, { cursor: "" });
+      expect(page.rows.some(({ title }) => title === draft.title)).toBe(false);
+
+      const created = await replacement.submit(METHODS.create, draft);
+      if (!created) throw new Error("the retired command kept the authoring slot occupied");
+      const current = await replacement.query(METHODS.list, { cursor: "" });
+      expect(current.rows.filter(({ title }) => title === draft.title).map(({ id }) => id)).toEqual(
+        [created.id],
+      );
+    } finally {
+      originalLifetime.abort();
+      replacementLifetime.abort();
+      await outstanding;
       await client.close();
     }
   }, 30_000);
