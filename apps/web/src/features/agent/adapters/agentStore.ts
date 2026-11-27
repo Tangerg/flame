@@ -113,7 +113,7 @@ const emptyEntry = (viewEpoch: bigint): SessionEntry => ({
   problem: EMPTY_PROBLEM_PRESENTATION,
   viewEpoch,
   viewRevision: initialProjectionCounter,
-  authoritativeRevision: initialProjectionCounter,
+  hasAuthoritativeSnapshot: false,
   refreshSequence: initialProjectionCounter,
   stop: null,
   send: null,
@@ -315,7 +315,7 @@ export function createAgentStore(sessionStore: AgentSessionStore) {
           view,
           ...(openingCommands ? { openingCommands } : {}),
           viewRevision: advanceProjectionCounter(entry.viewRevision),
-          authoritativeRevision: advanceProjectionCounter(entry.authoritativeRevision),
+          hasAuthoritativeSnapshot: true,
         });
       });
       return committed;
@@ -350,7 +350,7 @@ export function createAgentStore(sessionStore: AgentSessionStore) {
             problem: EMPTY_PROBLEM_PRESENTATION,
             viewEpoch,
             viewRevision: advanceProjectionCounter(entry.viewRevision),
-            authoritativeRevision: initialProjectionCounter,
+            hasAuthoritativeSnapshot: false,
             refreshSequence: advanceProjectionCounter(entry.refreshSequence),
           });
         }

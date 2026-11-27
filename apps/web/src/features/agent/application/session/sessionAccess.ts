@@ -65,7 +65,7 @@ export interface AgentSessionViewEntry {
   view: AgentSessionView;
   viewEpoch: bigint;
   viewRevision: bigint;
-  authoritativeRevision: bigint;
+  hasAuthoritativeSnapshot: boolean;
   stop: StopCurrentRootRunAction | null;
   send: SendAgentInputAction | null;
   resume: ResumeRunAction | null;

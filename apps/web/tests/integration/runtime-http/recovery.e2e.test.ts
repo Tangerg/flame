@@ -165,7 +165,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
     }
   }, 30_000);
 
-  it("opens a new Session after the list observes its creation", async () => {
+  it("creates a separate Session while the current view is awaiting its first snapshot", async () => {
     const session = await fixture.client.sessions.create({ workspace: { path: fixture.root } });
     const sessionId = asSessionId(session.id);
     const opening = await fixture.client.runs.start({
@@ -198,16 +198,26 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
     let creating: Promise<string | null> | undefined;
     try {
       await observer.refetch({ throwOnError: true });
-      await expect(access.synchronizeRewrittenSessionView(sessionId)).resolves.toBe(true);
       creating = access.createSession();
-      await within(listing.promise, "the Session list refetch after creation");
+      await expect(
+        within(
+          Promise.race([
+            listing.promise.then(() => "created"),
+            creating.then(() => "returned before the list refetch"),
+          ]),
+          "creating a new Session from a loading view",
+        ),
+      ).resolves.toBe("created");
       expect(access.getActiveSessionId()).toBe(sessionId);
       release.resolve();
       const newId = await creating;
-      expect(newId).toBeTruthy();
+      if (!newId) throw new Error("new Session ID is missing");
       expect(newId).not.toBe(sessionId);
       expect(access.getActiveSessionId()).toBe(newId);
       expect(observer.getCurrentResult().data?.map(({ id }) => id)).toContain(newId);
+      web.agent.projection.store.getState().ensureSession(newId);
+      await expect(access.synchronizeRewrittenSessionView(newId)).resolves.toBe(true);
+      await expect(access.createSession()).resolves.toBe(newId);
     } finally {
       release.resolve();
       const newId = await creating?.catch(() => null);
