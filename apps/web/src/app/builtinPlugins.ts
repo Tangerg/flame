@@ -37,7 +37,6 @@ import { workspaceSessionNavigation } from "@/features/workspace/sessionNavigati
 import { workspaceKeymap } from "@/features/workspace/keymap";
 import sessionSearch from "@/features/navigation/session-search/index";
 import commandMenu from "@/features/command/menu/index";
-import { createRpcAgentPlugin } from "@/features/agent/rpcAgent";
 import {
   workbenchChat,
   workbenchSettings,
@@ -113,7 +112,6 @@ export function createBuiltinPlugins(
     createWorkspaceEventsPlugin(agentAccess, runtimeAccess, runtimeClient),
     workspaceSessionNavigation,
     workspaceKeymap(workspaceAccess),
-    createRpcAgentPlugin(agentAccess, runtimeClient),
     defaultTitle,
     defaultAccents,
     ...createAppearancePlugins(theme),

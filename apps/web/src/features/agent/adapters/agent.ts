@@ -19,6 +19,7 @@ import { createAgentSessionStore } from "@/features/agent/adapters/agentSessionS
 import { createAgentStore } from "@/features/agent/adapters/agentStore";
 import { createAgentState } from "@/features/agent/adapters/agentStatePorts";
 import { createAgentRuntimeGateway } from "@/features/agent/adapters/agentRuntimeGateway";
+import { RuntimeRunOpenings } from "./runtimeRunOpenings";
 import { createAgentDefaultSession } from "@/features/agent/adapters/agentDefaultSessionPort";
 import { installAgentSessionScope } from "@/features/agent/adapters/agentSessionScope";
 import { type NotificationFeed } from "@/features/notifications/public/notifications";
@@ -64,12 +65,14 @@ export function composeAgent(
     commands,
     usage,
   );
+  const runOpenings = new RuntimeRunOpenings(client);
   const interrupts = new InterruptResponseCoordinator(state.view);
   const approvalActions = new ApprovalActionRegistry();
   const sessionDependencies = () => ({
     agentAccess: dependencies,
     projection,
     sessions,
+    runOpenings,
     retries: gateway.retries,
   });
   const defaultSession = createAgentDefaultSession(navigation, sessionDependencies, client, () => {
@@ -121,7 +124,12 @@ export function composeAgent(
           runtime.endpoint.currentRuntimeEndpoint,
         ),
       );
-      stops.push(followRuntimeGeneration(stream, () => gateway.replaceRuntimeGeneration()));
+      stops.push(
+        followRuntimeGeneration(stream, () => {
+          gateway.replaceRuntimeGeneration();
+          runOpenings.replaceRuntimeGeneration();
+        }),
+      );
     },
     dispose() {
       if (disposed) return;
@@ -130,6 +138,7 @@ export function composeAgent(
       interrupts.retire();
       sharedMaterial.dispose();
       gateway.dispose();
+      runOpenings.dispose();
       state.dispose();
       projection.dispose();
     },

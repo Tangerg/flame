@@ -552,7 +552,6 @@
   "shortcuts.filter": "Filtrer par action ou combinaison…",
   "shortcuts.filterAria": "Filtrer les raccourcis",
   "shortcuts.empty": "Aucun raccourci trouvé",
-  "agentSource.rpc": "Protocole Runtime (JSON-RPC)",
   "narrative.rail.turns": "Vos questions",
   "role.user": "Vous",
   "role.assistant": "Assistant",

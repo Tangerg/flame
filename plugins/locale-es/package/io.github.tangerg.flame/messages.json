@@ -552,7 +552,6 @@
   "shortcuts.filter": "Filtrar por acción o combinación…",
   "shortcuts.filterAria": "Filtrar atajos",
   "shortcuts.empty": "Sin atajos coincidentes",
-  "agentSource.rpc": "Protocolo Runtime (JSON-RPC)",
   "narrative.rail.turns": "Tus preguntas",
   "role.user": "Tú",
   "role.assistant": "Asistente",

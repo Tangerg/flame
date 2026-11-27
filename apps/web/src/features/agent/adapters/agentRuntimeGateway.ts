@@ -1,4 +1,4 @@
-import type { RuntimeAgentDriver } from "./runtimeDriver";
+import type { RuntimeRunOpenings } from "./runtimeRunOpenings";
 import type { ApprovalRuleDecision } from "@/foundation/protocolValues.generated";
 import { type FlameClient } from "@flame/runtime-client";
 import {
@@ -72,7 +72,7 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
       string,
       {
         sessionId: string;
-        retry: (signal: AbortSignal) => ReturnType<RuntimeAgentDriver["resume"]>;
+        retry: (signal: AbortSignal) => ReturnType<RuntimeRunOpenings["resume"]>;
       }
     >;
   } = { retries: new Map() };
@@ -80,7 +80,7 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
     sessionId: string,
     key: string,
     signal: AbortSignal,
-  ): ReturnType<RuntimeAgentDriver["resume"]> {
+  ): ReturnType<RuntimeRunOpenings["resume"]> {
     const original = this.#generation.retries.get(key);
     if (!original || original.sessionId !== sessionId)
       return Promise.reject(

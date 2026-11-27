@@ -7,38 +7,67 @@ import {
   createMutationSettler,
   type StartRunResponse,
   type MutationSettler,
+  type ContentBlock,
+  type ItemId,
+  type RunId,
+  type RunOpeningResult,
+  type SegmentId,
 } from "@flame/runtime-client";
-import {
-  type RpcRunResumeParams,
-  type RpcRunsGateway,
-  type RpcRunStartParams,
-} from "@/features/agent/adapters/rpcAgentDriver";
-import { type RunStartRecovery, type StartedRunOpening } from "./runtimeDriver";
+import type { ResumeRunRequest } from "@flame/runtime-client/wire";
+import type { AgentRunStartOptions } from "@/features/agent/public/runOptions";
+
+type StartedRunOpening = RunOpeningResult<{
+  runId: RunId;
+  segmentId: SegmentId;
+  userItemId: ItemId;
+}>;
+
+export interface RunStartRecovery {
+  readonly idempotencyKey: string;
+  retry(signal: AbortSignal): Promise<StartedRunOpening>;
+}
 
 type StartMutation = ReturnType<FlameClient["runs"]["start"]>;
-export class RuntimeRunsGateway implements RpcRunsGateway {
+export class RuntimeRunOpenings {
   constructor(private readonly runtimeClient: () => FlameClient) {}
 
-  #openings = createMutationSettler({ acceptedAttempt: "retained" });
+  #settler = createMutationSettler({ acceptedAttempt: "retained" });
 
   start(
-    { sessionId, ...params }: RpcRunStartParams,
+    sessionId: string,
+    input: ContentBlock[],
+    options: AgentRunStartOptions,
     signal?: AbortSignal,
     onCommand?: (original: RunStartRecovery) => void,
   ): Promise<StartedRunOpening> {
     const client = this.runtimeClient();
+    const { provider, model, reasoningEffort } = options;
     return observeRunStart(
-      this.#openings,
-      (attempt) => client.runs.start({ ...params, sessionId: asSessionId(sessionId) }, attempt),
+      this.#settler,
+      (attempt) =>
+        client.runs.start(
+          {
+            sessionId: asSessionId(sessionId),
+            input,
+            ...(provider && model
+              ? { provider, model, ...(reasoningEffort ? { reasoningEffort } : {}) }
+              : {}),
+          },
+          attempt,
+        ),
       signal,
       onCommand,
     );
   }
 
-  async resume(params: RpcRunResumeParams, signal?: AbortSignal) {
+  async resume(
+    runId: RunId,
+    request: Pick<ResumeRunRequest, "responses" | "input">,
+    signal?: AbortSignal,
+  ) {
     const client = this.runtimeClient();
-    const { result, observation } = await this.#openings.settle(
-      (attemptSignal) => client.runs.resume(params, attemptSignal),
+    const { result, observation } = await this.#settler.settle(
+      (attemptSignal) => client.runs.resume({ runId, ...request }, attemptSignal),
       { parent: signal },
     );
     return {
@@ -52,13 +81,13 @@ export class RuntimeRunsGateway implements RpcRunsGateway {
   }
 
   replaceRuntimeGeneration(): void {
-    const predecessor = this.#openings;
-    this.#openings = createMutationSettler({ acceptedAttempt: "retained" });
+    const predecessor = this.#settler;
+    this.#settler = createMutationSettler({ acceptedAttempt: "retained" });
     predecessor.dispose();
   }
 
   dispose(): void {
-    this.#openings.dispose();
+    this.#settler.dispose();
   }
 }
 

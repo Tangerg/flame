@@ -4,10 +4,7 @@ import { type AgentSessionStore } from "@/features/agent/adapters/agentSessionSt
 import { type createAgentRuntimeGateway } from "@/features/agent/adapters/agentRuntimeGateway";
 import { type FlameClient } from "@flame/runtime-client";
 import { t } from "@/lib/i18n/index";
-import {
-  type RuntimeAgentDriver,
-  type RunStartRecovery,
-} from "@/features/agent/adapters/runtimeDriver";
+import { type RuntimeRunOpenings, type RunStartRecovery } from "./runtimeRunOpenings";
 import { type AgentRunStartOptions } from "@/features/agent/public/runOptions";
 import {
   asItemId,
@@ -42,13 +39,13 @@ export interface AgentSessionDependencies {
   agentAccess: AgentDependencies;
   projection: AgentStoreOwner;
   sessions: AgentSessionStore;
+  runOpenings: RuntimeRunOpenings;
   retries: ReturnType<typeof createAgentRuntimeGateway>["retries"];
 }
 
 export function bindAgentSession(
-  { agentAccess, projection, sessions, retries }: AgentSessionDependencies,
+  { agentAccess, projection, sessions, runOpenings, retries }: AgentSessionDependencies,
   client: () => FlameClient,
-  driver: RuntimeAgentDriver,
   sessionId: string,
   reportConnectionLoss: () => void,
 ): () => void {
@@ -189,7 +186,7 @@ export function bindAgentSession(
     let original: RunStartRecovery | undefined;
     const opening = runOpening.begin(
       (signal) =>
-        driver.start(wireInput, options, signal, (command) => {
+        runOpenings.start(sessionId, wireInput, options, signal, (command) => {
           original = command;
         }),
       {
@@ -216,7 +213,7 @@ export function bindAgentSession(
 
   function retryOpening(
     key: string,
-    retry: (signal: AbortSignal) => ReturnType<RuntimeAgentDriver["resume"]>,
+    retry: (signal: AbortSignal) => ReturnType<RuntimeRunOpenings["resume"]>,
   ): Promise<AgentOpeningAcceptance> {
     const opening = runOpening.begin(retry, {
       onResult: () => store().projectOpeningAccepted(sessionId, key),
@@ -254,7 +251,7 @@ export function bindAgentSession(
       response: response.response,
     }));
     runOpening.begin(
-      (signal) => driver.resume(asRunId(runId), { responses: wireResponses }, signal),
+      (signal) => runOpenings.resume(asRunId(runId), { responses: wireResponses }, signal),
       {
         onResult: onSettled ? () => onSettled() : undefined,
         onStartError,

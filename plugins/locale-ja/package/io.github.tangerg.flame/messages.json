@@ -536,7 +536,6 @@
   "shortcuts.filter": "アクションまたはコンボで絞り込み…",
   "shortcuts.filterAria": "ショートカットを絞り込む",
   "shortcuts.empty": "一致するショートカットはありません",
-  "agentSource.rpc": "Runtime プロトコル (JSON-RPC)",
   "narrative.rail.turns": "あなたの質問",
   "role.user": "あなた",
   "role.assistant": "アシスタント",

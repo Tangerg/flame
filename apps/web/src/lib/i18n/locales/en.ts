@@ -619,7 +619,6 @@ export const en = {
   "shortcuts.filter": "Filter by action or combo…",
   "shortcuts.filterAria": "Filter shortcuts",
   "shortcuts.empty": "No shortcuts match",
-  "agentSource.rpc": "Runtime Protocol (JSON-RPC)",
   "narrative.rail.turns": "Your questions",
   "role.user": "You",
   "role.assistant": "Assistant",

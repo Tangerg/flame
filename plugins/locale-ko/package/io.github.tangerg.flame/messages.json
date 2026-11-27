@@ -536,7 +536,6 @@
   "shortcuts.filter": "동작 또는 조합 키로 필터…",
   "shortcuts.filterAria": "단축키 필터",
   "shortcuts.empty": "일치하는 단축키가 없습니다",
-  "agentSource.rpc": "Runtime 프로토콜(JSON-RPC)",
   "narrative.rail.turns": "내 질문",
   "role.user": "나",
   "role.assistant": "어시스턴트",

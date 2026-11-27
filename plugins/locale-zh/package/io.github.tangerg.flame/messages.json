@@ -574,7 +574,6 @@
   "shortcuts.filter": "按操作或组合键筛选…",
   "shortcuts.filterAria": "筛选快捷键",
   "shortcuts.empty": "无匹配的快捷键",
-  "agentSource.rpc": "Runtime 协议 (JSON-RPC)",
   "narrative.rail.turns": "你的提问",
   "role.user": "你",
   "role.assistant": "助手",

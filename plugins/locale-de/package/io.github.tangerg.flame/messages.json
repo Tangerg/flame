@@ -544,7 +544,6 @@
   "shortcuts.filter": "Nach Aktion oder Tastenkombination filtern…",
   "shortcuts.filterAria": "Kürzel filtern",
   "shortcuts.empty": "Keine Kürzel gefunden",
-  "agentSource.rpc": "Runtime-Protokoll (JSON-RPC)",
   "narrative.rail.turns": "Deine Fragen",
   "role.user": "Du",
   "role.assistant": "Assistent",

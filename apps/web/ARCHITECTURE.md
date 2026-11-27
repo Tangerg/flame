@@ -578,14 +578,14 @@ read-only bootstrap or private appearance projection remains.
 
 ## Neutral Agent types
 
-`features/agent/adapters/runtimeDriver.ts` owns the wire-rich RuntimeAgentDriver.
-Runtime sources and selection remain inside Agent adapters. Application and public
-views expose neutral input, interruption and session/run facts. Pending opening
-views contain the original key, receipt and renderable request. Only the adapter
-of that generation retains the SDK retry handle; `retryOpening(key)` resolves that
-original handle without creating a second settlement path. Generated closed string
-enums such as `ChangeStatus` are shared vocabulary and may appear in public views;
-Runtime-client records, command handles and anything mixing them stay inside adapters.
+The Agent composition owns Run opening and resets its handles with the Runtime
+generation. Every start receives the Session captured by its command binding.
+Application and public views expose neutral input, interruption and Session/Run
+facts. A mounted input retains its original opening handle. Restored pending
+openings expose the key, receipt and renderable request. The adapter retains
+the actual SDK handle for that generation. Generated closed string enums such
+as `ChangeStatus` are shared vocabulary. Runtime-client command handles remain in
+adapters.
 
 Settings pages compose theme, i18n, notification and chat controls through their
 real public modules. Features independently contribute panes to Settings. Installed plugin component
