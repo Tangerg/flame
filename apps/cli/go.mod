@@ -3,9 +3,10 @@ module github.com/Tangerg/flame/apps/cli
 go 1.27.4
 
 require (
+	github.com/Tangerg/acp v0.4.0
 	github.com/Tangerg/flame/packages/go-sdk v0.1.92-dev.20261127.t400fd1e61cc2
 	github.com/Tangerg/flame/packages/local-runtime v0.1.14-dev.20261123.tca9fa5e1c260
-	github.com/Tangerg/flame/runtime v0.1.185-dev.20261127.tae07c43b4d0e
+	github.com/Tangerg/flame/runtime v0.1.186-dev.20261127.ta7f6fe4bab6a
 	github.com/Tangerg/frame v0.5.0
 	github.com/Tangerg/oolong/extensions/highlight v0.27.2
 	github.com/Tangerg/oolong/extensions/latex v0.30.0
@@ -46,6 +47,7 @@ require (
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/dlclark/regexp2/v2 v2.13.0 // indirect
 	github.com/dustin/go-humanize v1.1.0 // indirect
+	github.com/faustbrian/go-ecma-regexp/v2 v2.0.2 // indirect
 	github.com/fsnotify/fsnotify v1.10.1 // indirect
 	github.com/go-chi/chi/v5 v5.5.0 // indirect
 	github.com/go-chi/cors v1.2.2 // indirect

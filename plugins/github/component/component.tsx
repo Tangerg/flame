@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import {
   bindOperations,
   failureText,
@@ -6,6 +12,7 @@ import {
   useTranslator,
   watchRuntimeTopics,
   type ComponentContext,
+  type PluginComponentProps,
 } from "@flame/component-sdk";
 import type { MutationPromise } from "@flame/runtime-client";
 import { compareJSONNumbers } from "@frame/sdk/json";
@@ -66,8 +73,8 @@ function locate(target: string): Target | undefined {
     return { repository: match[1]!, number, revision: match[3] };
 }
 
-export function GitHubReviews({ context }: { context: ComponentContext }) {
-  const t = useTranslator(catalogs, context.locale);
+export function GitHubReviews({ context, locale }: PluginComponentProps) {
+  const t = useTranslator(catalogs, locale);
   const [address, setAddress] = useState("");
   const [target, setTarget] = useState<Target>();
   useEffect(
@@ -227,9 +234,13 @@ function Review({
       },
     );
   };
-  const pendingPublications = context.signal.aborted
+  useSyncExternalStore(operations.subscribeCommands, operations.commandsVersion);
+  const publications = context.signal.aborted
     ? []
-    : operations.pendingCommands(publish);
+    : operations.commands(publish);
+  const pendingPublications = publications.filter(
+    (original) => original.state === "recoverable",
+  );
   const recoverPublication = async (
     original: (typeof pendingPublications)[number],
   ) => {
@@ -508,9 +519,14 @@ function Review({
                   !!readError ||
                   !!stale ||
                   !!recover ||
-                  pendingPublications.length > 0
+                  publications.length > 0
                 }
                 publishReview={(body) => {
+                  if (
+                    context.signal.aborted ||
+                    operations.commands(publish).length > 0
+                  )
+                    return;
                   void apply(
                     operations.command(publish, {
                       repository: state.repository,

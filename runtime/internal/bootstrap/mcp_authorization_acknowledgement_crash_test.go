@@ -97,11 +97,11 @@ func TestMCPAuthorizationAcknowledgementRecoversTheOriginalAttempt(t *testing.T)
 	}
 }
 
-func TestMCPAuthorizationRetryLaunchesTheAcceptedAttempt(t *testing.T) {
+func TestMCPAuthorizationRetryPreservesTheAttemptWhileItsStatusIsUnavailable(t *testing.T) {
 	remote := poMCPRemote(t, "record")
 	cfg := poMCPConfig(t)
 	r := poMCPOpen(t, cfg)
-	installExternalConnector(r)
+	connector := installExternalConnector(r)
 	server := r.createUserServer(protocol.MCPServerCandidate{
 		Name: authorizationAckServer, Enabled: true,
 		Connection:       protocol.MCPConnectionInput{Type: protocol.MCPTransportStreamableHTTP, URL: remote},
@@ -117,7 +117,26 @@ func TestMCPAuthorizationRetryLaunchesTheAcceptedAttempt(t *testing.T) {
 	}
 	allowReceipt()
 
+	store := authorizationCrashStore(t, filepath.Join(cfg.stores.DataDirectory, "plugins", "data", connector.ID, "external-servers.db"))
+	var original string
+	if err := store.QueryRowContext(t.Context(), `SELECT id FROM attempts WHERE name=?`, server.Name).Scan(&original); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.ExecContext(t.Context(), `ALTER TABLE attempts RENAME COLUMN started TO unavailable_started`); err != nil {
+		t.Fatal(err)
+	}
+	interrupted := r.endpoint.Invoke(t.Context(), delivery.MCPAuthorizationAttemptsCreate, request, protocol.CallMetadata{IdempotencyKey: authorizationAckCrashKey})
+	if _, err := store.ExecContext(t.Context(), `ALTER TABLE attempts RENAME COLUMN unavailable_started TO started`); err != nil {
+		t.Fatal(err)
+	}
+	if interrupted.Failure == nil || !errors.Is(interrupted.Failure, protocol.ErrIdempotencyInProgress) {
+		t.Fatalf("status read failure settled the original command: %+v", interrupted)
+	}
+
 	accepted := r.must(delivery.MCPAuthorizationAttemptsCreate, request, authorizationAckCrashKey).(*protocol.MCPAuthorizationAttemptRef)
+	if accepted.AttemptID != original {
+		t.Fatalf("retry acknowledged %q, want %q", accepted.AttemptID, original)
+	}
 	attempt := awaitMCPAuthorization(t, r, accepted.AttemptID)
 	if attempt.Server != server || attempt.Status.Type != protocol.MCPAuthorizationAttemptSucceeded {
 		t.Fatalf("recovered launch did not settle the accepted authorization: %+v", attempt)

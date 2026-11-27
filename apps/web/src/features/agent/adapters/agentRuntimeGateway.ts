@@ -31,12 +31,11 @@ import {
   unresolvedSteer,
 } from "@/features/agent/adapters/runtimeSessionMaterial";
 import { type AgentCommands } from "@/features/agent/application/agentCommandOwner";
-import { type createAgentSessionUsage } from "@/features/agent/application/session/sessionUsage";
 
 type RuntimeCapabilities = Pick<RuntimeAccess["capabilities"], "hasCapability">;
 type CreateSessionMutation = ReturnType<FlameClient["sessions"]["create"]>;
 
-class RuntimeAgentGateway implements AgentRuntimeGateway {
+export class RuntimeAgentGateway implements AgentRuntimeGateway {
   constructor(
     private readonly runtimeClient: () => FlameClient,
     private readonly capabilities: RuntimeCapabilities,
@@ -242,7 +241,7 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
     await this.runtimeClient().approval.forgetRule({ id, expectedDecision });
   }
 
-  replaceRuntimeGeneration(): void {
+  replaceServerScope(): void {
     const predecessor = this.#sessionMutations;
     this.#sessionMutations = createMutationSettler();
     predecessor.dispose();
@@ -251,33 +250,4 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
   dispose(): void {
     this.#sessionMutations.dispose();
   }
-}
-
-export function createAgentRuntimeGateway(
-  runtimeClient: () => FlameClient,
-  capabilities: RuntimeCapabilities,
-  sharedMaterial: AgentSharedMaterial,
-  commands: AgentCommands,
-  usage: ReturnType<typeof createAgentSessionUsage>,
-) {
-  let commandOwner = commands.replace();
-  const gateway = new RuntimeAgentGateway(runtimeClient, capabilities, sharedMaterial, commands);
-  let usageOwner = usage.replace(gateway);
-  let disposed = false;
-  return {
-    gateway,
-    replaceRuntimeGeneration() {
-      if (disposed) return;
-      gateway.replaceRuntimeGeneration();
-      commandOwner = commands.replace();
-      usageOwner = usage.replace(gateway);
-    },
-    dispose() {
-      if (disposed) return;
-      disposed = true;
-      commandOwner.dispose();
-      usageOwner.dispose();
-      gateway.dispose();
-    },
-  };
 }

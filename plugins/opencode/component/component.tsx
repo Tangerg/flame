@@ -3,7 +3,7 @@ import {
   bindOperations,
   failureText,
   mutationSettlementIsUnknown,
-  type ComponentContext,
+  type PluginComponentProps,
 } from "@flame/component-sdk";
 import { type MutationPromise } from "@flame/runtime-client";
 import {
@@ -83,8 +83,8 @@ const chinese: typeof english = {
   error: "OpenCode 请求失败。",
 };
 
-export function OpenCodeSessions({ context }: { context: ComponentContext }) {
-  const t = context.locale.startsWith("zh") ? chinese : english;
+export function OpenCodeSessions({ context, locale }: PluginComponentProps) {
+  const t = locale.startsWith("zh") ? chinese : english;
   const ops = useMemo(() => {
     if (!context.binding)
       throw new Error("OpenCode requires its own installation");

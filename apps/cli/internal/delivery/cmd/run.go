@@ -97,8 +97,8 @@ func (r *runFlags) execute(cmd *cobra.Command, args []string, provider runtimePr
 			Message:   message,
 			Options:   runOptions,
 		},
-		ApproveAll:   r.approveAll,
-		ReplayPolicy: replayPolicy,
+		AnswerInterrupts: runworkflow.UnattendedAnswers(r.approveAll, opened.Session.ID),
+		ReplayPolicy:     replayPolicy,
 	})
 }
 

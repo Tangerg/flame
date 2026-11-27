@@ -5,7 +5,7 @@ import {
   mutationSettlementIsUnknown,
   useTranslator,
   watchRuntimeTopics,
-  type ComponentContext,
+  type PluginComponentProps,
 } from "@flame/component-sdk";
 import { asRunId, type MutationPromise } from "@flame/runtime-client";
 import type { RunRef } from "@flame/runtime-client/wire";
@@ -52,8 +52,8 @@ type Read = {
   events: MethodOutputs[typeof events];
 };
 
-export function FileWatch({ context }: { context: ComponentContext }) {
-  const t = useTranslator(catalogs, context.locale);
+export function FileWatch({ context, locale }: PluginComponentProps) {
+  const t = useTranslator(catalogs, locale);
   const ops = useMemo(() => {
     if (!context.binding)
       throw new Error("File watch requires its own contribution");
@@ -207,8 +207,7 @@ export function FileWatch({ context }: { context: ComponentContext }) {
   };
   const observed = details?.id === inspected ? details : undefined;
   const evidence = observed?.observation?.capture.partitions;
-  const time = (value: string) =>
-    new Date(value).toLocaleString(context.locale);
+  const time = (value: string) => new Date(value).toLocaleString(locale);
 
   return (
     <Panel label={t("title")} header={<PanelTitle>{t("title")}</PanelTitle>}>
@@ -422,9 +421,12 @@ export function FileWatch({ context }: { context: ComponentContext }) {
             )}
             {context.openSession && (
               <Button
-                onClick={() =>
-                  context.openSession?.(observed.observation!.capture.sessionId)
-                }
+                onClick={() => {
+                  void context.openSession?.(observed.observation!.capture.sessionId)
+                    .catch((error) => {
+                      if (!context.signal.aborted) setMutationError(failureText(error));
+                    });
+                }}
               >
                 {t("openSession")}
               </Button>

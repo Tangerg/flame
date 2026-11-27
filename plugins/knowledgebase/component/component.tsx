@@ -6,6 +6,7 @@ import {
   useTranslator,
   watchRuntimeTopics,
   type ComponentContext,
+  type PluginComponentProps,
 } from "@flame/component-sdk";
 import { projectNumber } from "@frame/sdk/json";
 import type { MutationPromise, Project } from "@flame/runtime-client";
@@ -78,8 +79,8 @@ function navigationTarget(value: string): Target | undefined {
   }
 }
 
-export function ProjectResearch({ context }: { context: ComponentContext }) {
-  const t = useTranslator(catalogs, context.locale);
+export function ProjectResearch({ context, locale }: PluginComponentProps) {
+  const t = useTranslator(catalogs, locale);
   const [target, setTarget] = useState<Target>();
   const projectId = target?.project ?? context.project?.id;
   const [read, setRead] = useState<{
@@ -124,6 +125,7 @@ export function ProjectResearch({ context }: { context: ComponentContext }) {
         <Research
           key={JSON.stringify([project.id, target])}
           context={context}
+          locale={locale}
           project={project}
           target={target}
           t={t}
@@ -139,11 +141,13 @@ export function ProjectResearch({ context }: { context: ComponentContext }) {
 
 function Research({
   context,
+  locale,
   project,
   target,
   t,
 }: {
   context: ComponentContext;
+  locale: string;
   project: Project;
   target?: Target;
   t: Messages;
@@ -540,6 +544,7 @@ function Research({
       <WorkReview
         operations={operations}
         context={context}
+        locale={locale}
         project={project.id}
         claims={results}
         refresh={refresh}

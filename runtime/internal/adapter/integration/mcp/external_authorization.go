@@ -84,7 +84,7 @@ func (c *ExternalConnector) prepareAuthorizationStart(ctx context.Context, u *co
 	}, nil
 }
 
-func (c *ExternalConnector) ReadAuthorization(ctx context.Context, id mcpapp.AuthorizationAttemptID) (attempt mcpapp.AuthorizationAttempt, err error) {
+func (c *ExternalConnector) ReadAuthorization(ctx context.Context, id mcpapp.AuthorizationAttemptID) (_ mcpapp.AuthorizationAttempt, err error) {
 	route, found, err := c.vault.AuthorizationRoute(ctx, id)
 	if err != nil {
 		return mcpapp.AuthorizationAttempt{}, err
@@ -100,29 +100,21 @@ func (c *ExternalConnector) ReadAuthorization(ctx context.Context, id mcpapp.Aut
 		return mcpapp.AuthorizationAttempt{}, err
 	}
 	defer func() { err = errors.Join(err, u.session.release(context.WithoutCancel(ctx))) }()
-	result, err := connectorCall(ctx, u, c.methods.Get, wire.Request{ID: id.String(), Epoch: route.Epoch})
-	if err != nil {
-		return mcpapp.AuthorizationAttempt{}, err
-	}
-	attempt, err = readExternalAttempt(result, id)
-	if err == nil && attempt.Server.Name() != route.Name {
-		return mcpapp.AuthorizationAttempt{}, mcpapp.ErrInvalidServerConfiguration
-	}
-	return attempt, err
+	return c.readAuthorization(ctx, u, id, route.Name, route.Epoch)
 }
 
-func readExternalAttempt(r wire.AttemptResult, id mcpapp.AuthorizationAttemptID) (mcpapp.AuthorizationAttempt, error) {
-	if r.Attempt == nil {
-		return mcpapp.AuthorizationAttempt{}, mcpapp.ErrAuthorizationAttemptNotFound
-	}
-	a := r.Attempt
-	status := mcpapp.AuthorizationAttemptStatus(a.Status)
-	if a.ID != id.String() || !status.Valid() {
-		return mcpapp.AuthorizationAttempt{}, mcpapp.ErrInvalidServerConfiguration
-	}
-	name, err := mcpserver.ParseServerName(a.Name)
+func (c *ExternalConnector) readAuthorization(ctx context.Context, u *connectorUse, id mcpapp.AuthorizationAttemptID, name mcpserver.ServerName, epoch string) (mcpapp.AuthorizationAttempt, error) {
+	result, err := connectorCall(ctx, u, c.methods.Get, wire.Request{ID: id.String(), Epoch: epoch})
 	if err != nil {
 		return mcpapp.AuthorizationAttempt{}, err
+	}
+	a := result.Attempt
+	if a == nil {
+		return mcpapp.AuthorizationAttempt{}, mcpapp.ErrAuthorizationAttemptNotFound
+	}
+	status := mcpapp.AuthorizationAttemptStatus(a.Status)
+	if a.ID != id.String() || a.Name != name.String() || !status.Valid() {
+		return mcpapp.AuthorizationAttempt{}, mcpapp.ErrInvalidServerConfiguration
 	}
 	server, err := mcpserver.NewID(mcpserver.UserOrigin(), name)
 	if err != nil {

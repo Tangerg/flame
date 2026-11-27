@@ -144,7 +144,9 @@ func TestOneShotRecoversADelegatedApprovalBeforeResumingTheRoot(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 	if err := runworkflow.Execute(ctx, runworkflow.Invocation{
-		Runtime: runtime, Renderer: renderer, ReplayPolicy: replayGuard, ApproveAll: true, Start: authoring.StartRun{
+		Runtime: runtime, Renderer: renderer, ReplayPolicy: replayGuard,
+		AnswerInterrupts: runworkflow.UnattendedAnswers(true, session.ID),
+		Start: authoring.StartRun{
 			SessionID: session.ID, Message: authoring.Message{Text: runtimefixture.DelegateApprovalProbe},
 			Options: authoring.RunOptions{Provider: "deepseek", Model: "deepseek-chat"},
 		},

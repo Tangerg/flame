@@ -105,7 +105,6 @@ func (s SessionQuery) Normalize() (SessionQuery, error) {
 	if err := protocol.ValidateWireTree(protocol.ListSessionsRequest{Search: s.Search, IDPrefix: s.IDPrefix}); err != nil {
 		return SessionQuery{}, fmt.Errorf("session query: %w", err)
 	}
-	s.Workspace = strings.TrimSpace(s.Workspace)
 	if err := (workspace.ResolveRequest{Path: s.Workspace}).Validate(); err != nil {
 		return SessionQuery{}, fmt.Errorf("session query: %w", err)
 	}

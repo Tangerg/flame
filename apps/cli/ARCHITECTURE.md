@@ -267,6 +267,7 @@ A package must own a coherent CLI vocabulary, local aggregate, workflow lifecycl
 | Local storage       | `adapter/filesystem`                                 | Scoped filesystem adapters for attachments, editors, session artifacts and opaque state records                                                    |
 | Sideload execution  | `adapter/sideload`                                   | Manifest translation, confined executable invocation and command-protocol validation                                                               |
 | User delivery       | `delivery/cmd`, `delivery/terminal`                  | Cobra commands with private output renderers, Oolong interaction, rendering and view lifetimes                                                     |
+| Editor delivery     | `delivery/acp`                                       | ACP session and turn projection, stdio transport and permission interaction                                                                        |
 | Process composition | CLI root package                                     | Immutable Runtime target, lazy Workbench factory, port wiring and shutdown                                                                         |
 
 `agent`, `integration` and `filesystem` are sparse namespace directories. They contain no facade package. The Workbench Store retains its queue, clocks, randomness and persistence in Application. Conversation is a CLI projection owner and does not become a second Runtime Session or Run state machine.

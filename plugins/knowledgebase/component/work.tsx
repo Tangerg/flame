@@ -92,17 +92,19 @@ const empty = {
 export function WorkReview({
   operations,
   context,
+  locale,
   project,
   claims,
   refresh,
 }: {
   operations: Operations;
   context: ComponentContext;
+  locale: string;
   project: string;
   claims: Claim[];
   refresh: number;
 }) {
-  const t = context.locale.startsWith("zh") ? chinese : english;
+  const t = locale.startsWith("zh") ? chinese : english;
   const [items, setItems] = useState<Receipt[]>([]);
   const [id, setID] = useState("");
   const [visible, setVisible] = useState<Work>();
