@@ -14,6 +14,15 @@ export type SubmitCapturedAgentInput = (
   signal: AbortSignal,
 ) => Promise<AgentInputSettlement>;
 
+type IdleInteraction = { type: "idle" };
+type AwaitingInteraction = {
+  type: "awaiting";
+  command: Extract<AgentInputSettlement, { status: "unknown" }>;
+};
+type InteractionState = IdleInteraction | AwaitingInteraction | { type: "observing" };
+
+const IDLE_INTERACTION: IdleInteraction = { type: "idle" };
+
 export function captureToolInteraction(
   runtime: FlameClient,
   submitInput: SubmitCapturedAgentInput,
@@ -22,41 +31,49 @@ export function captureToolInteraction(
   track: ComponentContext["track"],
 ): CapturedToolInteraction {
   const captured = Object.freeze({ ...source });
-  let active = false;
-  let unknown: Extract<InteractionSubmission, { status: "unknown" }> | undefined;
+  let state: InteractionState = IDLE_INTERACTION;
 
-  const project = (result: AgentInputSettlement): InteractionSubmission => {
+  function project(result: AgentInputSettlement): InteractionSubmission {
     if (result.status !== "unknown") {
-      unknown = undefined;
+      state = IDLE_INTERACTION;
       return Object.freeze({ ...result });
     }
-    const retained: Extract<InteractionSubmission, { status: "unknown" }> = Object.freeze({
+    state = { type: "awaiting", command: result };
+    const idempotencyKey = result.idempotencyKey;
+    return Object.freeze({
       status: "unknown",
-      idempotencyKey: result.idempotencyKey,
-      recover: () => {
+      idempotencyKey,
+      recover(): Promise<InteractionSubmission> {
         signal.throwIfAborted();
-        if (active) throw new Error("tool interaction is already awaiting its original command");
-        return track(() => {
-          active = true;
-          return Promise.resolve()
-            .then(() => result.recover())
-            .then(project)
-            .finally(() => {
-              active = false;
-            });
-        });
+        const pending = state;
+        if (pending.type !== "awaiting" || pending.command.idempotencyKey !== idempotencyKey)
+          throw new Error("tool interaction no longer awaits this command");
+        return observe(() => pending.command.recover(), pending);
       },
     });
-    unknown = retained;
-    return retained;
-  };
+  }
+
+  async function observe(
+    perform: () => Promise<AgentInputSettlement>,
+    previous: IdleInteraction | AwaitingInteraction,
+  ): Promise<InteractionSubmission> {
+    state = { type: "observing" };
+    try {
+      return await track(async () => project(await perform()));
+    } catch (error) {
+      state = previous;
+      throw error;
+    }
+  }
 
   return Object.freeze({
     source: captured,
     submit(input: ToolInteractionInput): Promise<InteractionSubmission> {
       signal.throwIfAborted();
-      if (active) throw new Error("tool interaction is already being submitted");
-      if (unknown) throw new Error("recover the original tool interaction before submitting again");
+      if (state.type === "observing")
+        throw new Error("tool interaction is already being submitted");
+      if (state.type === "awaiting")
+        throw new Error("recover the original tool interaction before submitting again");
       if (!input.action.trim()) throw new Error("tool interaction action is empty");
       parseJSON(input.payloadJSON);
       // Keep the user's exact JSON source, including numeric lexemes. This is an
@@ -76,16 +93,11 @@ export function captureToolInteraction(
           },
         ],
       };
-      return track(() => {
-        active = true;
-        return (async () => {
-          const run = await runtime.runs.get(asRunId(captured.runId), signal);
-          signal.throwIfAborted();
-          return project(await submitInput(run.sessionId, prepared, signal));
-        })().finally(() => {
-          active = false;
-        });
-      });
+      return observe(async () => {
+        const run = await runtime.runs.get(asRunId(captured.runId), signal);
+        signal.throwIfAborted();
+        return submitInput(run.sessionId, prepared, signal);
+      }, IDLE_INTERACTION);
     },
   });
 }
