@@ -169,16 +169,7 @@ func (s *steerDesk) settleSteer(result runworkflow.SteerResult, deliveryErr erro
 }
 
 func (s *steerDesk) acknowledgeSteer(pending workbench.PendingSteer) error {
-	current, _, err := s.composer.draft()
-	if err != nil {
-		return fmt.Errorf("read composer for steer settlement: %w", err)
-	}
-	if err := s.composer.saveDraft(current); err != nil {
-		s.report(workbenchDraft, err)
-		return fmt.Errorf("save current session draft: %w", err)
-	}
-	s.report(workbenchDraft, nil)
-	if err := s.workbench.AcknowledgePendingSteer(s.session.current.ID, pending.CommandID()); err != nil {
+	if err := s.workbench.AcknowledgePendingSteer(pending.SessionID(), pending.CommandID()); err != nil {
 		s.report(workbenchSteerOutbox, fmt.Errorf("settle accepted steer command: %w", err))
 		return fmt.Errorf("retire accepted steer command: %w", err)
 	}

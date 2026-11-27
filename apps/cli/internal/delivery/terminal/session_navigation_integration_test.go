@@ -132,10 +132,15 @@ func openSessionNavigationRuntime(t *testing.T) (*runtimebinding.Connection, con
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	t.Cleanup(provider.Close)
+	return openTerminalIntegrationRuntime(t, provider.URL)
+}
+
+func openTerminalIntegrationRuntime(t *testing.T, providerURL string) (*runtimebinding.Connection, conversation.Session) {
+	t.Helper()
 	t.Setenv("FLAME_PROVIDER", "deepseek")
 	t.Setenv("FLAME_MODEL", "deepseek-chat")
 	t.Setenv("FLAME_APIKEY", "integration-key")
-	t.Setenv("FLAME_BASEURL", provider.URL)
+	t.Setenv("FLAME_BASEURL", providerURL)
 	workspace := t.TempDir()
 	owner := runtimebinding.NewOwner(runtimebinding.Config{
 		ProductRoot: runtimefixture.TempDirectory(t), DefaultWorkspacePath: workspace,
