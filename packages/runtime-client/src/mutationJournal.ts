@@ -13,7 +13,12 @@ import {
   type PluginCommandBinding,
 } from "./mutationJournalEntry";
 import { MutationJournalError, MutationJournalOwnershipError } from "./mutationJournalErrors";
-import { MutationLookupError, mutationSettlementIsUnknown, type MutationPromise } from "./mutation";
+import {
+  MutationLookupError,
+  mutationHandle,
+  mutationSettlementIsUnknown,
+  type MutationPromise,
+} from "./mutation";
 import type { CallPluginRequest, PluginCallRoute } from "@flame/runtime-client/wire";
 import { RpcCancellationError } from "./errors";
 import { captureRequestMeta } from "./request";
@@ -57,18 +62,6 @@ export type PendingRunCommand = RunCommand & {
   acknowledge(): void;
   reserve(): MutationReservation;
 };
-
-function rejectedMutation<T>(
-  error: unknown,
-  idempotencyKey: string,
-  retry: MutationPromise<T>["retry"],
-): MutationPromise<T> {
-  const rejected = Promise.reject(error);
-  return Object.defineProperties(rejected, {
-    idempotencyKey: { enumerable: true, value: idempotencyKey },
-    retry: { enumerable: true, value: retry },
-  }) as unknown as MutationPromise<T>;
-}
 
 type AttemptOutcome<T> =
   { type: "confirmed"; handle: MutationPromise<T> } | { type: "unresolved" } | { type: "canceled" };
@@ -305,13 +298,10 @@ export class MutationJournal {
           }
           return observe(() => mutation.retry(options));
         } catch (error) {
-          return rejectedMutation(error, idempotencyKey, retry);
+          return mutationHandle(Promise.reject(error), idempotencyKey, retry);
         }
       };
-      const handle = Object.defineProperties(tracked, {
-        idempotencyKey: { enumerable: true, value: idempotencyKey },
-        retry: { enumerable: true, value: retry },
-      }) as MutationPromise<T>;
+      const handle = mutationHandle(tracked, idempotencyKey, retry);
       return handle;
     };
     return observe(create);

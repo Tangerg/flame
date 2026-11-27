@@ -5,6 +5,7 @@ import { captureRequestMeta, checkRequest, requestRequiresIdempotency } from "./
 import {
   createMutationPromise,
   MutationLookupError,
+  mutationHandle,
   mutationSettlementIsUnknown,
   type MutationPromise,
 } from "./mutation";
@@ -223,10 +224,7 @@ export function createWireCallPath(client: RpcClient, options: WireCallPathOptio
       }
     } catch (error) {
       const refused = (): MutationPromise<Result> =>
-        Object.defineProperties(Promise.reject(error), {
-          idempotencyKey: { enumerable: true, value: preferredJournalKey },
-          retry: { enumerable: true, value: refused },
-        }) as MutationPromise<Result>;
+        mutationHandle(Promise.reject(error), preferredJournalKey, refused);
       return refused();
     }
     const create = () =>

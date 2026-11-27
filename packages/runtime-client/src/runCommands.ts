@@ -2,7 +2,12 @@ import { cloneJSON } from "@frame/sdk/json";
 import { wireAcknowledgementCheck, type WireParams } from "@flame/runtime-client/methods";
 import { checkRequest } from "./request";
 import type { RpcCallOptions } from "./client";
-import { MutationLookupError, type MutationPromise } from "./mutation";
+import {
+  MutationLookupError,
+  mutationHandle,
+  observedMutation,
+  type MutationPromise,
+} from "./mutation";
 import type { WireCallPath, WireCallPathOptions } from "./wireCallPath";
 import type {
   ResumeRunRequest,
@@ -42,6 +47,9 @@ export interface SteerMutationPromise extends MutationPromise<SteerCommandResult
   retry(options?: { signal?: AbortSignal }): SteerMutationPromise;
 }
 
+type RecordedAcceptance = Exclude<RunAcceptance, { type: "notRecorded" }>;
+type RecordedInputAcceptance = RecordedAcceptance & { userItemId: string };
+
 interface CommandObservation {
   readonly idempotencyKey: string;
   readonly observation:
@@ -49,7 +57,7 @@ interface CommandObservation {
     | Extract<RunAcceptance, { type: "notRecorded" }>
     | {
         type: "recorded";
-        acceptance: Exclude<RunAcceptance, { type: "notRecorded" }>;
+        acceptance: RecordedAcceptance;
         acknowledge(): void;
       };
 }
@@ -87,6 +95,38 @@ export interface RunCommands {
   ): MutationPromise<RunOpeningResult<ResumeRunResponse>>;
   steer(params: SteerRunRequest, signal?: AbortSignal): SteerMutationPromise;
   recover(signal?: AbortSignal): Promise<RunCommandRecovery[]>;
+}
+
+function openingFromReceipt(receipt: RecordedInputAcceptance): RunOpeningResult<StartRunResponse>;
+function openingFromReceipt(receipt: RecordedAcceptance): RunOpeningResult<ResumeRunResponse>;
+function openingFromReceipt(receipt: RecordedAcceptance): RunOpeningResult<ResumeRunResponse> {
+  const { runId, segmentId, userItemId, sessionId } = receipt;
+  return {
+    result: { runId, segmentId, ...(userItemId ? { userItemId } : {}) },
+    observation: { type: receipt.type === "retired" ? "retired" : "snapshot", sessionId },
+  };
+}
+
+function requireSteerNomination(receipt: RecordedAcceptance, nominated: string | null): void {
+  if (nominated !== null && nominated !== receipt.userItemId)
+    throw new RpcProtocolError("runs.getAcceptance result", [
+      { path: "$.userItemId", detail: "receipt differs from the nominated input identity" },
+    ]);
+}
+
+function withSteerIdentity(
+  mutation: MutationPromise<SteerCommandResult>,
+  inputIdentity: Promise<string>,
+): SteerMutationPromise {
+  return Object.defineProperty(mutation, "inputIdentity", {
+    enumerable: true,
+    value: inputIdentity,
+  }) as SteerMutationPromise;
+}
+
+function observeRecordedSteer(key: string, receipt: RecordedInputAcceptance): SteerMutationPromise {
+  const result: SteerCommandResult = { type: receipt.type, userItemId: receipt.userItemId };
+  return withSteerIdentity(observedMutation(key, result), Promise.resolve(result.userItemId));
 }
 
 // Run commands carry durable acceptance: start, resume and steer first ask the
@@ -183,19 +223,7 @@ export function createRunCommands(
           reservation.idempotencyKey,
           attemptSignal,
         );
-        if (acceptance.type !== "notRecorded") {
-          return {
-            result: {
-              runId: acceptance.runId,
-              segmentId: acceptance.segmentId,
-              ...(acceptance.userItemId ? { userItemId: acceptance.userItemId } : {}),
-            },
-            observation: {
-              type: acceptance.type === "retired" ? "retired" : "snapshot",
-              sessionId: acceptance.sessionId,
-            },
-          };
-        }
+        if (acceptance.type !== "notRecorded") return openingFromReceipt(acceptance);
         const opened = await attachRunStream<ResumeRunResponse>(attemptSignal, (options) =>
           dispatchCommand(method, preparedParams, reservation, options),
         );
@@ -233,14 +261,12 @@ export function createRunCommands(
           throw error;
         },
       );
-      return Object.defineProperties(exposed, {
-        idempotencyKey: { enumerable: true, value: mutation.idempotencyKey },
-        inputIdentity: { enumerable: true, value: identity.promise },
-        retry: {
-          enumerable: true,
-          value: (options?: { signal?: AbortSignal }) => expose(mutation.retry(options)),
-        },
-      }) as SteerMutationPromise;
+      return withSteerIdentity(
+        mutationHandle(exposed, mutation.idempotencyKey, (options) =>
+          expose(mutation.retry(options)),
+        ),
+        identity.promise,
+      );
     };
     const mutation = openMutation(
       "runs.steer",
@@ -265,10 +291,7 @@ export function createRunCommands(
             { path: "$", detail: "Steer lookup omitted its input identity" },
           ]);
         if (acceptance.type !== "notRecorded") {
-          if (boundItem !== null && boundItem !== userItemId)
-            throw new RpcProtocolError("runs.getAcceptance result", [
-              { path: "$.userItemId", detail: "receipt differs from the nominated input identity" },
-            ]);
+          requireSteerNomination(acceptance, boundItem);
           // The Runtime receipt can outlive the local entry another observer settled.
           await publishNomination(userItemId);
           return { type: acceptance.type, userItemId };
@@ -301,6 +324,8 @@ export function createRunCommands(
             command.idempotencyKey,
             signal,
           );
+          if (command.operation === "steer" && acceptance.type !== "notRecorded")
+            requireSteerNomination(acceptance, command.steerItemId);
           observation =
             acceptance.type === "notRecorded"
               ? acceptance
@@ -308,33 +333,48 @@ export function createRunCommands(
         } catch (cause) {
           observation = { type: "unknown", cause };
         }
-        const observed = {
-          idempotencyKey: command.idempotencyKey,
-          observation,
-        };
+        const { idempotencyKey } = command;
+        const observed = { idempotencyKey, observation };
+        const recorded = observation.type === "recorded" ? observation.acceptance : undefined;
+        // A recorded Start or Steer reached this point through the input identity check.
         switch (command.operation) {
-          case "start":
+          case "start": {
+            const receipt =
+              recorded &&
+              observedMutation(
+                idempotencyKey,
+                openingFromReceipt(recorded as RecordedInputAcceptance),
+              );
             return {
               ...observed,
               operation: "start",
               params: checkRequest("runs.start", cloneJSON(command.params)),
-              retry: (options) => openRun("runs.start", command.params, options?.signal, command),
+              retry: (options) =>
+                receipt ?? openRun("runs.start", command.params, options?.signal, command),
             };
-          case "resume":
+          }
+          case "resume": {
+            const receipt =
+              recorded && observedMutation(idempotencyKey, openingFromReceipt(recorded));
             return {
               ...observed,
               operation: "resume",
               params: checkRequest("runs.resume", cloneJSON(command.params)),
-              retry: (options) => openRun("runs.resume", command.params, options?.signal, command),
+              retry: (options) =>
+                receipt ?? openRun("runs.resume", command.params, options?.signal, command),
             };
-          case "steer":
+          }
+          case "steer": {
+            const receipt =
+              recorded && observeRecordedSteer(idempotencyKey, recorded as RecordedInputAcceptance);
             return {
               ...observed,
               operation: "steer",
               userItemId: command.steerItemId,
               params: checkRequest("runs.steer", cloneJSON(command.params)),
-              retry: (options) => openSteer(command.params, options?.signal, command),
+              retry: (options) => receipt ?? openSteer(command.params, options?.signal, command),
             };
+          }
         }
       }),
     );

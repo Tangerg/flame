@@ -169,7 +169,8 @@ journal separately for recovery and start with a fresh client journal.
 and Steer commands. Each observation is `recorded`, `notRecorded`, or `unknown`.
 Call `observation.acknowledge()` for a `recorded` observation after incorporating
 its acceptance. Until then, later observations can still recover the same
-command. Explicit retry continues to use its original admission and request.
+command. A recorded recovery handle projects its captured receipt directly.
+An unresolved retry continues to use its original admission and request.
 A Steer recovery handle keeps the command identity it discovered. The journal
 supplies the current delivery phase and nominated input, including nominations
 recorded by another client after discovery.
