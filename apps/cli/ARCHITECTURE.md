@@ -214,7 +214,8 @@ original queue or Steer entry in the same transaction. Terminal controllers
 read the committed queue through detached snapshots.
 
 Each partition opens `authoring.db`. The development cutover leaves the former
-JSON state with the previous build for outstanding commands.
+JSON state with the previous build. Outstanding attachment commands retain the
+snapshot layout of the build that admitted them.
 
 Drafts and queued prompts keep attachment paths editable. Before the first
 mutation dispatch, the binding adapter materializes those paths into Runtime
@@ -223,14 +224,13 @@ captured content, original key and replay guard. Plain text already lives in
 the immutable command. The terminal prepares input in the background and only
 the current callback can stage a command for delivery.
 
-Prepared content is stored as a separate SHA-256-addressed record to preserve
-attachment size limits independently of the authoring-record budget. Workbench
-commits content before publishing its digest with the original command in the
-session record. Referenced content is checked against its digest before replay.
-Missing or damaged content blocks redelivery while the Runtime receipt remains
-available for reconciliation. Prepared content records persist beyond command
-retirement. The adapter checks the original physical directory before database
-access and holds the lease until close.
+Workbench prepares attachment bytes in memory. Dispatch admission commits the
+snapshot and its digest with the original pending command. The separate record
+preserves the attachment limit independently of the authoring-record budget.
+Settlement, rejection and session retirement remove the snapshot with its
+command. Missing or damaged content blocks redelivery while the Runtime receipt
+remains available for reconciliation. The adapter checks the original physical
+directory before database access and holds the lease until close.
 
 ## JSON
 

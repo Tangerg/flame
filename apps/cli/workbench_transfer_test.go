@@ -10,6 +10,21 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 )
 
+func inspectWorkbenchDatabase(t *testing.T, directory string) *sql.DB {
+	t.Helper()
+	address := url.URL{Scheme: "file", Path: filepath.ToSlash(filepath.Join(directory, "authoring.db")), RawQuery: "mode=rw"}
+	database, err := sql.Open("sqlite", address.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := database.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	return database
+}
+
 func TestDraftTransferDoesNotPublishHalfOfAMove(t *testing.T) {
 	const source = "ses_transfer_source"
 	const destination = "ses_transfer_destination"
@@ -44,16 +59,7 @@ func TestDraftTransferDoesNotPublishHalfOfAMove(t *testing.T) {
 	if err := store.SaveDraft(destination, before); err != nil {
 		t.Fatal(err)
 	}
-	address := url.URL{Scheme: "file", Path: filepath.ToSlash(filepath.Join(directory, "authoring.db")), RawQuery: "mode=rw"}
-	database, err := sql.Open("sqlite", address.String())
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := database.Close(); err != nil {
-			t.Error(err)
-		}
-	})
+	database := inspectWorkbenchDatabase(t, directory)
 	if _, err := database.Exec(`CREATE TRIGGER refuse_source_write
 		BEFORE UPDATE ON authoring_records WHEN old.key = 'session/` + source + `'
 		BEGIN SELECT RAISE(ABORT, 'source draft write refused'); END`); err != nil {

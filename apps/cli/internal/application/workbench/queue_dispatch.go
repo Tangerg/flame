@@ -26,7 +26,8 @@ func (q *Queue) PrepareDispatch(sessionID string, commandID authoring.CommandID,
 	if err != nil {
 		return PendingRun{}, err
 	}
-	if err := q.replaceHead(sessionID, prepared); err != nil {
+	key := inputRecordKey(sessionID, startInput, commandID)
+	if err := q.replaceHead(sessionID, prepared, input.records(key)...); err != nil {
 		return PendingRun{}, err
 	}
 	return prepared.clone(), nil
@@ -115,8 +116,9 @@ func (q *Queue) current(sessionID string, commandID authoring.CommandID) (Pendin
 	return pending[0], nil
 }
 
-func (q *Queue) replaceHead(sessionID string, entry PendingRun) error {
-	next := slices.Clone(q.bySession[sessionID])
-	next[0] = entry
-	return q.save(sessionID, next)
+func (q *Queue) replaceHead(sessionID string, entry PendingRun, changes ...RecordChange) error {
+	update := q.store.sessionUpdate(sessionID)
+	update.runs = slices.Clone(update.runs)
+	update.runs[0] = entry
+	return q.store.commitSessions([]sessionUpdate{update}, changes...)
 }

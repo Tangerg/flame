@@ -30,13 +30,24 @@ func (d inputDigest) validate() error {
 	return nil
 }
 
-func (d inputDigest) name() string { return "input/" + string(d) }
+type inputOperation string
+
+const (
+	startInput  inputOperation = "start"
+	resumeInput inputOperation = "resume"
+	steerInput  inputOperation = "steer"
+)
+
+func inputRecordKey(sessionID string, operation inputOperation, commandID authoring.CommandID) string {
+	return "input/" + sessionID + "/" + string(operation) + "/" + string(commandID)
+}
 
 type PreparedInput struct {
 	owner   *Store
 	message authoring.Message
 	blocks  []protocol.ContentBlock
 	digest  inputDigest
+	encoded []byte
 }
 
 func (s *Store) PrepareInput(ctx context.Context, message authoring.Message, input []protocol.ContentBlock) (*PreparedInput, error) {
@@ -46,10 +57,11 @@ func (s *Store) PrepareInput(ctx context.Context, message authoring.Message, inp
 	if _, err := message.PreparedInput(input); err != nil {
 		return nil, err
 	}
-	prepared := &PreparedInput{owner: s, message: message.Clone(), blocks: slices.Clone(input)}
-	if input == nil {
+	prepared := &PreparedInput{owner: s, message: message.Clone()}
+	if len(message.Attachments) == 0 {
 		return prepared, nil
 	}
+	prepared.blocks = slices.Clone(input)
 	encoded, err := json.Marshal(prepared.blocks, stateJSONOptions)
 	if err != nil {
 		return nil, fmt.Errorf("encode prepared input: %w", err)
@@ -58,14 +70,7 @@ func (s *Store) PrepareInput(ctx context.Context, message authoring.Message, inp
 		return nil, errors.New("prepared input exceeds the attachment budget")
 	}
 	prepared.digest = inputDigest(fmt.Sprintf("%x", sha256.Sum256(encoded)))
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if err := context.Cause(ctx); err != nil {
-		return nil, err
-	}
-	if err := s.commit(RecordChange{Key: prepared.digest.name(), Body: encoded}); err != nil {
-		return nil, fmt.Errorf("save prepared input: %w", err)
-	}
+	prepared.encoded = encoded
 	if err := context.Cause(ctx); err != nil {
 		return nil, err
 	}
@@ -83,16 +88,23 @@ func (p *PreparedInput) bind(s *Store, message authoring.Message) ([]protocol.Co
 	return slices.Clone(p.blocks), p.digest, nil
 }
 
-func (s *Store) readInput(digest inputDigest) ([]protocol.ContentBlock, error) {
+func (p *PreparedInput) records(key string) []RecordChange {
+	if p == nil || p.encoded == nil {
+		return nil
+	}
+	return []RecordChange{{Key: key, Body: p.encoded}}
+}
+
+func (s *Store) readInput(key string, digest inputDigest) ([]protocol.ContentBlock, error) {
 	if digest == "" {
 		return nil, nil
 	}
 	if err := digest.validate(); err != nil {
 		return nil, err
 	}
-	encoded, err := s.persistence.Read(digest.name(), maximumInputBytes)
+	encoded, err := s.persistence.Read(key, maximumInputBytes)
 	if err != nil {
-		return nil, fmt.Errorf("%w: read %s: %w", authoring.ErrCommandInputUnavailable, digest.name(), err)
+		return nil, fmt.Errorf("%w: read %s: %w", authoring.ErrCommandInputUnavailable, key, err)
 	}
 	if inputDigest(fmt.Sprintf("%x", sha256.Sum256(encoded))) != digest {
 		return nil, fmt.Errorf("%w: content digest mismatch", authoring.ErrCommandInputUnavailable)

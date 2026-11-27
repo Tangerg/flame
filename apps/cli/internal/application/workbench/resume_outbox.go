@@ -42,7 +42,10 @@ func (s *Store) StagePendingResume(sessionID string, pending PendingResume, inpu
 		}
 		return errors.New("another resume command is already pending")
 	}
-	return s.saveSessionStateWithResume(sessionID, s.drafts[sessionID], s.queue.bySession[sessionID], &pending)
+	update := s.sessionUpdate(sessionID)
+	update.resume = &pending
+	key := inputRecordKey(sessionID, resumeInput, pending.Command.CommandID)
+	return s.commitSessions([]sessionUpdate{update}, input.records(key)...)
 }
 
 func (s *Store) claimPendingResumeLocked(sessionID string, commandID authoring.CommandID) (PendingResume, error) {

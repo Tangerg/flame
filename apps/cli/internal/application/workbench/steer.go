@@ -166,10 +166,11 @@ func (s *Store) StagePendingSteer(pending PendingSteer, sourceDraft authoring.Me
 		(exists && !current.Equal(sourceDraft)) {
 		return PendingSteer{}, errors.New("session draft changed before steer attachment transfer")
 	}
-	if err := s.saveSessionStateRecord(
-		pending.sessionID, authoring.Message{}, s.queue.bySession[pending.sessionID],
-		s.pendingResumePointer(pending.sessionID), s.pendingRollbackPointer(pending.sessionID), &pending,
-	); err != nil {
+	update := s.sessionUpdate(pending.sessionID)
+	update.draft = authoring.Message{}
+	update.steer = &pending
+	key := inputRecordKey(pending.sessionID, steerInput, pending.command.CommandID)
+	if err := s.commitSessions([]sessionUpdate{update}, input.records(key)...); err != nil {
 		return PendingSteer{}, err
 	}
 

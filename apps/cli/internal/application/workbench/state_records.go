@@ -152,14 +152,16 @@ func (s *Store) restoreSessionState(sessionID string, state sessionState) error 
 	for index := range state.PendingRuns {
 		pending := &state.PendingRuns[index]
 		if pending.Dispatch != nil {
-			pending.Command.Input, pending.Dispatch.inputFailure = s.readInput(pending.Dispatch.InputDigest)
+			key := inputRecordKey(sessionID, startInput, pending.Command.CommandID)
+			pending.Command.Input, pending.Dispatch.inputFailure = s.readInput(key, pending.Dispatch.InputDigest)
 		}
 	}
 	if state.PendingResume != nil {
 		if err := state.PendingResume.validate(); err != nil {
 			return fmt.Errorf("pending resume: %w", err)
 		}
-		state.PendingResume.Command.Input, state.PendingResume.inputFailure = s.readInput(state.PendingResume.InputDigest)
+		key := inputRecordKey(sessionID, resumeInput, state.PendingResume.Command.CommandID)
+		state.PendingResume.Command.Input, state.PendingResume.inputFailure = s.readInput(key, state.PendingResume.InputDigest)
 	}
 	if state.PendingRollback != nil {
 		if err := state.PendingRollback.Validate(); err != nil {
@@ -178,7 +180,8 @@ func (s *Store) restoreSessionState(sessionID string, state sessionState) error 
 		if err := pending.validateSession(sessionID); err != nil {
 			return fmt.Errorf("pending steer: %w", err)
 		}
-		pending.command.Input, pending.inputFailure = s.readInput(pending.inputDigest)
+		key := inputRecordKey(sessionID, steerInput, pending.command.CommandID)
+		pending.command.Input, pending.inputFailure = s.readInput(key, pending.inputDigest)
 		steer = &pending
 	}
 	s.installSessionState(sessionID, state.Draft, state.PendingRuns, state.PendingResume, state.PendingRollback, steer)
@@ -252,6 +255,12 @@ func (s *Store) commitSessions(updates []sessionUpdate, changes ...RecordChange)
 			return err
 		}
 		changes = append(changes, record)
+		keptInputs := update.inputKeys()
+		for _, key := range s.sessionUpdate(update.sessionID).inputKeys() {
+			if !slices.Contains(keptInputs, key) {
+				changes = append(changes, RecordChange{Key: key})
+			}
+		}
 	}
 	if err := s.commit(changes...); err != nil {
 		return err
@@ -260,6 +269,23 @@ func (s *Store) commitSessions(updates []sessionUpdate, changes ...RecordChange)
 		s.installSessionState(update.sessionID, update.draft, update.runs, update.resume, update.rollback, update.steer)
 	}
 	return nil
+}
+
+func (u sessionUpdate) inputKeys() []string {
+	var keys []string
+	if len(u.runs) != 0 {
+		head := u.runs[0]
+		if head.Dispatch != nil && head.Dispatch.InputDigest != "" {
+			keys = append(keys, inputRecordKey(u.sessionID, startInput, head.Command.CommandID))
+		}
+	}
+	if u.resume != nil && u.resume.InputDigest != "" {
+		keys = append(keys, inputRecordKey(u.sessionID, resumeInput, u.resume.Command.CommandID))
+	}
+	if u.steer != nil && u.steer.inputDigest != "" {
+		keys = append(keys, inputRecordKey(u.sessionID, steerInput, u.steer.command.CommandID))
+	}
+	return keys
 }
 
 func (s *Store) admitWrite() error {
