@@ -1,5 +1,4 @@
 import { type AgentAccess } from "@/features/agent/public/agent";
-import { type RuntimeAccess } from "@/features/connection/public/runtime";
 import { type RuntimeServerScope } from "@/features/connection/public/services";
 import {
   asSessionId,
@@ -10,15 +9,9 @@ import {
   type SessionSnapshot,
   type MutationSettler,
 } from "@flame/runtime-client";
-import { runtimeCapability } from "@/features/connection/public/capabilities";
-
 import { type GoalCommandsGateway } from "@/features/goal/application/ports/goalCommandsGateway";
 import { type GoalCommandOwner } from "@/features/goal/application/goalCommands";
-import {
-  GOAL_MATERIAL,
-  type GoalReadModel,
-  type GoalState,
-} from "@/features/goal/application/goalReadModel";
+import { GOAL_MATERIAL, type GoalReadModel } from "@/features/goal/application/goalReadModel";
 function toGoalReadModel(goal: Goal): GoalReadModel {
   return {
     sessionId: goal.sessionId,
@@ -42,13 +35,6 @@ function assertGoalSession(expectedSessionId: string, goal: Goal): void {
       `goal command committed to session ${goal.sessionId}, expected ${expectedSessionId}`,
     );
   }
-}
-
-function runtimeGoalMaterial(goal: Goal | undefined, available: boolean): GoalState {
-  return {
-    available,
-    goal: goal ? toGoalReadModel(goal) : null,
-  };
 }
 
 class RuntimeGoalCommandsGateway implements GoalCommandsGateway {
@@ -93,7 +79,6 @@ class RuntimeGoalCommandsGateway implements GoalCommandsGateway {
 
 export function bindGoalRuntime(
   agentAccess: AgentAccess,
-  runtimeAccess: RuntimeAccess,
   runtimeClient: () => FlameClient,
   commandOwner: GoalCommandOwner,
   scope: RuntimeServerScope,
@@ -104,9 +89,7 @@ export function bindGoalRuntime(
   const unsubscribe = scope.subscribeReplacement(replaceTarget);
   const disposeSharedMaterial = agentAccess.registerAgentSessionSharedMaterial<SessionSnapshot>(
     GOAL_MATERIAL,
-    (_sessionId, snapshot) => {
-      return runtimeGoalMaterial(snapshot.goal, runtimeCapability(runtimeAccess, "goals"));
-    },
+    (_sessionId, snapshot) => (snapshot.goal ? toGoalReadModel(snapshot.goal) : null),
   );
   return () => {
     unsubscribe();

@@ -40,7 +40,7 @@ import flameDark from "@/features/theme/themes/flame-dark";
 import flameLight from "@/features/theme/themes/flame-light";
 import { defaultAccents } from "@/features/theme/defaultAccents";
 import { createGoalPlugin } from "@/features/goal/index";
-import { type GoalState } from "@/features/goal/application/goalReadModel";
+import { GOAL_MATERIAL, type GoalMaterial } from "@/features/goal/application/goalReadModel";
 import planProgress from "@/features/chat/plan-progress/index";
 import { workbenchChat, workbenchSettings } from "@/features/shell/workbench/index";
 import shortcutsSettings from "@/features/command/shortcuts/index";
@@ -425,10 +425,7 @@ export async function installVisualAgentFixture(
     ...view,
     shared: {
       ...view.shared,
-      goal: {
-        available: true,
-        goal: goal ? { ...goal, author: goalAuthor } : null,
-      } satisfies GoalState,
+      [GOAL_MATERIAL]: (goal ? { ...goal, author: goalAuthor } : null) satisfies GoalMaterial,
     },
   };
 

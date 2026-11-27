@@ -3,7 +3,7 @@ import {
   type SlashCommandContext,
   type SlashCommandHandler,
 } from "@/features/composer/public/types";
-import { type GoalReadModel, type GoalState } from "@/features/goal/application/goalReadModel";
+import { type GoalMaterial } from "@/features/goal/application/goalReadModel";
 import { goalCanResume } from "@/features/goal/application/goalStatusPresentation";
 import type { StartGoalRequest } from "@flame/runtime-client/wire";
 import {
@@ -12,8 +12,8 @@ import {
 } from "@/features/goal/application/goalComposerSubmission";
 interface GoalComposerCommandDependencies {
   getActiveSessionId(): string | null;
-  goalState(sessionId: string): GoalState | undefined;
-  runtimeAvailable(): boolean;
+  readGoal(sessionId: string): GoalMaterial | undefined;
+  canStart(existing: GoalMaterial): boolean;
   runOptions(): AgentRunStartOptions;
   captureStart(): (input: StartGoalRequest) => Promise<void>;
   prepareObjective(): void;
@@ -35,9 +35,8 @@ function admitGoalSubmission(
   context: SlashCommandContext,
 ) {
   const sessionId = dependencies.getActiveSessionId();
-  const state =
-    sessionId && dependencies.runtimeAvailable() ? dependencies.goalState(sessionId) : undefined;
-  if (!sessionId || state?.available !== true) {
+  const existing = sessionId ? dependencies.readGoal(sessionId) : undefined;
+  if (!sessionId || existing === undefined || !dependencies.canStart(existing)) {
     dependencies.reportUnavailable();
     return undefined;
   }
@@ -45,11 +44,11 @@ function admitGoalSubmission(
     dependencies.reportUnsupportedAttachments();
     return undefined;
   }
-  if (state.goal && !goalCanResume(state.goal)) {
+  if (existing && !goalCanResume(existing)) {
     dependencies.reportUnavailable();
     return undefined;
   }
-  return { sessionId, existing: state.goal };
+  return { sessionId, existing };
 }
 
 function submitGoalCommand(
@@ -89,7 +88,7 @@ function captureStartGoalRequest(
   sessionId: string,
   objective: string,
   { provider, model, reasoningEffort }: AgentRunStartOptions,
-  existing: GoalReadModel | null,
+  existing: GoalMaterial,
 ): StartGoalRequest {
   return {
     sessionId,

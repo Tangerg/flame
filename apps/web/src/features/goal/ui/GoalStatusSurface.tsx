@@ -2,6 +2,8 @@ import { useNotifications } from "@/features/notifications/public/notifier";
 import { isErrorType } from "@flame/runtime-client";
 import { useGoalAuthorAvailable } from "@/features/plugins/public/workflows";
 import { useRuntime } from "@/features/connection/public/runtime";
+import { useRuntimeCapability } from "@/features/connection/public/capabilities";
+import { useAgentSessionSharedMaterial } from "@/features/agent/public/sessionMaterial";
 import { tupleKey } from "@/lib/tupleKey";
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
@@ -35,7 +37,12 @@ import {
   goalCreatedAtMillis,
   goalIsActive,
 } from "@/features/goal/application/goalStatusPresentation";
-import { type GoalReadModel, useGoalMaterial } from "@/features/goal/application/goalReadModel";
+import {
+  GOAL_MATERIAL,
+  type GoalMaterial,
+  type GoalReadModel,
+} from "@/features/goal/application/goalReadModel";
+import { GOAL_RUNTIME_FEATURE } from "@/features/goal/application/goalCommands";
 import type { GoalTarget } from "@flame/runtime-client/wire";
 import {
   runtimeCommandsAvailable,
@@ -114,11 +121,13 @@ const gs = stylex.create({
 });
 
 export function GoalStatusSurface() {
-  const material = useGoalMaterial();
-  const goal = material.value?.goal;
-  const writable = useGoalAuthorAvailable(goal?.author) && material.value?.available === true;
+  const material = useAgentSessionSharedMaterial<GoalMaterial>(GOAL_MATERIAL);
+  const goal = material.value;
+  const authorAvailable = useGoalAuthorAvailable(goal?.author);
+  const capability = useRuntimeCapability(GOAL_RUNTIME_FEATURE);
 
   if (!goal) return null;
+  const writable = authorAvailable && capability;
   return (
     <AgentComposerTopTraySurface
       key={tupleKey(goal.sessionId, material.generation.toString())}

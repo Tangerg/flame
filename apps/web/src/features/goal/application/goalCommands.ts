@@ -4,6 +4,7 @@ import { RetirableTaskCohort } from "@/lib/taskQueue";
 import { type GoalCommandsGateway } from "@/features/goal/application/ports/goalCommandsGateway";
 
 export const GOAL_COMMAND_SCOPE = "goal_command_scope";
+export const GOAL_RUNTIME_FEATURE = "goals";
 
 class GoalCommandScope {
   readonly #gateway: GoalCommandsGateway;
