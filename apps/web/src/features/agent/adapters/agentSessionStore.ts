@@ -17,7 +17,6 @@ interface AgentSessionState {
 interface AgentSessionActions {
   holdOpen: (id: string) => void;
   release: (id: string) => void;
-  retainOnly: (openSessionIds: string[]) => void;
   rememberSession: (id: string) => void;
 }
 
@@ -43,7 +42,6 @@ export function createAgentSessionStore() {
         holdOpen: (id) => set({ openSessionIds: openSession(get().openSessionIds, id) }),
         release: (id) =>
           set({ openSessionIds: get().openSessionIds.filter((openId) => openId !== id) }),
-        retainOnly: (openSessionIds) => set({ openSessionIds }),
         rememberSession: (id) => set({ lastSessionId: id }),
       }),
       {

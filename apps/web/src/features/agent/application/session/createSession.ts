@@ -27,8 +27,7 @@ function observeSessionCreation(
     .runSessionCreate(key, async () => {
       const outcome = await owner.settle(observe());
       owner.assertCurrent();
-      await owner.settle(invalidateAgentSessions());
-      owner.assertCurrent();
+      void invalidateAgentSessions();
       if (outcome.type === "confirmed") {
         agentAccess.state.selectSession(outcome.sessionId);
         return outcome.sessionId;

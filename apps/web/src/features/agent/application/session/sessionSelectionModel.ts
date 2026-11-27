@@ -18,24 +18,3 @@ export function closeOpenSession(state: AgentOpenSessions, sessionId: string): A
       : state.activeSessionId,
   };
 }
-
-export function reconcileOpenSessions(
-  state: AgentOpenSessions,
-  liveIds: string[],
-): AgentOpenSessions | null {
-  const known = new Set(liveIds);
-  const retainedOpenSessionIds = state.openSessionIds.filter((id) => known.has(id));
-  const activeAlive = state.activeSessionId === "" || known.has(state.activeSessionId);
-  const openSessionIds =
-    activeAlive && state.activeSessionId !== ""
-      ? openSession(retainedOpenSessionIds, state.activeSessionId)
-      : retainedOpenSessionIds;
-  const openSessionsChanged =
-    openSessionIds.length !== state.openSessionIds.length ||
-    openSessionIds.some((id, index) => id !== state.openSessionIds[index]);
-  if (!openSessionsChanged && activeAlive) return null;
-  return {
-    openSessionIds,
-    activeSessionId: activeAlive ? state.activeSessionId : (openSessionIds.at(-1) ?? ""),
-  };
-}

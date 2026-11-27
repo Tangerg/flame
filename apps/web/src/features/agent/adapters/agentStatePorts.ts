@@ -3,10 +3,7 @@ import { localUserMessage } from "@/features/agent/adapters/optimisticUserMessag
 import { retiredSteerMessageId } from "@/features/agent/application/view/optimisticMessageIdentity";
 import { type AgentSessionStore } from "@/features/agent/adapters/agentSessionStore";
 import { type Navigator } from "@/lib/navigation";
-import {
-  closeOpenSession,
-  reconcileOpenSessions,
-} from "@/features/agent/application/session/sessionSelectionModel";
+import { closeOpenSession } from "@/features/agent/application/session/sessionSelectionModel";
 import { type AgentSessionStatePort } from "@/features/agent/application/session/sessionAccess";
 import { type AgentOpenSessions } from "@/features/agent/application/session/sessionAccess";
 import { type AgentSessionViewPort } from "@/features/agent/application/session/sessionAccess";
@@ -85,7 +82,7 @@ export function createAgentState(
 
   const refreshOwner = projection.refresh();
   const deletedSessionListeners = new Set<(id: string) => void>();
-  const closeSession = (id: string) => {
+  const closeSession = (id: string, options?: { replace?: boolean }) => {
     const store = useAgentSessionStore.getState();
     const currentSessionId = activeSessionId();
     const next = closeOpenSession(
@@ -97,7 +94,7 @@ export function createAgentState(
       store.rememberSession(next.activeSessionId);
       return;
     }
-    goToSession(next.activeSessionId);
+    goToSession(next.activeSessionId, options);
   };
   const state: AgentSessionStatePort = {
     useActiveSessionId: () => navigation.use((location) => location.session),
@@ -131,29 +128,12 @@ export function createAgentState(
     selectExistingSession,
     closeSession,
     deleteSession: (id) => {
-      closeSession(id);
+      closeSession(id, { replace: true });
       for (const listener of deletedSessionListeners) listener(id);
     },
     subscribeDeletedSession: (listener) => {
       deletedSessionListeners.add(listener);
       return () => deletedSessionListeners.delete(listener);
-    },
-    reconcileSessions: (liveIds) => {
-      const store = useAgentSessionStore.getState();
-      const next = reconcileOpenSessions(
-        {
-          activeSessionId: activeSessionId(),
-          openSessionIds: store.openSessionIds,
-        },
-        liveIds,
-      );
-      if (!next) return;
-      store.retainOnly(next.openSessionIds);
-      if (next.activeSessionId !== activeSessionId()) {
-        goToSession(next.activeSessionId, { replace: true });
-      } else {
-        store.rememberSession(next.activeSessionId);
-      }
     },
     restoreLastSession: () => {
       if (activeSessionId() !== "") return;

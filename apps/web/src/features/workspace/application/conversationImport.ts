@@ -71,24 +71,24 @@ export function createConversationImport(
         }
 
         const session = await this.#cohort.run(() => this.#gateway.importConversation(artifact));
-        try {
-          await this.#cohort.run(invalidateAgentSessions);
-          await this.#cohort.run(() => agentAccess.synchronizeRewrittenSessionView(session.id));
-        } catch (error) {
-          if (this.#cohort.retired) return;
-          console.error("[import] imported Session view could not be refreshed:", error);
-          agentAccess.selectAgentSession(session.id);
-          notifications.notify("error", t("convExport.importRefreshFailed"), { source: "import" });
-          return;
-        }
         this.#cohort.assertCurrent();
         agentAccess.selectAgentSession(session.id);
+        void invalidateAgentSessions();
         notifications.show({
           level: "success",
           message: t("convExport.importSuccess", {
             title: sessionDisplayTitle(t, session.title),
           }),
         });
+        void this.#cohort
+          .run(() => agentAccess.synchronizeRewrittenSessionView(session.id))
+          .catch((error: unknown) => {
+            if (this.#cohort.retired) return;
+            console.error("[import] imported Session view could not be refreshed:", error);
+            notifications.notify("error", t("convExport.importRefreshFailed"), {
+              source: "import",
+            });
+          });
       } catch (error) {
         if (this.#cohort.retired) return;
         console.error("[import] sessions.import failed:", error);
