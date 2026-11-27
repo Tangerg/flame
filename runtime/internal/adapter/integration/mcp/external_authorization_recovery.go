@@ -72,7 +72,7 @@ func (c *ExternalConnector) settleAuthorizationStart(ctx context.Context, u *con
 	if err != nil {
 		return nil, errors.Join(operation.ErrOutcomePending, err)
 	}
-	settlement, err := c.authorizationStartSettlement(ctx, intent, decision, u.epoch, replay)
+	settlement, err := c.authorizationStartSettlement(ctx, u, intent, decision, replay)
 	if err != nil {
 		return nil, errors.Join(operation.ErrOutcomePending, err)
 	}
@@ -98,7 +98,7 @@ func (c *ExternalConnector) settleAuthorizationStart(ctx context.Context, u *con
 	return settlement, nil
 }
 
-func (c *ExternalConnector) authorizationStartSettlement(ctx context.Context, intent mcpapp.AuthorizationIntent, decision wire.StartDecision, epoch string, checkPending bool) (*mcpapp.AuthorizationStartSettlement, error) {
+func (c *ExternalConnector) authorizationStartSettlement(ctx context.Context, u *connectorUse, intent mcpapp.AuthorizationIntent, decision wire.StartDecision, replay bool) (*mcpapp.AuthorizationStartSettlement, error) {
 	name, err := mcpserver.ParseServerName(intent.Start.Name)
 	if err != nil {
 		return nil, err
@@ -121,12 +121,20 @@ func (c *ExternalConnector) authorizationStartSettlement(ctx context.Context, in
 	default:
 		return nil, mcpapp.ErrInvalidServerConfiguration
 	}
-	if settlement.Refusal != nil {
+	if settlement.Refusal != nil || intent.Start.Epoch != u.epoch {
 		return settlement, nil
 	}
 	id := settlement.AttemptID
-	if intent.Start.Epoch != epoch {
-		return settlement, nil
+	if replay {
+		attempt, err := c.readAuthorization(ctx, u, id, name, intent.Start.Epoch)
+		switch {
+		case errors.Is(err, mcpapp.ErrAuthorizationAttemptNotFound):
+			return settlement, nil
+		case err != nil:
+			return nil, fmt.Errorf("mcp: read authorization %s before launch: %w", id, err)
+		case attempt.Status != mcpapp.AuthorizationAttemptPending:
+			return settlement, nil
+		}
 	}
 	start := operation.Adopt(ctx, intent.Invocation.ID, intent.Invocation.Origin, intent.Invocation.Parent)
 	finishContext := operation.Start(start, extension.Automatic, c.methods.Finish.Name(), id.String())
@@ -135,8 +143,7 @@ func (c *ExternalConnector) authorizationStartSettlement(ctx context.Context, in
 		return nil, err
 	}
 	settlement.Transport = &mcpapp.AuthorizationTransport{
-		Recipient:    intent.Recipient,
-		CheckPending: checkPending,
+		Recipient: intent.Recipient,
 		Report: func(ctx context.Context, status mcpapp.AuthorizationAttemptStatus) error {
 			return c.recordAuthorizationFinish(ctx, mcpapp.AuthorizationFinish{ID: id, Invocation: invocation, Outcome: wire.Outcome(status)})
 		},

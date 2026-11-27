@@ -1044,8 +1044,11 @@ commits the public receipt before opening the sign-in transport. The transport
 checks the approved recipient before starting OAuth. Connection reconciliation
 retains matching admissions, including an interactive sign-in that is still
 starting. An explicit reconnect replaces the existing connection. A retry
-recovers the original Connector receipt. Runtime retains the original Connector
-installation and release for status reads, including after a selection change.
+recovers the original Connector receipt. In the same Runtime epoch, it observes
+the accepted attempt before acknowledging the retry and opens the transport only
+while that attempt is pending. A failed observation leaves the original command
+recoverable with the same key. Runtime retains the original Connector installation
+and release for status reads, including after a selection change.
 The Connector owns the attempt status. Runtime records each observed transport
 outcome before sending its completion command, then resolves that command
 through the original receipt.

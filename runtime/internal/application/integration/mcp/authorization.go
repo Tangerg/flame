@@ -103,17 +103,6 @@ func (c *Coordinator) launchAuthorization(write *mutationScope, settlement *Auth
 			slog.ErrorContext(write.ownerCtx, "mcp: record authorization outcome", slog.String("attempt", attempt.String()), telemetry.Error(err))
 		}
 	}
-	if transport.CheckPending {
-		current, err := c.external.ReadAuthorization(write.ownerCtx, attempt)
-		if err != nil {
-			slog.WarnContext(write.ownerCtx, "mcp: check recovered authorization before launch", slog.String("attempt", attempt.String()), telemetry.Error(err))
-			finish(AuthorizationAttemptFailed)
-			return
-		}
-		if current.Status != AuthorizationAttemptPending {
-			return
-		}
-	}
 	begin := func(ctx context.Context) (Attempt, error) {
 		return c.connections.BeginAuthorize(ctx, server, transport.Recipient)
 	}

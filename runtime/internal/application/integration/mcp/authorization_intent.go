@@ -55,9 +55,8 @@ type AuthorizationStartSettlement struct {
 }
 
 type AuthorizationTransport struct {
-	Recipient    framevalue.Digest
-	CheckPending bool
-	Report       func(context.Context, AuthorizationAttemptStatus) error
+	Recipient framevalue.Digest
+	Report    func(context.Context, AuthorizationAttemptStatus) error
 }
 
 type AuthorizationRoute struct {
