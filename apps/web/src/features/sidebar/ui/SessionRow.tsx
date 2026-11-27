@@ -11,7 +11,7 @@ import { ConfirmDialog } from "@/ui/index";
 import { ContextMenu, DropdownMenu } from "@/ui/index";
 import { Icon } from "@/ui/index";
 import { StatusDot } from "@/ui/atoms/status-dot";
-import { IconButton, vocab } from "@flame/ui";
+import { IconButton, useContentVisible, vocab } from "@flame/ui";
 import { type IconName } from "@/ui/icons/index";
 import { presentationTitle } from "@/lib/i18n/presentationTitle";
 import { useLocale, useT, type Translate } from "@/lib/i18n/index";
@@ -153,6 +153,12 @@ export function SessionRow({
   const [action, setAction] = useState<{ entry: SessionActionSpec; session: CapturedSession }>();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [moving, setMoving] = useState(false);
+  const visible = useContentVisible();
+  if (!visible && (action || confirmingDelete || moving)) {
+    setAction(undefined);
+    setConfirmingDelete(false);
+    setMoving(false);
+  }
   const t = useT();
   const locale = useLocale();
   const attentionLabel = sessionAttention(t, session);
@@ -270,7 +276,7 @@ export function SessionRow({
           onClose={() => setMoving(false)}
         />
       )}
-      {onDelete && (
+      {visible && onDelete && (
         <ConfirmDialog
           open={confirmingDelete}
           onOpenChange={setConfirmingDelete}

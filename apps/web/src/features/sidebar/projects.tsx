@@ -3,7 +3,7 @@ import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
 import { DataView } from "@/ui/index";
 import { SectionLabel, TextButton } from "@/ui/index";
-import { IconButton, vocab } from "@flame/ui";
+import { IconButton, useContentVisible, vocab } from "@flame/ui";
 import { AGENT_WORK_INDEX_EMPTY_INSET, AgentWorkIndexGroupList } from "@/ui/agent/index";
 import { ProjectRow } from "@/features/sidebar/ui/ProjectRow";
 import { SessionList } from "@/features/sidebar/ui/SessionList";
@@ -89,6 +89,8 @@ function ProjectsSection() {
   const shown = useShownProjectHome();
   const [creating, setCreating] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  const visible = useContentVisible();
+  if (!visible && creating) setCreating(false);
   const groups = workIndex.projects;
   const active = groups?.filter((group) => !group.project.archived);
   const archived = groups?.filter((group) => group.project.archived) ?? [];
