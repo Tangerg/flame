@@ -107,3 +107,29 @@ func TestDataDirectoryCanonicalizesAndProtectsDirectory(t *testing.T) {
 		t.Fatalf("directory permissions = %o, want 700", info.Mode().Perm())
 	}
 }
+
+func TestDataDirectoryRejectsAReplacementWhileLeased(t *testing.T) {
+	root := t.TempDir()
+	directory := filepath.Join(root, "data")
+	owner, err := openDataDirectory(t.Context(), directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := owner.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	if err := os.Rename(directory, filepath.Join(root, "moved-data")); err != nil {
+		t.Fatal(err)
+	}
+	if err := owner.validate(); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("missing data directory = %v, want its filesystem cause", err)
+	}
+	if err := os.Mkdir(directory, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := owner.validate(); err == nil {
+		t.Fatal("replacement directory passed the original owner's validation")
+	}
+}
