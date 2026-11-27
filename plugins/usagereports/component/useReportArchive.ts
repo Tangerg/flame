@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import {
   bindOperations,
@@ -39,6 +40,7 @@ import { ko } from "./locales/ko";
 import { es } from "./locales/es";
 import { fr } from "./locales/fr";
 import { de } from "./locales/de";
+import { ReportActions } from "./reportActions";
 
 const CATALOGS = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
 
@@ -59,7 +61,11 @@ export function useReportArchive(context: BoundContext, locale: string) {
   const [opened, setOpened] = useState<OpenedReport>();
   const [removing, setRemoving] = useState<Header>();
   const [period, setPeriod] = useState<Period>("daily");
-  const [action, setAction] = useState<Action>();
+  const actions = useMemo(
+    () => new ReportActions(context.signal),
+    [context.signal],
+  );
+  const action = useSyncExternalStore(actions.subscribe, actions.snapshot);
   const busy = action !== undefined;
   const [outcome, setOutcome] = useState<Outcome>();
   const lifetime = useRef<AbortController>(undefined);
@@ -82,10 +88,15 @@ export function useReportArchive(context: BoundContext, locale: string) {
   }>(null);
   // A confirmed recovery unmounts its initiating control after the commit.
   const recoveryReturn = useRef<Element | null>(null);
-  const unknown = [
+  const pendingCommands = () => [
     ...operations.pendingCommands(METHODS.capture),
     ...operations.pendingCommands(METHODS.delete),
   ];
+  const unknown = pendingCommands();
+  const canAuthor = () => actions.canStart() && !pendingCommands().length;
+  const isPending = (key: string) =>
+    actions.canStart() &&
+    pendingCommands().some(({ idempotencyKey }) => idempotencyKey === key);
 
   const refresh = useCallback(
     async (owner: AbortSignal): Promise<Header[] | undefined> => {
@@ -256,70 +267,66 @@ export function useReportArchive(context: BoundContext, locale: string) {
       leave(active, "archive");
   }
 
-  async function observe(
+  function observe(
     started: Action,
-    command: Promise<Header | boolean>,
+    command: (signal: AbortSignal) => Promise<Header | boolean>,
     removed?: Header,
   ) {
-    const signal = ownerSignal();
-    const active = activeElement();
-    setAction(started);
-    setOutcome(undefined);
-    try {
-      const result = await command;
+    return actions.run(started, async () => {
+      const signal = ownerSignal();
       if (signal.aborted) return;
-      if (started.kind === "check") recoveryReturn.current = active;
-      if (typeof result !== "boolean") settleSaved(result, active, signal);
-      else await settleRemoval(removed, active, signal);
-    } catch (error) {
-      if (!signal.aborted)
-        setOutcome(
-          mutationSettlementIsUnknown(error)
-            ? { kind: "unknown" }
-            : { kind: "archiveFailed", error: failure(error) },
-        );
-    } finally {
-      if (!signal.aborted) {
-        setAction(undefined);
-        setRemoving(undefined);
+      const active = activeElement();
+      setOutcome(undefined);
+      try {
+        const result = await command(signal);
+        if (signal.aborted) return;
+        if (started.kind === "check") recoveryReturn.current = active;
+        if (typeof result !== "boolean") settleSaved(result, active, signal);
+        else await settleRemoval(removed, active, signal);
+      } catch (error) {
+        if (!signal.aborted) {
+          const refusal =
+            started.kind === "capture"
+              ? "captureRejected"
+              : started.kind === "removal"
+                ? "removalRejected"
+                : "archiveFailed";
+          setOutcome(
+            mutationSettlementIsUnknown(error)
+              ? { kind: "unknown" }
+              : { kind: refusal, error: failure(error) },
+          );
+        }
+      } finally {
+        if (!signal.aborted) setRemoving(undefined);
       }
-    }
+    });
   }
 
   function save() {
-    if (busy || unknown.length) return;
-    try {
-      void observe(
-        { kind: "capture" },
-        operations.command(METHODS.capture, { period }),
-      );
-    } catch (error) {
-      setOutcome({ kind: "captureRejected", error: failure(error) });
-    }
+    if (!canAuthor()) return;
+    void observe({ kind: "capture" }, () =>
+      operations.command(METHODS.capture, { period }),
+    );
   }
 
   function requestRemoval() {
-    if (!opened || busy || unknown.length) return;
+    if (!opened || !canAuthor()) return;
     setOutcome(undefined);
     setRemoving(structuredClone(opened.header));
   }
 
   function confirmRemoval() {
-    if (!removing || busy || unknown.length) return;
-    try {
-      void observe(
-        { kind: "removal" },
-        operations.command(METHODS.delete, { id: removing.id }),
-        removing,
-      );
-    } catch (error) {
-      setRemoving(undefined);
-      setOutcome({ kind: "removalRejected", error: failure(error) });
-    }
+    if (!removing || !canAuthor()) return;
+    void observe(
+      { kind: "removal" },
+      () => operations.command(METHODS.delete, { id: removing.id }),
+      removing,
+    );
   }
 
   function dismissRemoval() {
-    if (!busy) setRemoving(undefined);
+    if (actions.canStart()) setRemoving(undefined);
   }
 
   const removalReturn = useCallback(() => {
@@ -341,29 +348,31 @@ export function useReportArchive(context: BoundContext, locale: string) {
   }, [action, removalReturn]);
 
   function check(command: (typeof unknown)[number]) {
-    if (busy) return;
-    void observe(
-      { kind: "check", key: command.idempotencyKey },
-      command.recover(ownerSignal()),
+    if (!isPending(command.idempotencyKey)) return;
+    void observe({ kind: "check", key: command.idempotencyKey }, (signal) =>
+      command.recover(signal),
     );
   }
 
-  async function retire(command: (typeof unknown)[number]) {
-    if (busy) return;
-    const signal = ownerSignal();
-    const active = activeElement();
-    setAction({ kind: "retire", key: command.idempotencyKey });
-    try {
-      await command.retire(signal);
-      if (signal.aborted) return;
-      recoveryReturn.current = active;
-      setOutcome({ kind: "retired" });
-    } catch (error) {
-      if (!signal.aborted)
-        setOutcome({ kind: "retireFailed", error: failure(error) });
-    } finally {
-      if (!signal.aborted) setAction(undefined);
-    }
+  function retire(command: (typeof unknown)[number]) {
+    if (!isPending(command.idempotencyKey)) return;
+    return actions.run(
+      { kind: "retire", key: command.idempotencyKey },
+      async () => {
+        const signal = ownerSignal();
+        if (signal.aborted) return;
+        const active = activeElement();
+        try {
+          await command.retire(signal);
+          if (signal.aborted) return;
+          recoveryReturn.current = active;
+          setOutcome({ kind: "retired" });
+        } catch (error) {
+          if (!signal.aborted)
+            setOutcome({ kind: "retireFailed", error: failure(error) });
+        }
+      },
+    );
   }
 
   return {
