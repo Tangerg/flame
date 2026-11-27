@@ -146,6 +146,10 @@ one automatic replacement. The terminal keeps the old draft editable until the
 person opens a Session. A subsequent open transfers the draft and retires the
 deleted Session's remaining local state.
 
+The Sessions center filters its accepted catalog locally. Background reads
+refresh the loaded page range while keeping the search and selected Session.
+An explicit request for another page extends that range.
+
 Configured product actions replace Oolong's default bindings for those actions.
 Input routing and help read the resulting maps; configured sequence order
 determines which shortcut help presents first. Oolong supplies defaults only for

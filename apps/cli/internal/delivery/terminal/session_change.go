@@ -104,7 +104,7 @@ func (l *sessionLifecycle) beginSessionChange(label string) bool {
 		return false
 	}
 	l.tasks.operations.Cancel(pickerCatalogOperation)
-	l.sessions.dialog.Dismiss()
+	l.sessions.dismissCatalog()
 	baseline, _, err := l.composer.draft()
 	if err != nil {
 		l.root.message(label + " failed: " + err.Error())

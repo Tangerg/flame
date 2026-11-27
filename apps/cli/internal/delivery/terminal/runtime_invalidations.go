@@ -34,7 +34,7 @@ func (a *app) applyRuntimeInvalidation(event changefeed.Event) {
 	a.loadPluginViews(event.Type == protocol.RuntimePluginsChanged)
 	a.followModelChanges(event.Type == protocol.RuntimeModelsChanged)
 	if invalidatesSessionCatalog(event) {
-		a.lifecycle.reloadSessionCatalog()
+		a.sessions.refreshOpenCatalog()
 	}
 	if invalidationAffectsSession(event, a.lifecycle.state.current.ID, a.runs.conversation().RunID()) {
 		a.lifecycle.invalidateCurrentSession()
@@ -46,7 +46,7 @@ func (a *app) applyRuntimeResync(topics []protocol.RuntimeTopic) {
 	a.loadPluginViews(slices.Contains(topics, protocol.TopicPluginsChanged))
 	a.followModelChanges(slices.Contains(topics, protocol.TopicModelsChanged))
 	if invalidatesSessionCatalog(changefeed.Event{Type: protocol.RuntimeResync, Topics: topics}) {
-		a.lifecycle.reloadSessionCatalog()
+		a.sessions.refreshOpenCatalog()
 	}
 	if resyncAffectsSession(topics) {
 		a.lifecycle.invalidateCurrentSession()
@@ -65,13 +65,6 @@ func goalInvalidationAffectsSession(event changefeed.Event, sessionID string) bo
 	}
 	return event.Type == protocol.RuntimeGoalsChanged &&
 		(len(event.SessionIDs) == 0 || slices.Contains(event.SessionIDs, sessionID))
-}
-
-func (l *sessionLifecycle) reloadSessionCatalog() {
-	if l.sessions.dialog.Open() {
-		l.sessions.pane.Reset()
-		l.sessions.loadSessionPage(firstSessionPage)
-	}
 }
 
 func (l *sessionLifecycle) invalidateCurrentSession() {
@@ -199,7 +192,7 @@ func (l *sessionLifecycle) installRefreshedSnapshot(snapshot conversation.Sessio
 	if conversationMatches && l.state.current.Workspace == snapshot.Session.Workspace {
 		l.header.SetGoal(snapshot.Goal)
 		if !sessionMatches {
-			l.installSessionMetadata(snapshot.Session)
+			l.setActiveSession(snapshot.Session)
 		}
 		return !sessionMatches, true
 	}
@@ -223,9 +216,4 @@ func (l *sessionLifecycle) readInvalidatedSession(ctx context.Context, sessionID
 			return conversation.SessionSnapshot{}, err
 		}
 	}
-}
-
-func (l *sessionLifecycle) installSessionMetadata(session conversation.Session) {
-	l.setActiveSession(session)
-	l.sessions.pane.Replace(session)
 }

@@ -60,6 +60,7 @@ var (
 	readerSearchOperation         = latestSlot("reader-search")
 	readerDocumentOperation       = latestSlot("reader-document")
 	pickerCatalogOperation        = latestSlot("picker-catalog")
+	sessionCatalogOperation       = exclusiveSlot("session-catalog").reported("session catalog read")
 	approvalModeOperation         = latestSlot("approval-mode")
 	sessionCenterOperation        = exclusiveSlot("session-center").reported("session action")
 	sessionChangeOperation        = exclusiveSlot("session-change").reported("session change")

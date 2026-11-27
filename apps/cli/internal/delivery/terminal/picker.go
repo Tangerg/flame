@@ -31,8 +31,16 @@ type picker[T any] struct {
 	press pointerPress[int]
 }
 
-func newPicker[T any](theme kit.Theme, glyphs kit.Glyphs, placeholder string, label, detail func(T) string, pick func(T)) *picker[T] {
-	p := &picker[T]{theme: theme, glyphs: glyphs, label: label, detail: detail, pick: pick}
+type pickerConfig[T any] struct {
+	placeholder string
+	label       func(T) string
+	detail      func(T) string
+	same        func(T, T) bool
+	choose      func(T)
+}
+
+func newPicker[T any](theme kit.Theme, glyphs kit.Glyphs, config pickerConfig[T]) *picker[T] {
+	p := &picker[T]{theme: theme, glyphs: glyphs, label: config.label, detail: config.detail, pick: config.choose}
 	p.query = kit.NewEditor(kit.EditorConfig{
 		Behavior: base.EditorConfig{
 			MaxRows: 1,
@@ -41,8 +49,8 @@ func newPicker[T any](theme kit.Theme, glyphs kit.Glyphs, placeholder string, la
 		Glyphs: glyphs,
 		Prompt: glyphs.Marker + " ",
 	})
-	p.query.Controller().SetPlaceholder(placeholder)
-	p.items = base.NewFilter(base.FilterConfig[T]{Row: p.row})
+	p.query.Controller().SetPlaceholder(config.placeholder)
+	p.items = base.NewFilter(base.FilterConfig[T]{Row: p.row, Same: config.same})
 	p.query.Controller().Session().Subscribe(func(base.ChangeMap) {
 		p.press.cancel()
 		p.items.SetPattern(p.query.Controller().Text())
@@ -53,7 +61,6 @@ func newPicker[T any](theme kit.Theme, glyphs kit.Glyphs, placeholder string, la
 func (p *picker[T]) SetItems(items []T) {
 	p.press.cancel()
 	p.items.SetItems(items, func(item T) string { return strings.TrimSpace(p.label(item) + " " + p.detail(item)) })
-	p.items.SetPattern(p.query.Controller().Text())
 }
 
 func (p *picker[T]) Current() (T, bool) { return p.items.Current() }
@@ -62,7 +69,6 @@ func (p *picker[T]) cancelPress() { p.press.cancel() }
 
 func (p *picker[T]) Reset() {
 	p.query.Controller().Clear()
-	p.items.SetPattern("")
 	p.items.Select(0)
 	p.press.cancel()
 }

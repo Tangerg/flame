@@ -26,12 +26,15 @@ type pickerDialogConfig[T any] struct {
 
 func newPickerDialog[T any](cfg pickerDialogConfig[T]) *pickerDialog[T] {
 	d := &pickerDialog[T]{}
-	d.picker = newPicker(cfg.theme, cfg.glyphs, cfg.search, cfg.label, cfg.detail, func(item T) {
-		if !d.dialog.Open() {
-			return
-		}
-		d.dismiss(cfg.dismissed)
-		cfg.choose(item)
+	d.picker = newPicker(cfg.theme, cfg.glyphs, pickerConfig[T]{
+		placeholder: cfg.search, label: cfg.label, detail: cfg.detail,
+		choose: func(item T) {
+			if !d.dialog.Open() {
+				return
+			}
+			d.dismiss(cfg.dismissed)
+			cfg.choose(item)
+		},
 	})
 	d.dialog = newPresentationDialog(cfg.stack, kit.DialogConfig{
 		Behavior: base.DialogConfig{
