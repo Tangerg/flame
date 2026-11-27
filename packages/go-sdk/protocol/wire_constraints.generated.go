@@ -394,7 +394,7 @@ func (g GetRunAcceptanceRequest) validateWire(object wireObject) []FieldError {
 	violations.add(
 		nonEmptyText("namespace", g.Namespace),
 		textPattern("namespace", g.Namespace, "^idp_[0-9a-f]{32}$"),
-		nonEmptyText("key", g.Key),
+		textPattern("key", g.Key, "^[!-~]+$"),
 		maxLength("key", g.Key, 255),
 	)
 	return violations
@@ -629,7 +629,7 @@ func (p PluginCommandRequest) validateWire(object wireObject) []FieldError {
 	violations.add(
 		nonEmptyText("namespace", p.Namespace),
 		textPattern("namespace", p.Namespace, "^idp_[0-9a-f]{32}$"),
-		nonEmptyText("key", p.Key),
+		textPattern("key", p.Key, "^[!-~]+$"),
 		maxLength("key", p.Key, 255),
 	)
 	return violations

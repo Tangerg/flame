@@ -267,9 +267,9 @@ func assembleModels(cfg assemblyConfig, policy policyComposition, execution exec
 		Catalog:            modelCapabilities,
 		Prober:             modelCapabilities,
 		Lister:             modelCapabilities,
-		UtilityRole:        execution.models.utilityRole,
+		UtilityRole:        cfg.stores.UtilityRole,
 		UtilityValidator:   execution.models.chatResolver,
-		EmbeddingRole:      execution.models.embeddingRole,
+		EmbeddingRole:      cfg.stores.EmbeddingRole,
 		EmbeddingValidator: execution.models.embeddingResolver,
 		Invalidations:      policy.invalidations.publish,
 	})
@@ -294,7 +294,6 @@ func assembleIntegrations(cfg assemblyConfig, lifetime *runtimeLifetime, policy 
 		External:      policy.framework.external,
 		Connections:   execution.tools.mcp,
 		ToolCatalog:   execution.tools.tools.Resolver,
-		Exposure:      policy.mcp.exposure,
 		Invalidations: policy.invalidations.publish,
 	})
 	if err != nil {

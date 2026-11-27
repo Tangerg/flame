@@ -2,11 +2,13 @@ import type { CallPluginRequest, RequestMeta } from "@flame/runtime-client/wire"
 import type { WireMethodName } from "@flame/runtime-client/methods";
 import { checkRequest, pluginMethod } from "./request";
 import { canonicalJSON, cloneJSON } from "@frame/sdk/json";
+import { isIdempotencyKey } from "./idempotencyKey";
 import {
   type CapturedPluginCommand,
   type DurableMutationIdentity,
   type JournalEntry,
   MAX_IDENTITY_LENGTH,
+  type PendingRuntimeCommand,
   type PluginCommandInput,
   captureJournalCommand,
   decodeJournalEntry,
@@ -62,20 +64,20 @@ export interface DurableMutationJournal {
   ): CapturedPluginCommand;
   pendingEntries(): JournalEntry[];
   validatePluginCommand(identity: DurableMutationIdentity, request: CallPluginRequest): void;
+  recoverRuntimeCommand(command: PendingRuntimeCommand, params: unknown): DurableMutationIdentity;
   reserve(
     method: WireMethodName,
     params: unknown,
-    preferredKey: string | undefined,
+    requestedKey: string | undefined,
     claimed: (idempotencyKey: string) => boolean,
     requestMeta: RequestMeta | null,
   ): DurableMutationIdentity;
   authorizeDispatch(identity: DurableMutationIdentity): string;
   markDispatched(identity: DurableMutationIdentity): DispatchPhase;
-  wasDispatched(identity: DurableMutationIdentity): boolean;
   lookupNamespace(identity: DurableMutationIdentity): string;
   steerItemId(identity: DurableMutationIdentity): string | null;
   bindSteerItem(identity: DurableMutationIdentity, userItemId: string): string;
-  retain(identity: DurableMutationIdentity): void;
+  withdrawBeforeDispatch(identity: DurableMutationIdentity): (() => void) | undefined;
   settle(identity: DurableMutationIdentity): void;
 }
 
@@ -313,34 +315,47 @@ export function openDurableMutationJournal(
         );
       }
     },
-    reserve(method, params, preferredKey, claimed, requestMeta) {
-      if (preferredKey !== undefined && !validText(preferredKey, MAX_IDENTITY_LENGTH)) {
-        throw new MutationJournalError("Runtime mutation identity candidate is invalid");
+    recoverRuntimeCommand(command, params) {
+      if (!isIdempotencyKey(command.idempotencyKey)) {
+        throw new MutationJournalError("Runtime mutation key is invalid");
+      }
+      const entry = readEntry(options.storage, entryKey(command.idempotencyKey));
+      if (
+        entry?.command.kind !== "method" ||
+        entry.namespace !== command.namespace ||
+        !matchesCommand(entry, command.method, params, entry.requestMeta)
+      ) {
+        throw new MutationJournalOwnershipError(
+          "Runtime command does not match a retained journal entry",
+        );
+      }
+      return mutationIdentity(entry);
+    },
+    reserve(method, params, requestedKey, claimed, requestMeta) {
+      if (requestedKey !== undefined && !isIdempotencyKey(requestedKey)) {
+        throw new MutationJournalError("Runtime mutation key is invalid");
       }
       // These records are unresolved evidence, not a cache of completed receipts.
       // Neither expiry nor replacement of the serving store settles their outcome.
       const entries = loadEntries(options.storage);
-      const matches = (entry: JournalEntry) =>
-        (entry.command.kind !== "plugin" || entry.command.intentFingerprint === null) &&
-        matchesCommand(entry, method, params, requestMeta);
-      const preferred =
-        preferredKey === undefined
-          ? undefined
-          : entries.find((entry) => entry.idempotencyKey === preferredKey);
-      if (preferred && !matches(preferred)) {
-        throw new MutationJournalOwnershipError(
-          "Runtime mutation identity candidate belongs to a different command",
-        );
+      let entry: JournalEntry | undefined;
+      if (requestedKey !== undefined) {
+        entry = entries.find((pending) => pending.idempotencyKey === requestedKey);
+        if (
+          entry &&
+          ((entry.command.kind === "plugin" && entry.command.intentFingerprint !== null) ||
+            !matchesCommand(entry, method, params, requestMeta))
+        ) {
+          throw new MutationJournalOwnershipError(
+            "Runtime mutation key belongs to a different command",
+          );
+        }
+        if (claimed(requestedKey)) {
+          throw new MutationJournalOwnershipError(
+            "Runtime mutation identity is already owned by an active command",
+          );
+        }
       }
-      if (preferred && claimed(preferred.idempotencyKey)) {
-        throw new MutationJournalOwnershipError(
-          "Runtime mutation identity is already owned by an active command",
-        );
-      }
-      let entry = preferred;
-      entry ??= entries
-        .filter((candidate) => matches(candidate) && !claimed(candidate.idempotencyKey))
-        .toSorted((left, right) => left.createdAt - right.createdAt)[0];
       if (!entry) {
         const scope = currentScope();
         if (entries.length >= MAX_ENTRIES) {
@@ -350,7 +365,7 @@ export function openDurableMutationJournal(
           method,
           params,
           scope,
-          preferredKey ?? crypto.randomUUID(),
+          requestedKey ?? crypto.randomUUID(),
           requestMeta,
         );
       }
@@ -364,9 +379,6 @@ export function openDurableMutationJournal(
       if (entry.delivery === "dispatched") return "replay";
       persistEntry({ ...entry, delivery: "dispatched" });
       return "initial";
-    },
-    wasDispatched(identity) {
-      return readReservedEntry(identity)?.delivery === "dispatched";
     },
     lookupNamespace(identity) {
       readReservedEntry(identity);
@@ -390,9 +402,16 @@ export function openDurableMutationJournal(
       if (persisted.steerItemId === null) persistEntry({ ...persisted, steerItemId: userItemId });
       return userItemId;
     },
-    retain(identity) {
-      if (readReservedEntry(identity)) return;
-      reserveEntry(identity);
+    withdrawBeforeDispatch(identity) {
+      const withdrawn = readReservedEntry(identity);
+      // A missing record cannot establish that the original command was unsent.
+      if (withdrawn?.delivery !== "reserved") return undefined;
+      removeEntry(withdrawn);
+      return () => {
+        if (readReservedEntry(identity)) return;
+        validateIdentity(identity, currentScope());
+        persistEntry(withdrawn);
+      };
     },
     settle(identity) {
       const persisted = readReservedEntry(identity);

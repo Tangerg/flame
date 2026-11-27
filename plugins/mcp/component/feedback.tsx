@@ -101,22 +101,16 @@ export function CommandFeedback({
 function feedbackMessage(feedback: Feedback, t: Translate) {
   if (feedback.kind === "error")
     return <AlertMessage>{failureText(feedback.error)}</AlertMessage>;
-  if (feedback.kind === "tested")
-    return (
-      <p role={feedback.outcome === "reachable" ? "status" : "alert"}>
-        {t(
-          {
-            reachable: "mcp.connectionOk",
-            authorizationRequired: "mcpStatus.mcp_authorization_required",
-            timedOut: "mcp.testOutcome.timedOut",
-            failed: "mcp.testOutcome.failed",
-          }[feedback.outcome],
-        )}
-      </p>
-    );
   return (
-    <div role="status">
-      <RecordBody>{t("mcp.import.ok", { count: feedback.count })}</RecordBody>
-    </div>
+    <p role={feedback.outcome === "reachable" ? "status" : "alert"}>
+      {t(
+        {
+          reachable: "mcp.connectionOk",
+          authorizationRequired: "mcpStatus.mcp_authorization_required",
+          timedOut: "mcp.testOutcome.timedOut",
+          failed: "mcp.testOutcome.failed",
+        }[feedback.outcome],
+      )}
+    </p>
   );
 }

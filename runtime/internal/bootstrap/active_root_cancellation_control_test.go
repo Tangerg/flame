@@ -97,12 +97,12 @@ func TestActiveRootCancellationRetainsItsOriginalControlOwner(t *testing.T) {
 	}
 	releaseModel()
 	waitForRunEvents(t, terminal, "settlement of the original Run")
+	if err := host.Close(); err != nil {
+		t.Fatal(err)
+	}
 	history := readWaitingChildScopeLog(t, home)
 	if controls := waitingChildHostControls(history, history.Root.String()); controls != 1 {
 		t.Errorf("the original Run has %d durable cancellation controls, want one", controls)
-	}
-	if err := host.Close(); err != nil {
-		t.Fatal(err)
 	}
 	gate.drop(t, home)
 	restarted, _ := openProtocolRuntime(t, newReplyStub("the canceled Run must remain settled"))

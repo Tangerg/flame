@@ -56,10 +56,10 @@ type Coordinator struct {
 	lister       ProviderModelLister
 	probeTimeout time.Duration
 
-	utilityRole      *RoleSetting
+	utilityRole      roleStore
 	utilityValidator ChatModelValidator
 
-	embeddingRole      *RoleSetting
+	embeddingRole      roleStore
 	embeddingValidator embeddingModelValidator
 	invalidations      invalidation.Publish
 }
@@ -71,10 +71,10 @@ type Config struct {
 	Lister       ProviderModelLister
 	ProbeTimeout time.Duration
 
-	UtilityRole      *RoleSetting
+	UtilityRole      roleStore
 	UtilityValidator ChatModelValidator
 
-	EmbeddingRole      *RoleSetting
+	EmbeddingRole      roleStore
 	EmbeddingValidator embeddingModelValidator
 
 	Invalidations invalidation.Publish

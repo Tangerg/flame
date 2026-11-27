@@ -12,7 +12,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
-	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -46,11 +45,6 @@ func TestProtocolCompletesDirectToolResults(t *testing.T) {
 				t.Fatal(err)
 			}
 			host, err := assemble(t.Context(), cfg, newRuntimeLifetime(t.Context(), cfg.resources), func(ctx context.Context, deps toolEnvironmentDependencies) (toolEnvironment, error) {
-				source, err := mcpserver.ParseServerName("fixture")
-				if err != nil {
-					return toolEnvironment{}, err
-				}
-				deps.mcp.exposure = mcpapp.NewExposureState([]mcpserver.Server{{Source: mcpserver.UserSource(), Name: source, Enabled: true}}, nil)
 				environment, err := buildToolEnvironment(ctx, deps)
 				if err == nil {
 					environment.tools.Resolver.SetMCPTools([]toolcontract.Tool{directAnswerTool{answer}}, nil)

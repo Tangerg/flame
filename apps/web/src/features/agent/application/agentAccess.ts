@@ -15,7 +15,7 @@ import {
   regenerateSessionRun,
 } from "./session/historyActions";
 import { forkSessionAt } from "./session/forkSession";
-import { rehydrateSessionView } from "./session/rehydrateSession";
+import { synchronizeRewrittenSessionView } from "./session/synchronizeRewrittenSessionView";
 import {
   synchronizeMountedAgentSession,
   synchronizeMountedAgentSessions,
@@ -28,7 +28,7 @@ import {
 } from "./run/runCommands";
 import { subscribeAnySessionRunning } from "./run/rootAttention";
 import { retrySteerInput } from "./input/steering";
-import { forgetRule, forgetRules, setApprovalMode } from "./approvalPolicy";
+import { forgetRules, setApprovalMode } from "./approvalPolicy";
 import { getActiveConversationMessages } from "./conversation/readModel";
 import { submitPendingApproval } from "./hitl/submitPendingApproval";
 
@@ -49,7 +49,7 @@ export function createAgentAccess(dependencies: AgentDependencies) {
     forkAgentSession: forkSessionAt.bind(undefined, dependencies),
     rollbackSessionToBeforeRun: rollbackSessionToBeforeRun.bind(undefined, dependencies),
     regenerateSessionRun: regenerateSessionRun.bind(undefined, dependencies),
-    rehydrateSessionView: rehydrateSessionView.bind(undefined, dependencies),
+    synchronizeRewrittenSessionView: synchronizeRewrittenSessionView.bind(undefined, dependencies),
     synchronizeMountedAgentSession: synchronizeMountedAgentSession.bind(undefined, dependencies),
     synchronizeMountedAgentSessions: synchronizeMountedAgentSessions.bind(undefined, dependencies),
     stepActiveAgentSession: stepActiveAgentSession.bind(undefined, dependencies),
@@ -59,7 +59,6 @@ export function createAgentAccess(dependencies: AgentDependencies) {
     subscribeAnySessionRunning: subscribeAnySessionRunning.bind(undefined, dependencies),
     subscribeRootRunSettlements: dependencies.view.subscribeRootRunSettlements,
     retrySteerInput: retrySteerInput.bind(undefined, dependencies),
-    forgetRule: forgetRule.bind(undefined, dependencies),
     forgetRules: forgetRules.bind(undefined, dependencies),
     setApprovalMode: setApprovalMode.bind(undefined, dependencies),
     getActiveConversationMessages: getActiveConversationMessages.bind(undefined, dependencies),

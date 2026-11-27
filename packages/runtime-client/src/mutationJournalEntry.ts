@@ -14,6 +14,7 @@ import {
 } from "./request";
 import { validateWire } from "./generated/wire.validate.generated";
 import { MutationJournalError } from "./mutationJournalErrors";
+import { isIdempotencyKey } from "./idempotencyKey";
 
 const FINGERPRINT_FIELD_SEPARATOR = "\u0000";
 
@@ -23,13 +24,19 @@ const FINGERPRINT_HEX_LENGTH = 32;
 
 const FINGERPRINT_PATTERN = new RegExp(`^[0-9a-f]{${FINGERPRINT_HEX_LENGTH}}$`);
 
-type MethodOnlyCommandName = {
+export type RuntimeCommandMethod = {
   [M in WireMutationMethodName]: (typeof WIRE_METHOD_POLICY)[M]["idempotency"] extends "ownerRun"
     ? never
     : M;
 }[WireMutationMethodName];
 
-function isMethodOnlyCommand(value: unknown): value is MethodOnlyCommandName {
+export interface PendingRuntimeCommand {
+  readonly method: RuntimeCommandMethod;
+  readonly namespace: string;
+  readonly idempotencyKey: string;
+}
+
+function isRuntimeCommandMethod(value: unknown): value is RuntimeCommandMethod {
   if (typeof value !== "string" || !Object.hasOwn(WIRE_METHOD_POLICY, value)) return false;
   const policy = WIRE_METHOD_POLICY[value as WireMethodName];
   return policy.operation === "command" && policy.idempotency !== "ownerRun";
@@ -67,7 +74,7 @@ const journalCommand = z.discriminatedUnion("kind", [
   }),
   z.strictObject({
     kind: z.literal("method"),
-    method: z.custom<MethodOnlyCommandName>(isMethodOnlyCommand),
+    method: z.custom<RuntimeCommandMethod>(isRuntimeCommandMethod),
   }),
 ]);
 
@@ -79,7 +86,7 @@ const entrySchema = z.strictObject({
   salt: boundedText,
   namespace: boundedText,
   fingerprint: digest,
-  idempotencyKey: boundedText,
+  idempotencyKey: z.custom<string>(isIdempotencyKey),
   createdAt: z.number(),
   expiresAt: z.number(),
   command: journalCommand,
@@ -201,7 +208,7 @@ export function captureJournalCommand(
       };
     }
     default:
-      if (!isMethodOnlyCommand(method))
+      if (!isRuntimeCommandMethod(method))
         throw new MutationJournalError("Runtime method cannot reserve a command");
       return { kind: "method", method };
   }

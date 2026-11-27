@@ -6,15 +6,11 @@ import (
 
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
-
-	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 )
 
 type modelEnvironment struct {
 	chatResolver      *modeladapter.ObservedResolver
-	utilityRole       *models.RoleSetting
 	utilityModel      modeladapter.AuxiliaryResolver
-	embeddingRole     *models.RoleSetting
 	embeddingResolver *modeladapter.EmbeddingResolver
 	liveEmbedder      *modeladapter.RoleEmbedder
 	callbacks         *pluginmcp.Callbacks
@@ -30,20 +26,17 @@ func buildModelEnvironment(ctx context.Context, cfg assemblyConfig, callbacks *p
 	if err != nil {
 		return modelEnvironment{}, err
 	}
-	utilityRole, err := models.LoadRoleSetting(ctx, cfg.stores.UtilityRole)
-	if err != nil {
+	if _, _, err := cfg.stores.UtilityRole.Load(ctx); err != nil {
 		return modelEnvironment{}, fmt.Errorf("runtime: load utility role: %w", err)
 	}
-
-	embeddingRole, err := models.LoadRoleSetting(ctx, cfg.stores.EmbeddingRole)
-	if err != nil {
+	if _, _, err := cfg.stores.EmbeddingRole.Load(ctx); err != nil {
 		return modelEnvironment{}, fmt.Errorf("runtime: load embedding role: %w", err)
 	}
 	embeddingResolver, err := modeladapter.NewEmbeddingResolver(cfg.providerRegistry, providers, cfg.stores.ModelInvocations)
 	if err != nil {
 		return modelEnvironment{}, err
 	}
-	liveEmbedder, err := modeladapter.NewRoleEmbedder(embeddingResolver, embeddingRole)
+	liveEmbedder, err := modeladapter.NewRoleEmbedder(embeddingResolver, cfg.stores.EmbeddingRole)
 	if err != nil {
 		return modelEnvironment{}, err
 	}
@@ -52,14 +45,11 @@ func buildModelEnvironment(ctx context.Context, cfg assemblyConfig, callbacks *p
 	if err != nil {
 		return modelEnvironment{}, err
 	}
-	environment := modelEnvironment{
+	return modelEnvironment{
 		chatResolver:      chatResolver,
-		utilityRole:       utilityRole,
-		embeddingRole:     embeddingRole,
 		embeddingResolver: embeddingResolver,
+		liveEmbedder:      liveEmbedder,
+		callbacks:         callbacks,
 		capabilities:      capabilities,
-	}
-	environment.liveEmbedder = liveEmbedder
-	environment.callbacks = callbacks
-	return environment, nil
+	}, nil
 }

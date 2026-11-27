@@ -9,6 +9,7 @@ export class ProviderCredentialsDraft {
     private readonly endpoint:
       | { readonly type: "unchanged" }
       | { readonly type: "edited"; readonly value: string },
+    readonly revision?: symbol,
   ) {}
 
   static initial(): ProviderCredentialsDraft {
@@ -22,14 +23,15 @@ export class ProviderCredentialsDraft {
   }
 
   withAPIKey(apiKey: string): ProviderCredentialsDraft {
-    return new ProviderCredentialsDraft(apiKey, this.endpoint);
+    return new ProviderCredentialsDraft(apiKey, this.endpoint, Symbol());
   }
 
   withBaseURL(baseUrl: string): ProviderCredentialsDraft {
-    return new ProviderCredentialsDraft(this.apiKey, {
-      type: "edited",
-      value: baseUrl,
-    });
+    return new ProviderCredentialsDraft(
+      this.apiKey,
+      { type: "edited", value: baseUrl },
+      Symbol(),
+    );
   }
 
   settle(submitted: ProviderCredentialsDraft): ProviderCredentialsDraft {
@@ -38,7 +40,22 @@ export class ProviderCredentialsDraft {
       this.endpoint === submitted.endpoint
         ? { type: "unchanged" }
         : this.endpoint,
+      this.revision,
     );
+  }
+
+  rebase(provider: Pick<Provider, "baseUrl">): ProviderCredentialsDraft {
+    if (
+      this.endpoint.type === "edited" &&
+      this.endpoint.value === (provider.baseUrl ?? "")
+    ) {
+      return new ProviderCredentialsDraft(
+        this.apiKey,
+        { type: "unchanged" },
+        this.revision,
+      );
+    }
+    return this;
   }
 
   dirty(provider: { baseUrl?: string }): boolean {

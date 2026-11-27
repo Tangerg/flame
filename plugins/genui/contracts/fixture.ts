@@ -1,11 +1,11 @@
-import { CATALOG_ID } from "./catalog";
+import { A2UI_VERSION, CATALOG_ID } from "./catalog";
 export function interfaceRequest() {
   return {
     title: "Release review",
     operations: [],
     messages: [
       {
-        version: "1.0",
+        version: A2UI_VERSION,
         createSurface: {
           surfaceId: "review",
           catalogId: CATALOG_ID,

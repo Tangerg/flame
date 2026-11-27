@@ -9,75 +9,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-const sessionDraftTransferName = "session-draft-transfer.json"
-
-type DraftTransfer struct {
-	SourceSessionID      string            `json:"sourceSessionId"`
-	DestinationSessionID string            `json:"destinationSessionId"`
-	SourceBefore         authoring.Message `json:"sourceBefore"`
-	SourceAfter          authoring.Message `json:"sourceAfter"`
-	DestinationBefore    authoring.Message `json:"destinationBefore"`
-	DestinationAfter     authoring.Message `json:"destinationAfter"`
-}
-
-var errDraftTransferRecovery = errors.New("session draft transfer requires recovery")
-
-func (d DraftTransfer) clone() DraftTransfer {
-	d.SourceBefore = d.SourceBefore.Clone()
-	d.SourceAfter = d.SourceAfter.Clone()
-	d.DestinationBefore = d.DestinationBefore.Clone()
-	d.DestinationAfter = d.DestinationAfter.Clone()
-	return d
-}
-
-func (d DraftTransfer) equal(other DraftTransfer) bool {
-	return d.SourceSessionID == other.SourceSessionID &&
-		d.DestinationSessionID == other.DestinationSessionID &&
-		d.SourceBefore.Equal(other.SourceBefore) &&
-		d.SourceAfter.Equal(other.SourceAfter) &&
-		d.DestinationBefore.Equal(other.DestinationBefore) &&
-		d.DestinationAfter.Equal(other.DestinationAfter)
-}
-
-func (d DraftTransfer) validate() error {
-	if err := protocol.ValidateSessionID(d.SourceSessionID); err != nil {
-		return fmt.Errorf("draft transfer source: %w", err)
-	}
-	if err := protocol.ValidateSessionID(d.DestinationSessionID); err != nil {
-		return fmt.Errorf("draft transfer destination: %w", err)
-	}
-	if d.SourceSessionID == d.DestinationSessionID {
-		return errors.New("draft transfer source and destination are the same session")
-	}
-	values := []struct {
-		label   string
-		message authoring.Message
-	}{
-		{label: "source before", message: d.SourceBefore},
-		{label: "source after", message: d.SourceAfter},
-		{label: "destination before", message: d.DestinationBefore},
-		{label: "destination after", message: d.DestinationAfter},
-	}
-	for _, value := range values {
-		if value.message.IsEmpty() {
-			continue
-		}
-		if err := value.message.Validate(); err != nil {
-			return fmt.Errorf("draft transfer %s: %w", value.label, err)
-		}
-	}
-	if d.SourceBefore.Equal(d.SourceAfter) &&
-		d.DestinationBefore.Equal(d.DestinationAfter) {
-		return errors.New("draft transfer does not change authoring state")
-	}
-	return nil
-}
-
-func (d DraftTransfer) blocks(sessionID string) bool {
-	return sessionID == d.SourceSessionID || sessionID == d.DestinationSessionID
-}
-
-func MergeSessionDraft(existing, incoming authoring.Message) (authoring.Message, error) {
+func mergeSessionDraft(existing, incoming authoring.Message) (authoring.Message, error) {
 	values := []struct {
 		label   string
 		message authoring.Message
@@ -137,106 +69,28 @@ func MergeSessionDraft(existing, incoming authoring.Message) (authoring.Message,
 	return merged, nil
 }
 
-func (s *Store) ApplyDraftTransfer(transfer DraftTransfer) error {
-	transfer = transfer.clone()
-	if err := transfer.validate(); err != nil {
-		return err
+func (s *Store) TransferSessionDraft(sourceID, destinationID string, remaining authoring.Message) error {
+	if err := protocol.ValidateSessionID(sourceID); err != nil {
+		return fmt.Errorf("draft transfer source: %w", err)
 	}
-
+	if err := protocol.ValidateSessionID(destinationID); err != nil {
+		return fmt.Errorf("draft transfer destination: %w", err)
+	}
+	if sourceID == destinationID {
+		return errors.New("draft transfer source and destination are the same session")
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.draftTransfer != nil {
-		if !s.draftTransfer.equal(transfer) {
-			return fmt.Errorf("another %w", errDraftTransferRecovery)
-		}
-		return s.completeDraftTransferLocked()
-	}
-	if err := transfer.expect(s.drafts); err != nil {
-		return err
-	}
-	if err := s.save(sessionDraftTransferName, transfer, func() { s.draftTransfer = &transfer }); err != nil {
-		return fmt.Errorf("stage session draft transfer: %w", err)
-	}
-
-	return s.completeDraftTransferLocked()
-}
-
-func (d DraftTransfer) expect(drafts map[string]authoring.Message) error {
-	if !drafts[d.SourceSessionID].Equal(d.SourceBefore) {
-		return errors.New("source draft changed before session transfer")
-	}
-	if !drafts[d.DestinationSessionID].Equal(d.DestinationBefore) {
-		return errors.New("destination draft changed before session transfer")
-	}
-	return nil
-}
-
-func (s *Store) recoverDraftTransfer() error {
-	if s.draftTransfer == nil {
+	source := s.sessionUpdate(sourceID)
+	if source.draft.Equal(remaining) {
 		return nil
 	}
-	if err := s.draftTransfer.validate(); err != nil {
-		return err
+	destination := s.sessionUpdate(destinationID)
+	merged, err := mergeSessionDraft(destination.draft, source.draft)
+	if err != nil {
+		return fmt.Errorf("merge transferred draft: %w", err)
 	}
-	return s.completeDraftTransferLocked()
-}
-
-func (s *Store) completeDraftTransferLocked() error {
-	transfer := s.draftTransfer
-	if transfer == nil {
-		return nil
-	}
-	if err := validateTransferSide(
-		"source", s.drafts[transfer.SourceSessionID], transfer.SourceBefore, transfer.SourceAfter,
-	); err != nil {
-		return err
-	}
-	if err := validateTransferSide(
-		"destination", s.drafts[transfer.DestinationSessionID],
-		transfer.DestinationBefore, transfer.DestinationAfter,
-	); err != nil {
-		return err
-	}
-	// Materialize the destination first so the journal and at least one durable
-	// aggregate always retain a transferred draft before its source is retired.
-	if err := s.advanceDraftTransferSide(
-		transfer.DestinationSessionID, transfer.DestinationBefore, transfer.DestinationAfter,
-	); err != nil {
-		return fmt.Errorf("save destination draft transfer: %w", err)
-	}
-	if err := s.advanceDraftTransferSide(
-		transfer.SourceSessionID, transfer.SourceBefore, transfer.SourceAfter,
-	); err != nil {
-		return fmt.Errorf("save source draft transfer: %w", err)
-	}
-	if err := s.remove(sessionDraftTransferName, func() { s.draftTransfer = nil }); err != nil {
-		return fmt.Errorf("retire session draft transfer: %w", err)
-	}
-
-	return nil
-}
-
-func validateTransferSide(label string, current, before, after authoring.Message) error {
-	if current.Equal(before) || current.Equal(after) {
-		return nil
-	}
-	return fmt.Errorf("%s draft changed while session transfer was pending", label)
-}
-
-func (s *Store) advanceDraftTransferSide(sessionID string, before, after authoring.Message) error {
-	current := s.drafts[sessionID]
-	if current.Equal(after) {
-		return nil
-	}
-	if !current.Equal(before) {
-		return errors.New("draft no longer matches its transfer precondition")
-	}
-	return s.saveSessionStateRecordUnfenced(
-		sessionID, after, s.queue.bySession[sessionID], s.pendingResumePointer(sessionID),
-		s.pendingRollbackPointer(sessionID), s.pendingSteerPointer(sessionID),
-	)
-}
-
-func (s *Store) draftTransferBlocks(sessionID string) bool {
-	return s.draftTransfer != nil && s.draftTransfer.blocks(sessionID)
+	source.draft = remaining.Clone()
+	destination.draft = merged
+	return s.commitSessions([]sessionUpdate{destination, source})
 }

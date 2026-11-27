@@ -13,5 +13,5 @@ type RuleStore interface {
 
 	Visible(ctx context.Context, sessionID identity.SessionID, workspaceDir string, limit int) ([]approval.Rule, error)
 
-	Delete(ctx context.Context, id string) error
+	Delete(ctx context.Context, id string, expected *approval.Decision) error
 }

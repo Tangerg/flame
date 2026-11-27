@@ -536,7 +536,16 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: runs", () => {
         }
         return fetch(input, init);
       });
-      const recovering = openClient();
+      let receiptAvailable = true;
+      const recovering = openClient((input, init) => {
+        if (
+          !receiptAvailable &&
+          new Headers(init?.headers).get(HTTP_HEADERS.method) === "runs.getAcceptance"
+        ) {
+          return Promise.resolve(new Response(null, { status: 503 }));
+        }
+        return fetch(input, init);
+      });
       try {
         const session = await fixture.client.sessions.create({ title: "Shared Steer recovery" });
         const started = await fixture.client.runs.start({
@@ -577,6 +586,19 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: runs", () => {
         expect(await originalResult).toEqual({ value: accepted });
         await expect(first.inputIdentity).resolves.toBe(nominated);
         expect(mutationStorage.size).toBe(0);
+
+        receiptAvailable = false;
+        const stale = pending.retry();
+        await expect(stale).rejects.toMatchObject({ name: "MutationLookupError" });
+        const entriesAfterRefusedLookup = mutationStorage.size;
+        receiptAvailable = true;
+        const reobserved = stale.retry();
+        expect(mutationStorage.size).toBe(0);
+        await expect(reobserved).resolves.toEqual(accepted);
+        await expect(reobserved.inputIdentity).resolves.toBe(nominated);
+        expect(mutationStorage.size).toBe(0);
+        expect(entriesAfterRefusedLookup).toBe(0);
+
         gate.release.resolve();
         const events = await collectRunEvents(originalOpeningEvents(started));
         const inputs = events.flatMap(({ event }) =>

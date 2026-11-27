@@ -104,7 +104,12 @@ func (r *Client) newRPCRequest(ctx context.Context, id jsonrpc.ID, name string, 
 	} else if r.token != "" {
 		request.Header.Set(headerAuthorization, "Bearer "+r.token)
 	}
-	setOptionalHeader(request.Header, headerIdempotencyKey, options.IdempotencyKey)
+	if key := options.IdempotencyKey; key != "" {
+		if err := protocol.ValidateIdempotencyKey(key); err != nil {
+			return nil, protocol.InvalidParameters(err)
+		}
+		request.Header.Set(headerIdempotencyKey, key)
+	}
 	setOptionalHeader(request.Header, headerIdempotencyNamespace, options.IdempotencyNamespace)
 	setOptionalHeader(request.Header, headerLastEventID, options.AfterEventID)
 	for name, values := range request.Header {

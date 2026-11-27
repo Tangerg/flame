@@ -31,7 +31,6 @@ type policyComposition struct {
 	approvals     *approvals.RuntimePolicy
 	goals         goals.Store
 	goalReader    *goals.Reader
-	mcp           mcpEnvironment
 }
 
 func buildPolicyComposition(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLifetime, callbacks *pluginmcp.Callbacks) (policyComposition, error) {
@@ -60,10 +59,6 @@ func buildPolicyComposition(ctx context.Context, cfg assemblyConfig, lifetime *r
 	if err != nil {
 		return policyComposition{}, fmt.Errorf("runtime: approval policy: %w", err)
 	}
-	mcpSettings, err := buildMCPEnvironment(ctx, framework.registry, cfg.stores.MCPServers)
-	if err != nil {
-		return policyComposition{}, err
-	}
 	goalStore := cfg.stores.Goals
 	goalReader, err := goals.NewReader(goalStore)
 	if err != nil {
@@ -75,7 +70,6 @@ func buildPolicyComposition(ctx context.Context, cfg assemblyConfig, lifetime *r
 		approvals:     approvalPolicy,
 		goals:         goalStore,
 		goalReader:    goalReader,
-		mcp:           mcpSettings,
 	}, nil
 }
 
@@ -179,7 +173,6 @@ func buildExecutionComposition(
 		lifetime:       lifetime.context,
 		config:         cfg,
 		approvalPolicy: policy.approvals,
-		mcp:            policy.mcp,
 		callbacks:      callbacks,
 		conversation:   conversation.store,
 		publish:        policy.invalidations.publish,

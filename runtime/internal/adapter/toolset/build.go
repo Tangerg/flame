@@ -33,7 +33,7 @@ type BuildConfig struct {
 	GoalReader       goalReader
 	GoalReporter     builtin.GoalOutcomeReporter
 
-	MCPToolDisabled func(tool.Ref) bool
+	ListMCPExposure func(context.Context) ([]tool.Ref, error)
 	RestoreMCP      func(context.Context, []tool.Ref, []plugin.Activation) ([]toolcontract.Tool, func() error, error)
 
 	SandboxShell         bool
@@ -125,7 +125,7 @@ func Build(config BuildConfig) (_ Built, err error) {
 		ProposeSkill:    proposeSkillTool,
 		CodeIntel:       config.CodeIntelligence,
 		ReadTracker:     tracker,
-		MCPToolDisabled: config.MCPToolDisabled,
+		ListMCPExposure: config.ListMCPExposure,
 		RestoreMCP:      config.RestoreMCP,
 	})
 	if err != nil {

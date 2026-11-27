@@ -26,7 +26,8 @@ func (q *Queue) PrepareDispatch(sessionID string, commandID authoring.CommandID,
 	if err != nil {
 		return PendingRun{}, err
 	}
-	if err := q.replaceHead(sessionID, prepared); err != nil {
+	key := inputRecordKey(sessionID, startInput, commandID)
+	if err := q.replaceHead(sessionID, prepared, input.records(key)...); err != nil {
 		return PendingRun{}, err
 	}
 	return prepared.clone(), nil
@@ -85,11 +86,12 @@ func (q *Queue) retire(sessionID string, commandID authoring.CommandID) (authori
 		return authoring.QueueEntry{}, false, errors.New("only the dispatched queue head can be acknowledged")
 	}
 	entry := pending[0].entry()
-	if err := q.store.recordPromptHistoryLocked(commandID, entry.Message.Clone()); err != nil {
+	update := q.store.sessionUpdate(sessionID)
+	update.runs = pending[1:]
+	if err := q.store.recordPromptSettlement(update, entry.Message); err != nil {
 		return authoring.QueueEntry{}, false, err
 	}
-	err := q.save(sessionID, pending[1:])
-	return entry, err == nil || writeCommitted(err), err
+	return entry, true, nil
 }
 
 func (q *Queue) RequeueDispatch(sessionID string, commandID authoring.CommandID) error {
@@ -114,8 +116,9 @@ func (q *Queue) current(sessionID string, commandID authoring.CommandID) (Pendin
 	return pending[0], nil
 }
 
-func (q *Queue) replaceHead(sessionID string, entry PendingRun) error {
-	next := slices.Clone(q.bySession[sessionID])
-	next[0] = entry
-	return q.save(sessionID, next)
+func (q *Queue) replaceHead(sessionID string, entry PendingRun, changes ...RecordChange) error {
+	update := q.store.sessionUpdate(sessionID)
+	update.runs = slices.Clone(update.runs)
+	update.runs[0] = entry
+	return q.store.commitSessions([]sessionUpdate{update}, changes...)
 }

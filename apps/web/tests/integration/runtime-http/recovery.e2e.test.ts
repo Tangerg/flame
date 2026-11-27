@@ -1,7 +1,33 @@
 import { lstat } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
-import { asRunId, asSessionId } from "@flame/runtime-client";
+import { QueryObserver } from "@tanstack/react-query";
+import { asRunId, asSessionId, createSidecarClient, type FlameClient } from "@flame/runtime-client";
+import { HTTP_HEADERS } from "@flame/runtime-client/wire";
+import { composeAgent } from "@/features/agent/adapters/agent";
+import {
+  readRuntimeSessionSummaries,
+  toAgentSessionSummary,
+} from "@/features/agent/adapters/runtimeSessionSummary";
+import { editAgentSession } from "@/features/agent/application/session/editSession";
+import {
+  AGENT_SESSIONS_KEY,
+  type AgentSessionSummary,
+} from "@/features/agent/application/session/sessionQueries";
+import {
+  editAndRerunMessage,
+  regenerateMessage,
+} from "@/features/chat/message-actions/public/messageActions";
+import { createComposer } from "@/features/composer/adapters/composerStatePorts";
+import { DraftContent } from "@/features/composer/domain/draft";
+import { createRuntimeConnectionProjection } from "@/features/connection/adapters/runtimeConnectionProjection";
+import { runtimeServiceInspector } from "@/features/connection/adapters/runtimeServiceInspector";
+import { createRuntimeEndpoint } from "@/features/connection/application/runtimeEndpoint";
+import { NotificationFeed } from "@/features/notifications/public/notifications";
+import { createConversationImportGateway } from "@/features/workspace/adapters/runtimeConversationImportGateway";
+import { createConversationImport } from "@/features/workspace/application/conversationImport";
+import { createMemoryNavigator } from "@/lib/navigation.testkit";
+import { queryClient } from "@/lib/queryClient";
 import {
   type ProviderGate,
   compactionCutpointMarker,
@@ -25,11 +51,407 @@ import { useRuntimeFixture } from "./fixture";
 
 const compactionCutpointDeadlineMilliseconds = 15_000;
 
+function openWebSession(client: FlameClient, endpoint: string, sessionId: string) {
+  const connection = createRuntimeConnectionProjection();
+  const target = () => ({ endpoint });
+  const runtime = {
+    capabilities: connection.capabilities,
+    status: connection.status,
+    endpoint: createRuntimeEndpoint({
+      read: target,
+      defaultTarget: target,
+      replace: () => false,
+      reset: () => false,
+    }),
+  };
+  const notifications = new NotificationFeed(() => {});
+  const agent = composeAgent(
+    () => client,
+    createMemoryNavigator({ session: sessionId }),
+    runtime,
+    connection.stream,
+    connection.scope,
+    notifications,
+  );
+  if (sessionId) {
+    agent.sessions.store.getState().holdOpen(sessionId);
+    agent.projection.store.getState().ensureSession(sessionId);
+  }
+  return {
+    agent,
+    connection,
+    notifications,
+    runtime,
+    dispose() {
+      agent.dispose();
+      notifications.dispose();
+      connection.dispose();
+    },
+  };
+}
+
+function openWebComposer(
+  { agent, connection }: ReturnType<typeof openWebSession>,
+  endpoint: string,
+  sessionId: string,
+) {
+  const access = agent.access;
+  const composer = createComposer(
+    {
+      getActiveSessionId: access.getActiveSessionId,
+      getLifecycleSnapshot: access.getAgentSessionLifecycleSnapshot,
+      subscribeActiveSessionId: access.subscribeActiveSessionId,
+      subscribeLifecycle: access.subscribeAgentSessionLifecycle,
+      subscribeDeleted: access.subscribeDeletedAgentSession,
+    },
+    () => endpoint,
+    connection.scope,
+    connection.stream,
+  );
+  composer.store.getState().loadSession(sessionId);
+  return composer;
+}
+
 describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", () => {
   // Bound startup work to the owners exercised at the crash boundaries.
   const fixture = useRuntimeFixture("recovery", {
     packages: ["goals", "mcp", "memory", "plans", "providers", "schedules", "skills"],
   });
+
+  it("keeps the latest Session list when an older edit acknowledgement arrives", async () => {
+    const session = await fixture.client.sessions.create({ workspace: { path: fixture.root } });
+    const sessionId = asSessionId(session.id);
+    const recorded = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const client = fixture.createRuntimeClient(async (url, init) => {
+      const response = await fetch(url, init);
+      if (new Headers(init?.headers).get(HTTP_HEADERS.method) === "sessions.update") {
+        recorded.resolve();
+        await release.promise;
+      }
+      return response;
+    });
+    const web = openWebSession(client, fixture.baseUrl, sessionId);
+    const { commands, runtime } = web.agent.dependencies;
+    const queryKey = [AGENT_SESSIONS_KEY];
+    const edit = editAgentSession(commands.current(), sessionId, () =>
+      runtime.updateSession({ sessionId, expectedRevision: session.revision, favorite: true }),
+    );
+    try {
+      await within(recorded.promise, "recording the first Session edit");
+      const saved = await fixture.client.sessions.get(sessionId);
+      const latest = await fixture.client.sessions.update({
+        sessionId,
+        expectedRevision: saved.revision,
+        title: "A newer title from the other client",
+      });
+      const sessions = await queryClient.fetchQuery({
+        queryKey,
+        queryFn: ({ signal }) => readRuntimeSessionSummaries(client, signal),
+      });
+      expect(sessions.find(({ id }) => id === sessionId)).toEqual(toAgentSessionSummary(latest));
+
+      release.resolve();
+      await edit;
+      expect(
+        queryClient
+          .getQueryData<AgentSessionSummary[]>(queryKey)
+          ?.find(({ id }) => id === sessionId),
+      ).toEqual(toAgentSessionSummary(latest));
+    } finally {
+      release.resolve();
+      await edit.catch(() => {});
+      queryClient.removeQueries({ queryKey });
+      web.dispose();
+      await client.close();
+      await fixture.client.sessions.delete(sessionId);
+    }
+  }, 30_000);
+
+  it("opens a new Session after the list observes its creation", async () => {
+    const session = await fixture.client.sessions.create({ workspace: { path: fixture.root } });
+    const sessionId = asSessionId(session.id);
+    const opening = await fixture.client.runs.start({
+      sessionId,
+      input: [{ type: "text", text: "A conversation that should stay open in its own tab." }],
+    });
+    await collectRunEvents(originalOpeningEvents(opening));
+
+    const listing = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    let created = false;
+    const client = fixture.createRuntimeClient(async (url, init) => {
+      const method = new Headers(init?.headers).get(HTTP_HEADERS.method);
+      const response = await fetch(url, init);
+      if (method === "sessions.create") created = true;
+      if (method === "sessions.list" && created) {
+        listing.resolve();
+        await release.promise;
+      }
+      return response;
+    });
+    const web = openWebSession(client, fixture.baseUrl, sessionId);
+    const access = web.agent.access;
+    const queryKey = [AGENT_SESSIONS_KEY];
+    const observer = new QueryObserver(queryClient, {
+      queryKey,
+      queryFn: ({ signal }) => readRuntimeSessionSummaries(client, signal),
+    });
+    const unsubscribe = observer.subscribe(() => {});
+    let creating: Promise<string | null> | undefined;
+    try {
+      await observer.refetch({ throwOnError: true });
+      await expect(access.synchronizeRewrittenSessionView(sessionId)).resolves.toBe(true);
+      creating = access.createSession();
+      await within(listing.promise, "the Session list refetch after creation");
+      expect(access.getActiveSessionId()).toBe(sessionId);
+      release.resolve();
+      const newId = await creating;
+      expect(newId).toBeTruthy();
+      expect(newId).not.toBe(sessionId);
+      expect(access.getActiveSessionId()).toBe(newId);
+      expect(observer.getCurrentResult().data?.map(({ id }) => id)).toContain(newId);
+    } finally {
+      release.resolve();
+      const newId = await creating?.catch(() => null);
+      unsubscribe();
+      queryClient.removeQueries({ queryKey });
+      web.dispose();
+      await client.close();
+      if (newId && newId !== sessionId) await fixture.client.sessions.delete(asSessionId(newId));
+      await fixture.client.sessions.delete(sessionId);
+    }
+  }, 30_000);
+
+  it("opens an unmounted JSON import and refreshes an existing view on reimport", async () => {
+    const title = "Conversation imported before its view mounts";
+    const source = await fixture.client.sessions.create({
+      title,
+      workspace: { path: fixture.root },
+    });
+    const sourceId = asSessionId(source.id);
+    const prompt = "This input survives an export and reimport.";
+    const run = await fixture.client.runs.start({
+      sessionId: sourceId,
+      input: [{ type: "text", text: prompt }],
+    });
+    await collectRunEvents(originalOpeningEvents(run));
+    const { artifact } = await fixture.client.sessions.export(sourceId, "json");
+    if (!artifact) throw new Error("JSON export omitted its Session artifact");
+
+    const client = fixture.createSharedClient();
+    const web = openWebSession(client, fixture.baseUrl, "");
+    const access = web.agent.access;
+    const sidecar = createSidecarClient({ baseUrl: fixture.baseUrl });
+    web.connection.start(
+      runtimeServiceInspector(
+        () => client,
+        () => sidecar,
+      ),
+    );
+    const presentations: string[] = [];
+    const notifications = new NotificationFeed(({ level }) => presentations.push(level));
+    const imports = createConversationImport(web.agent.access, web.runtime, notifications);
+    const gateway = createConversationImportGateway(imports, () => client, {
+      pickText: async () => JSON.stringify(artifact),
+    });
+    try {
+      await web.connection.status.refresh();
+      await imports.importConversationJson();
+      expect(access.getActiveSessionId()).toBe(sourceId);
+      expect(web.agent.dependencies.view.getSession(sourceId)).toBeUndefined();
+      expect(presentations).toEqual(["success"]);
+      await expect(fixture.client.sessions.snapshot(sourceId)).resolves.toMatchObject({
+        session: { id: sourceId, title },
+        runs: [expect.objectContaining({ id: run.result.runId })],
+      });
+
+      await fixture.client.sessions.rollback({
+        sessionId: sourceId,
+        expectedLastRootRunId: run.result.runId,
+        expectedWorkspacePath: source.workspace.ref.path,
+      });
+      web.agent.projection.store.getState().ensureSession(sourceId);
+      await expect(access.synchronizeRewrittenSessionView(sourceId)).resolves.toBe(true);
+      expect(access.activeAgentConversation()?.messages).toEqual([]);
+      await imports.importConversationJson();
+      expect(presentations).toEqual(["success", "success"]);
+      expect(access.activeAgentConversation()?.messages).toContainEqual(
+        expect.objectContaining({ role: "user", runId: run.result.runId }),
+      );
+    } finally {
+      gateway.dispose();
+      notifications.dispose();
+      web.dispose();
+      await client.close();
+      await fixture.client.sessions.delete(sourceId);
+    }
+  }, 30_000);
+
+  it("returns the committed rollback input when the next Session read fails", async () => {
+    const session = await fixture.client.sessions.create({ workspace: { path: fixture.root } });
+    const sessionId = asSessionId(session.id);
+    const input = "The input belongs to the committed rollback receipt.";
+    const run = await fixture.client.runs.start({
+      sessionId,
+      input: [{ type: "text", text: input }],
+    });
+    await collectRunEvents(originalOpeningEvents(run));
+
+    const refreshing = Promise.withResolvers<void>();
+    let committed = false;
+    const client = fixture.createRuntimeClient(async (url, init) => {
+      const method = new Headers(init?.headers).get(HTTP_HEADERS.method);
+      if (method === "sessions.snapshot" && committed) {
+        refreshing.resolve();
+        throw new Error("Session read unavailable after the rollback committed");
+      }
+      const response = await fetch(url, init);
+      if (method === "sessions.rollback") committed = true;
+      return response;
+    });
+    const { agent, notifications, dispose } = openWebSession(client, fixture.baseUrl, sessionId);
+    try {
+      await expect(
+        agent.access.rollbackSessionToBeforeRun(sessionId, run.result.runId),
+      ).resolves.toEqual({
+        status: "committed",
+        userInput: { parts: [{ kind: "text", text: input }] },
+      });
+      await within(refreshing.promise, "Session refresh after the committed rollback");
+      await expect(fixture.client.sessions.snapshot(sessionId)).resolves.toMatchObject({
+        runs: [],
+      });
+      await expect
+        .poll(() => notifications.snapshot().some(({ level }) => level === "error"))
+        .toBe(true);
+    } finally {
+      dispose();
+      await client.close();
+      await fixture.client.sessions.delete(sessionId);
+    }
+  }, 30_000);
+
+  it("recovers the original message and references beside edits made during rollback", async () => {
+    const session = await fixture.client.sessions.create({ workspace: { path: fixture.root } });
+    const sessionId = asSessionId(session.id);
+    const input = "The original input is available in the rollback receipt.";
+    const originalReference = { label: "notes.md:1", text: "Reference from the original input" };
+    const run = await fixture.client.runs.start({
+      sessionId,
+      input: [
+        { type: "text", text: input },
+        { type: "reference", ...originalReference },
+      ],
+    });
+    await collectRunEvents(originalOpeningEvents(run));
+
+    const committed = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const client = fixture.createRuntimeClient(async (url, init) => {
+      const response = await fetch(url, init);
+      if (new Headers(init?.headers).get(HTTP_HEADERS.method) === "sessions.rollback") {
+        committed.resolve();
+        await release.promise;
+      }
+      return response;
+    });
+    const web = openWebSession(client, fixture.baseUrl, sessionId);
+    const { agent, notifications, dispose } = web;
+    const access = agent.access;
+    const composer = openWebComposer(web, fixture.baseUrl, sessionId);
+    try {
+      await expect(access.synchronizeRewrittenSessionView(sessionId)).resolves.toBe(true);
+      const opening = access
+        .activeAgentConversation()
+        ?.messages.find((message) => message.role === "user" && message.runId === run.result.runId);
+      if (!opening) throw new Error("the Web projection omitted the original message");
+      editAndRerunMessage(
+        notifications,
+        access,
+        composer.access,
+        opening,
+        "history",
+        (_type, apply) => apply(),
+      );
+      await within(committed.promise, "rollback acknowledgement before draft recovery");
+
+      const laterText = "A new note written while the original command was pending.";
+      const laterReference = { label: "notes.md:2", text: "Reference added after dispatch" };
+      composer.access.checkpoint(DraftContent.fromText(laterText));
+      expect(composer.access.captureAddReference()(laterReference)).toBe(true);
+      const scratch = "Draft in the newly selected conversation.";
+      access.selectAgentSession("");
+      composer.store.getState().loadSession("");
+      composer.access.checkpoint(DraftContent.fromText(scratch));
+      release.resolve();
+
+      const originalDraft = () => composer.store.getState().composer.activate(sessionId).draft;
+      await expect.poll(originalDraft).toMatchObject({
+        value: `${input}\n\n${laterText}`,
+        references: [originalReference, laterReference],
+      });
+      expect(composer.access.captureSubmission().value).toBe(scratch);
+      await expect(fixture.client.sessions.snapshot(sessionId)).resolves.toMatchObject({
+        runs: [],
+      });
+    } finally {
+      release.resolve();
+      composer.dispose();
+      dispose();
+      await client.close();
+      await fixture.client.sessions.delete(sessionId);
+    }
+  }, 30_000);
+
+  it("retains a regeneration prompt when the restored Session cannot accept a new Run", async () => {
+    const session = await fixture.client.sessions.create({ workspace: { path: fixture.root } });
+    const sessionId = asSessionId(session.id);
+    const original = "Preserve this prompt if it cannot be regenerated.";
+    const run = await fixture.client.runs.start({
+      sessionId,
+      input: [{ type: "text", text: original }],
+    });
+    await collectRunEvents(originalOpeningEvents(run));
+
+    let committed = false;
+    const client = fixture.createRuntimeClient(async (url, init) => {
+      const method = new Headers(init?.headers).get(HTTP_HEADERS.method);
+      if (method === "sessions.snapshot" && committed) {
+        throw new Error("Session read unavailable before regeneration could start");
+      }
+      const response = await fetch(url, init);
+      if (method === "sessions.rollback") committed = true;
+      return response;
+    });
+    const web = openWebSession(client, fixture.baseUrl, sessionId);
+    const composer = openWebComposer(web, fixture.baseUrl, sessionId);
+    const access = web.agent.access;
+    const unsent = "My separate unsent notes stay in the draft.";
+    composer.access.checkpoint(DraftContent.fromText(unsent));
+    try {
+      await expect(access.synchronizeRewrittenSessionView(sessionId)).resolves.toBe(true);
+      const reply = access
+        .activeAgentConversation()
+        ?.messages.find(
+          (message) => message.role === "assistant" && message.runId === run.result.runId,
+        );
+      if (!reply) throw new Error("the Web projection omitted the reply to regenerate");
+      regenerateMessage(web.notifications, access, composer.access, reply);
+
+      await expect
+        .poll(() => composer.access.captureSubmission().value)
+        .toBe(`${original}\n\n${unsent}`);
+      await expect(fixture.client.sessions.snapshot(sessionId)).resolves.toMatchObject({
+        runs: [],
+      });
+    } finally {
+      composer.dispose();
+      web.dispose();
+      await client.close();
+      await fixture.client.sessions.delete(sessionId);
+    }
+  }, 30_000);
 
   it("reopens durable reads and event reconciliation after a Runtime process restart", async () => {
     const beforeRestart = await fixture.client.runtime.discover();

@@ -37,7 +37,8 @@ type ListApprovalRulesResult struct {
 }
 
 type ForgetApprovalRuleRequest struct {
-	ID string `json:"id"`
+	ID               string                `json:"id"`
+	ExpectedDecision *ApprovalRuleDecision `json:"expectedDecision,omitempty"`
 }
 
 //flame:enum

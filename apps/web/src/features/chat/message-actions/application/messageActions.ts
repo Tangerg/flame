@@ -7,11 +7,7 @@ import { agentInputToComposerDraft } from "@/features/chat/message-actions/appli
 import { describeRpcError } from "@/lib/rpcErrors";
 
 import { type RestoreType } from "@/features/agent/public/session";
-import {
-  beginComposerDraftReplacement,
-  replaceComposerDraft,
-  type RequestDraftReplacementConfirmation,
-} from "@/features/composer/public/draft";
+import { type RequestDraftReplacementConfirmation } from "@/features/composer/public/draft";
 import {
   messageDraftContent,
   messageHasDraftContent,
@@ -37,11 +33,13 @@ interface RollbackActionOptions {
 export function regenerateMessage(
   notifications: NotificationFeed,
   agentAccess: AgentAccess,
+  composerAccess: ComposerAccess,
   msg: Message,
   opts?: RollbackActionOptions,
 ): void {
   const conversation = agentAccess.activeAgentConversation();
   if (!conversation || !canRegenerateMessage(msg, conversation.messages)) return;
+  const recoverDraft = composerAccess.captureDraftRecovery(conversation.sessionId);
   void agentAccess
     .regenerateSessionRun(
       conversation.sessionId,
@@ -49,10 +47,21 @@ export function regenerateMessage(
       opts?.restoreFiles ? "both" : "history",
     )
     .then((result) => {
-      if (result.status === "noInput" || result.status === "notReady")
-        notifications.notify("info", t(`session.regenerate.${result.status}`), {
+      if (result.status === "notReady") {
+        recoverDraft(agentInputToComposerDraft(result.userInput));
+        const copy = result.refusal && describeRpcError(result.refusal.error);
+        notifications.notify(
+          result.refusal ? "error" : "info",
+          copy ?? t("session.regenerate.notReady"),
+          {
+            source: "session",
+          },
+        );
+      } else if (result.status === "noInput") {
+        notifications.notify("info", t("session.regenerate.noInput"), {
           source: "session",
         });
+      }
     })
     .catch((error) => reportRollbackError(notifications, error));
 }
@@ -63,7 +72,7 @@ export function editMessageInComposer(
   requestConfirmation: RequestDraftReplacementConfirmation,
 ): void {
   if (!messageHasDraftContent(msg)) return;
-  replaceComposerDraft(composerAccess, messageDraftContent(msg), requestConfirmation);
+  composerAccess.replaceDraft(messageDraftContent(msg), requestConfirmation);
 }
 
 export type HistoryEditScope = Exclude<RestoreType, "files">;
@@ -82,10 +91,10 @@ export function editAndRerunMessage(
   }
   const { sessionId } = conversation;
   const { runId } = msg;
-  beginComposerDraftReplacement(
-    composerAccess,
+  composerAccess.beginDraftRecovery(
+    sessionId,
     (apply) => requestConfirmation(restoreType, apply),
-    (replaceDraft) => {
+    (recoverDraft) => {
       const active = agentAccess.activeAgentConversation();
       if (active?.sessionId !== sessionId || !canRollbackMessage(msg, active.messages))
         return false;
@@ -93,10 +102,11 @@ export function editAndRerunMessage(
         .rollbackSessionToBeforeRun(sessionId, runId, restoreType)
         .then((rollback) => {
           if (rollback.status !== "committed") return;
-          const draft = rollback.userInput
-            ? agentInputToComposerDraft(rollback.userInput)
-            : messageDraftContent(msg);
-          if (!replaceDraft(draft)) {
+          if (!rollback.userInput) {
+            notifications.notify("info", t("session.regenerate.noInput"), { source: "session" });
+            return;
+          }
+          if (!recoverDraft(agentInputToComposerDraft(rollback.userInput))) {
             notifications.notify("info", t("session.editRerun.draftRetained"), {
               source: "session",
             });

@@ -1,8 +1,10 @@
 import { parseMcpImport } from "../../../../../plugins/mcp/component/import";
-import { candidate as mcpCandidate } from "../../../../../plugins/mcp/component/model";
+import { candidate as mcpCandidate, serverKey } from "../../../../../plugins/mcp/component/model";
+import { IMPORT, MCPSettings } from "../../../../../plugins/mcp/component/settings";
 import { createServer as createHttpServer } from "node:http";
 import { describe, expect, it } from "vitest";
-import { RpcError, asSessionId } from "@flame/runtime-client";
+import { RpcError, asSessionId, type FlameClient } from "@flame/runtime-client";
+import { HTTP_HEADERS } from "@flame/runtime-client/wire";
 import { liveMCPToolName } from "./fakeProvider";
 import {
   collectRunEvents,
@@ -10,8 +12,21 @@ import {
   originalOpeningEvents,
   waitForUserMCPConnection,
   watchRuntimeTopic,
+  within,
 } from "./observation";
 import { useRuntimeFixture } from "./fixture";
+
+function settingsContext(runtime: FlameClient, signal: AbortSignal) {
+  return {
+    runtime,
+    component: { installationId: "mcp", digest: "settings-test", componentId: "mcp" },
+    signal,
+    track<P extends Promise<unknown>>(operation: (signal: AbortSignal) => P): P {
+      signal.throwIfAborted();
+      return operation(signal);
+    },
+  };
+}
 
 describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: MCP", () => {
   const fixture = useRuntimeFixture("mcp");
@@ -303,5 +318,196 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: MCP", () => {
       servers: expect.arrayContaining([serverId]),
     });
     await expect(fixture.client.mcp.listTools(serverId)).resolves.toMatchObject({ data: [] });
+  }, 30_000);
+
+  it("keeps the current tool visibility when an older acknowledgement arrives", async () => {
+    const server = { origin: { type: "user" as const }, name: "http-e2e-mcp-settings" };
+    await fixture.client.mcp.create({
+      name: server.name,
+      connection: { type: "stdio", command: process.execPath, args: [fixture.mcpFixturePath] },
+      enabled: true,
+      handshakeTimeout: { type: "unbounded" },
+    });
+    await fixture.awaitMCPTools(server, (tools) => tools.some((tool) => tool.name === "ping"));
+
+    const committed = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const client = fixture.createRuntimeClient(async (input, init) => {
+      const response = await fetch(input, init);
+      if (new Headers(init?.headers).get(HTTP_HEADERS.method) === "mcp.tools.setExposure") {
+        committed.resolve();
+        await release.promise;
+      }
+      return response;
+    });
+    const lifetime = new AbortController();
+    const context = settingsContext(client, lifetime.signal);
+    const settings = new MCPSettings({ ...context, runtimeIdentity: client });
+    const visibility = () => settings.getSnapshot().exposure.get(serverKey(server));
+    const hiding = settings.setExposure(context, server, "ping", true);
+    const observed: string[][] = [];
+    const stopObserving = settings.subscribe(() => {
+      const view = visibility();
+      if (view?.phase === "ready") observed.push(view.data);
+    });
+    try {
+      await within(committed.promise, "tool visibility acknowledgement");
+      await expect(fixture.client.mcp.toolExposure(server)).resolves.toMatchObject({
+        disabledTools: ["ping"],
+      });
+      await fixture.client.mcp.setToolExposure({ server, name: "ping", disabled: false });
+      settings.readTools(context, server);
+      await expect.poll(visibility).toEqual({ phase: "ready", data: [] });
+
+      release.resolve();
+      await expect(hiding).resolves.toBe(true);
+      expect(observed).not.toContainEqual(["ping"]);
+    } finally {
+      release.resolve();
+      await hiding;
+      stopObserving();
+      lifetime.abort();
+      await client.close();
+      await fixture.client.mcp.delete(server);
+    }
+  }, 30_000);
+
+  it("pauses an MCP import between writes and reconciles only a dispatched command", async () => {
+    const first = "import-first-accepted";
+    const second = "import-second-retry";
+    const firstAccepted = Promise.withResolvers<void>();
+    const releaseFirst = Promise.withResolvers<void>();
+    const attempts: { name: string; key: string | null }[] = [];
+    let loseSecond = true;
+    const client = fixture.createRuntimeClient(async (input, init) => {
+      const response = await fetch(input, init);
+      const headers = new Headers(init?.headers);
+      if (headers.get(HTTP_HEADERS.method) !== "mcp.servers.create") return response;
+      if (typeof init?.body !== "string") throw new Error("missing MCP create request");
+      const { params } = JSON.parse(init.body) as { params: { name: string } };
+      const { name } = params;
+      attempts.push({ name, key: headers.get(HTTP_HEADERS.idempotencyKey) });
+      if (name === first) {
+        firstAccepted.resolve();
+        await releaseFirst.promise;
+      }
+      if (name === second && loseSecond) {
+        await response.body?.cancel();
+        throw new Error("lost MCP create acknowledgement");
+      }
+      return response;
+    });
+    const lifetime = new AbortController();
+    const firstView = new AbortController();
+    const context = settingsContext(client, firstView.signal);
+    const settings = new MCPSettings({
+      component: context.component,
+      runtimeIdentity: client,
+      signal: lifetime.signal,
+    });
+    const connection = { type: "stdio", command: process.execPath, args: [fixture.mcpFixturePath] };
+    settings.setImportText(
+      context,
+      JSON.stringify({ mcpServers: { [first]: connection, [second]: connection } }),
+    );
+    const importing = settings.importServers(context);
+    try {
+      await within(firstAccepted.promise, "first import acknowledgement");
+      firstView.abort();
+      releaseFirst.resolve();
+      await expect(importing).resolves.toBe(false);
+      expect(settings.getSnapshot().importProgress).toEqual({ completed: 1, total: 2 });
+      expect(settings.getSnapshot().commands.has(IMPORT)).toBe(false);
+      expect(attempts.map(({ name }) => name)).toEqual([first]);
+
+      const reopened = settingsContext(client, lifetime.signal);
+      await expect(settings.importServers(reopened)).resolves.toBe(false);
+      expect(settings.getSnapshot().commands.get(IMPORT)?.phase).toBe("unknown");
+      expect(settings.getSnapshot().importProgress).toEqual({ completed: 1, total: 2 });
+      const original = attempts.find(({ name }) => name === second)?.key;
+      expect(original).toEqual(expect.any(String));
+
+      loseSecond = false;
+      await expect(settings.recover(reopened, IMPORT)).resolves.toBe(true);
+      expect(settings.getSnapshot().importProgress).toEqual({ completed: 2, total: 2 });
+      expect(attempts.filter(({ name }) => name === first)).toHaveLength(1);
+      const resumedKeys = attempts.filter(({ name }) => name === second).map(({ key }) => key);
+      expect(new Set(resumedKeys)).toEqual(new Set([original]));
+      await expect(settings.importServers(reopened)).resolves.toBe(false);
+      const directory = await fixture.client.mcp.list();
+      const imported = directory.data
+        .filter(({ id }) => id.name === first || id.name === second)
+        .map(({ id }) => id.name)
+        .sort();
+      expect(imported).toEqual([first, second]);
+    } finally {
+      releaseFirst.resolve();
+      await importing;
+      lifetime.abort();
+      await client.close();
+      for (const { id } of (await fixture.client.mcp.list()).data)
+        if (id.name === first || id.name === second) await fixture.client.mcp.delete(id);
+    }
+  }, 30_000);
+
+  it("revokes auto-approval without deleting a newer denial", async () => {
+    const server = { origin: { type: "user" as const }, name: "http-e2e-mcp-rule" };
+    await fixture.client.mcp.create({
+      name: server.name,
+      connection: { type: "stdio", command: process.execPath, args: [fixture.mcpFixturePath] },
+      enabled: true,
+      handshakeTimeout: { type: "unbounded" },
+    });
+    await fixture.awaitMCPTools(server, (tools) => tools.some((tool) => tool.name === "ping"));
+    const rule = {
+      tool: { type: "mcp", server, name: "ping" },
+      scope: "global",
+      subject: { type: "all" },
+      decision: "allow",
+    } as const;
+    await fixture.client.approval.setRule(rule);
+    const requested = Promise.withResolvers<void>();
+    const dispatch = Promise.withResolvers<void>();
+    const client = fixture.createRuntimeClient(async (input, init) => {
+      if (new Headers(init?.headers).get(HTTP_HEADERS.method) === "approval.forgetRule") {
+        requested.resolve();
+        await dispatch.promise;
+      }
+      return fetch(input, init);
+    });
+    const lifetime = new AbortController();
+    const context = settingsContext(client, lifetime.signal);
+    const settings = new MCPSettings({ ...context, runtimeIdentity: client });
+    const readAllow = async () => {
+      settings.readRules(context);
+      await expect.poll(() => settings.getSnapshot().rules.phase).toBe("ready");
+      const observed = settings.autoApproveRule(server, "ping");
+      if (!observed) throw new Error("auto-approval rule was not visible");
+      return observed.id;
+    };
+    const readRule = async (id: string) =>
+      (await fixture.client.approval.listRules()).rules.find((rule) => rule.id === id);
+    let revoking: Promise<boolean> | undefined;
+    try {
+      const id = await readAllow();
+      revoking = settings.setAutoApprove(context, server, "ping", false);
+      await within(requested.promise, "auto-approval revocation request");
+      await fixture.client.approval.setRule({ ...rule, decision: "deny" });
+      await expect(readRule(id)).resolves.toMatchObject({ decision: "deny" });
+      dispatch.resolve();
+      await expect(revoking).resolves.toBe(true);
+      await expect(readRule(id)).resolves.toMatchObject({ decision: "deny" });
+
+      await fixture.client.approval.setRule(rule);
+      expect(await readAllow()).toBe(id);
+      await expect(settings.setAutoApprove(context, server, "ping", false)).resolves.toBe(true);
+      await expect(readRule(id)).resolves.toBeUndefined();
+    } finally {
+      dispatch.resolve();
+      await revoking;
+      lifetime.abort();
+      await client.close();
+      await fixture.client.mcp.delete(server);
+    }
   }, 30_000);
 });

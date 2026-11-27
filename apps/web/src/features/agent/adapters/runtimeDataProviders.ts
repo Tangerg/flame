@@ -8,17 +8,14 @@ import {
   type ApprovalRuleSummary,
 } from "@/features/agent/application/approvalPolicyQueries";
 import { AGENT_SESSIONS_KEY } from "@/features/agent/application/session/sessionQueries";
-import { toAgentSessionSummary } from "@/features/agent/adapters/runtimeSessionSummary";
+import { readRuntimeSessionSummaries } from "@/features/agent/adapters/runtimeSessionSummary";
 export function registerAgentDataProviders(
   ctx: Contributor,
   runtimeClient: () => FlameClient,
 ): void {
   ctx.add(DATA_PROVIDER, {
     key: AGENT_SESSIONS_KEY,
-    fetcher: async (_params, signal) =>
-      (await runtimeClient().sessions.list(undefined, signal).autoPagingToArray()).map(
-        toAgentSessionSummary,
-      ),
+    fetcher: (_params, signal) => readRuntimeSessionSummaries(runtimeClient(), signal),
   });
   registerApprovalPolicyDataProviders(ctx, runtimeClient);
 }

@@ -316,8 +316,8 @@ func openPreparedSession(
 	if err != nil {
 		return preparedSession{}, err
 	}
-	if activateSessionStateErr := authoring.ActivateSessionState(opened.Session.ID); activateSessionStateErr != nil {
-		return preparedSession{}, fmt.Errorf("activate session authoring state: %w", activateSessionStateErr)
+	if err := authoring.CheckSessionActivation(opened.Session.ID); err != nil {
+		return preparedSession{}, fmt.Errorf("activate session authoring state: %w", err)
 	}
 	attachments, err := attachment.New(authoringDirectory(cfg.LocalDirectory, opened.Session.Workspace.Path))
 	if err != nil {

@@ -128,6 +128,9 @@ entering a native model or accumulator. Rebuild consumers and regenerate contrac
 together.
 
 Use the Go version in `go.mod`. From this directory run `GOWORK=off go test ./...`.
+Caller-chosen idempotency keys contain 1–255 visible ASCII characters without
+spaces. Preserve the same exact value for dispatch and receipt lookup.
+
 Cross-module regeneration is coordinated from the repository root by
 `make generate`. Publishers own contract identities; the SDK holds generated
 consumer projections and its commands never import publisher implementations.

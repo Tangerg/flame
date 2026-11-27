@@ -94,14 +94,13 @@ Vite owns frontend HMR at the one `VITE_PORT` selected by the Taskfile. Wails
 watches native Go sources and ignores generated Web staging. Teardown closes the
 window generation and its client resources; the native host attaches to its configured local Runtime and reads its credential through local-runtime.
 
-The native save panel owns each export destination. The Web client sends one bounded
-base64 frame for a small file. Larger files use a single transfer issued by the
-native picker. Each append must match the current file offset. Finish publishes only
-after the declared bytes are present, using the same atomic rename as a small export.
+The native save panel owns each export destination. Each save uses the same exclusive
+transfer from destination selection through publication. The Web client sends bounded
+base64 chunks at the current file offset. Finish publishes the staged file by atomic
+rename after all declared bytes are present. An empty file can finish without an append.
 Cancellation, a main-frame navigation, shutdown, and failed transfers discard staged bytes.
-Cleanup errors remain visible. A failed removal retains its original staging-file
-owner and blocks another streamed export until cancellation confirms removal;
-closing the file never reauthorizes writes to that transfer.
+Cleanup errors remain visible. The transfer retains ownership of a staging file after a
+failed removal and blocks another export until the staging file is removed.
 
 `make check-native` stages the same Web product, runs native Go test/build
 and the supported Wails build. A browser bundle alone is not native verification.

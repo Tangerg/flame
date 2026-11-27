@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-11-27.6";
+export const PROTOCOL_VERSION = "2026-11-27.8";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 32;
@@ -29,6 +29,9 @@ export const MAXIMUM_RESOURCE_IDENTITY_CHARACTERS = 256;
 // Public framing and maximum length of one opaque Run event identity.
 export const RUN_EVENT_ID_PREFIX = "evt_";
 export const MAXIMUM_RUN_EVENT_ID_CHARACTERS = 65540;
+
+export const IDEMPOTENCY_KEY_PATTERN = "^[!-~]+$";
+export const MAXIMUM_IDEMPOTENCY_KEY_CHARACTERS = 255;
 
 // Largest integer identity represented exactly by every supported JSON consumer.
 export const MAXIMUM_EXACT_JSON_INTEGER = 9007199254740991;
@@ -638,6 +641,7 @@ export interface FileListPage {
 export type FileStatus = "added" | "modified" | "deleted" | "renamed" | "untracked";
 
 export interface ForgetApprovalRuleRequest {
+  expectedDecision?: ApprovalRuleDecision;
   id: string;
 }
 

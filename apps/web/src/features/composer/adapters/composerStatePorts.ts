@@ -5,8 +5,12 @@ import {
   type RuntimeStream,
   type RuntimeServerScope,
 } from "@/features/connection/public/services";
-import { type ComposerEditor, type ComposerStatePort } from "@/features/composer/application/state";
-import { createComposerStore } from "@/features/composer/adapters/composerStore";
+import {
+  type ComposerEditor,
+  type ComposerStatePort,
+  type RequestDraftReplacementConfirmation,
+} from "@/features/composer/application/state";
+import { createComposerStore, type DraftCapture } from "@/features/composer/adapters/composerStore";
 export function createComposer(
   sessions: AgentSessions,
   endpoint: () => string,
@@ -56,14 +60,16 @@ export function createComposer(
   };
   // Draft transitions run once in the domain; a mounted editor then shows their result.
   const presentDraft = () => editor?.restore(useComposerStore.getState().composer.draft.content);
-  const withDraftReplacement: ComposerStatePort["beginDraftReplacement"] = (
-    requestConfirmation,
-    begin,
-  ) => {
+  const withDraftConfirmation = (
+    requestConfirmation: RequestDraftReplacementConfirmation,
+    begin: (capture: DraftCapture) => boolean,
+    sessionId?: string,
+  ): void => {
     const state = useComposerStore.getState();
     const { draft } = state.composer;
-    const { current, replace } = state.captureDraftReplacement();
-    const apply = () => current() && begin(replace);
+    const capture = state.captureDraft(sessionId);
+    if (!capture.current()) return;
+    const apply = () => capture.current() && begin(capture);
     if (
       draft.imageAttachments.length > 0 ||
       draft.pastes.length > 0 ||
@@ -157,33 +163,47 @@ export function createComposer(
         },
       };
     },
+    captureDraftRecovery: (sessionId) => {
+      const { recover } = useComposerStore.getState().captureDraft(sessionId);
+      return (input) => {
+        const outcome = recover(input, "preserveCurrent");
+        if (outcome === "active") presentDraft();
+        return outcome !== "retired";
+      };
+    },
     replaceDraft: (input, requestConfirmation) =>
-      withDraftReplacement(requestConfirmation, (replace) => {
+      withDraftConfirmation(requestConfirmation, ({ replace }) => {
         if (!replace(input)) return false;
         presentDraft();
         presentFocus(() => focus());
         return true;
       }),
-    beginDraftReplacement: (requestConfirmation, begin) =>
-      withDraftReplacement(requestConfirmation, (replace) => {
-        const target = focusTarget;
-        const started = begin((input) => {
-          if (!replace(input)) return false;
-          presentDraft();
-          // A fast rollback can settle before the original presentation request.
-          const element = target?.element;
-          if (
-            element &&
-            focusTarget === target &&
-            element.ownerDocument.activeElement === element
-          ) {
-            editor?.focus();
-          }
-          return true;
-        });
-        if (started) presentFocus(() => focus());
-        return started;
-      }),
+    beginDraftRecovery: (sessionId, requestConfirmation, begin) =>
+      withDraftConfirmation(
+        requestConfirmation,
+        ({ recover }) => {
+          const target = focusTarget;
+          const started = begin((input) => {
+            const outcome = recover(input, "replaceCaptured");
+            if (outcome === "retired") return false;
+            if (outcome === "stored") return true;
+            presentDraft();
+            // A fast rollback can settle before the original presentation request.
+            const element = target?.element;
+            if (
+              element &&
+              focusTarget === target &&
+              element.ownerDocument.activeElement === element
+            ) {
+              editor?.focus();
+            }
+            return true;
+          });
+          if (started) presentFocus(() => focus());
+          return started;
+        },
+        sessionId,
+      ),
     captureAddReference: () => {
       const source = inputScope;
       return (reference) => {

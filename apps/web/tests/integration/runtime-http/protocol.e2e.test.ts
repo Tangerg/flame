@@ -3,6 +3,8 @@ import {
   createFlameClient,
   type FlameClient,
   JSONRPC_VERSION,
+  MutationJournalCleanupError,
+  MutationJournalOwnershipError,
   RpcError,
   RpcProtocolError,
   RpcTransportError,
@@ -11,9 +13,12 @@ import {
   asSessionId,
   createSidecarClient,
   createHttpTransport,
+  mutationSettlementIsUnknown,
 } from "@flame/runtime-client";
 import {
   HTTP_HEADERS,
+  MAXIMUM_IDEMPOTENCY_KEY_CHARACTERS,
+  NOTIFICATIONS_RUNTIME_EVENT,
   PROTOCOL_VERSION,
   RPC_HTTP,
   type RequestMeta,
@@ -275,6 +280,73 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
     await events.return?.();
   }, 30_000);
 
+  it("refuses invalid topics before opening or joining a shared subscription", async () => {
+    let openings = 0;
+    const client = fixture.createRuntimeClient((input, init) => {
+      openings++;
+      return fetch(input, init);
+    });
+    const topic = "sessions.changed";
+    try {
+      await expect(client.runtimeEvents.subscribe({ topics: [] })).rejects.toBeInstanceOf(
+        RpcProtocolError,
+      );
+      expect(openings).toBe(0);
+
+      const subscription = await client.runtimeEvents.subscribe({ topics: [topic] });
+      const events = subscription.events[Symbol.asyncIterator]();
+      await expect(client.runtimeEvents.subscribe({ topics: [topic, topic] })).rejects.toBeInstanceOf(
+        RpcProtocolError,
+      );
+      expect(openings).toBe(1);
+      await events.return?.();
+    } finally {
+      await client.close();
+    }
+  });
+
+  it("ends a shared observation when an original Runtime event goes missing", async () => {
+    const upstream = createHttpTransport({ baseUrl: fixture.baseUrl });
+    const dropped = Promise.withResolvers<void>();
+    let discarded = false;
+    const client = createFlameClient(
+      {
+        ...upstream,
+        async *recv() {
+          for await (const event of upstream.recv()) {
+            if (
+              !discarded &&
+              event.type === "message" &&
+              "method" in event.message &&
+              event.message.method === NOTIFICATIONS_RUNTIME_EVENT
+            ) {
+              discarded = true;
+              event.consumed?.(Promise.resolve());
+              dropped.resolve();
+              continue;
+            }
+            yield event;
+          }
+        },
+      },
+      { capabilities: () => fixture.negotiated },
+    );
+    const createdIds: string[] = [];
+    try {
+      const subscription = await client.runtimeEvents.subscribe({ topics: ["sessions.changed"] });
+      const events = subscription.events[Symbol.asyncIterator]();
+      createdIds.push((await fixture.client.sessions.create({ title: "Dropped invalidation" })).id);
+      await within(dropped.promise, "the dropped Runtime frame");
+      createdIds.push((await fixture.client.sessions.create({ title: "Following invalidation" })).id);
+      await expect(within(events.next(), "the sequence gap")).rejects.toBeInstanceOf(
+        RpcProtocolError,
+      );
+    } finally {
+      await client.close();
+      for (const id of createdIds) await fixture.client.sessions.delete(asSessionId(id));
+    }
+  });
+
   it("cancels a subscriber while another owns the shared opening", async () => {
     const arrived = Promise.withResolvers<void>();
     const release = Promise.withResolvers<void>();
@@ -433,6 +505,80 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
     }
   });
 
+  it("refuses empty idempotency metadata and admits omitted metadata", async () => {
+    const title = `Idempotency header presence ${crypto.randomUUID()}`;
+    const sessionsWithTitle = async () =>
+      (await fixture.client.sessions.list().autoPagingToArray()).filter(
+        (session) => session.title === title,
+      );
+
+    try {
+      const malformed: Record<string, string>[] = [
+        { [HTTP_HEADERS.idempotencyKey]: "" },
+        {
+          [HTTP_HEADERS.idempotencyKey]: crypto.randomUUID(),
+          [HTTP_HEADERS.idempotencyNamespace]: "",
+        },
+      ];
+      for (const headers of malformed) {
+        const empty = await fixture.postRPC("sessions.create", { title }, headers);
+        await expect(sessionsWithTitle()).resolves.toEqual([]);
+        expect(empty.status).toBe(400);
+        expect(empty.headers.get(HTTP_HEADERS.contentType)).toContain(RPC_HTTP.problemMediaType);
+        await expect(empty.json()).resolves.toMatchObject({
+          type: "urn:flame:transport:invalid_request",
+        });
+      }
+
+      const omitted = await fixture.postRPC("sessions.create", { title });
+      expect(omitted.status).toBe(RPC_HTTP.callStatus);
+      const persisted = await sessionsWithTitle();
+      expect(persisted).toHaveLength(1);
+      await expect(omitted.json()).resolves.toMatchObject({
+        result: { id: persisted[0]?.id, title },
+      });
+    } finally {
+      for (const session of await sessionsWithTitle())
+        await fixture.client.sessions.delete(asSessionId(session.id));
+    }
+  });
+
+  it("admits the same idempotency key through dispatch and receipt lookup", async () => {
+    const namespace = fixture.negotiated?.limits.idempotency.namespace;
+    if (!namespace) throw new Error("expected the Runtime's idempotency namespace");
+    const lookup = (key: string) =>
+      fixture.postRPC("runs.getAcceptance", { namespace, key, operation: "start" });
+    const cancel = (key: string) =>
+      fixture.postRPC(
+        "runs.cancel",
+        { runId: asRunId(crypto.randomUUID()) },
+        { [HTTP_HEADERS.idempotencyKey]: key },
+      );
+
+    const multibyteKey = "é".repeat(128);
+    const dispatched = await cancel(multibyteKey);
+    expect(dispatched.status).toBe(RPC_HTTP.callStatus);
+    await expect(dispatched.json()).resolves.toMatchObject({
+      error: { data: { problem: { type: "invalid_params" } } },
+    });
+
+    const refused = await lookup(multibyteKey);
+    expect(refused.status).toBe(RPC_HTTP.callStatus);
+    await expect(refused.json()).resolves.toMatchObject({
+      error: { data: { problem: { type: "invalid_params", errors: [{ field: "key" }] } } },
+    });
+    const portableKey = "k".repeat(MAXIMUM_IDEMPOTENCY_KEY_CHARACTERS - 1) + "/";
+    await expect((await lookup(portableKey)).json()).resolves.toMatchObject({
+      result: { type: "notRecorded" },
+    });
+    await expect((await cancel(portableKey)).json()).resolves.toMatchObject({
+      error: { data: { problem: { type: "run_not_found" } } },
+    });
+    await expect((await lookup(portableKey)).json()).resolves.toMatchObject({
+      error: { data: { problem: { type: "idempotency_conflict" } } },
+    });
+  });
+
   it.each([
     {
       label: "component values",
@@ -560,7 +706,139 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
     }
   }, 30_000);
 
-  it("keeps a confirmed mutation settled when its delivery path becomes unavailable", async () => {
+  it("starts a fresh identical command and recovers the original by its retained identity", async () => {
+    const method = "sessions.create";
+    const title = "Separate same-input Session commands";
+    const params = { workspace: { path: fixture.root }, title };
+    const mutationStorage = new MemoryMutationStorage();
+    let clientName = "original-configuration-client";
+    const options = {
+      capabilities: () => fixture.negotiated,
+      mutationStorage,
+      requestMeta: (): RequestMeta => ({
+        protocolVersion: PROTOCOL_VERSION,
+        clientInfo: { name: clientName, version: "1" },
+      }),
+    };
+    const lost = faultUnaryResponse(method, "afterCommit");
+    const original = createFlameClient(
+      createHttpTransport({
+        baseUrl: fixture.baseUrl,
+        fetch: (url, init) => {
+          if (lost.attempts() > 0) throw new Error("disconnected before original command recovery");
+          return lost.fetch(url, init);
+        },
+      }),
+      options,
+    );
+    let deliveries = 0;
+    const cold = createFlameClient(
+      createHttpTransport({
+        baseUrl: fixture.baseUrl,
+        fetch: (url, init) => {
+          if (new Headers(init?.headers).get(HTTP_HEADERS.method) === method) deliveries++;
+          return globalThis.fetch(url, init);
+        },
+      }),
+      options,
+    );
+    try {
+      const committed = original.sessions.create(params);
+      await expect(committed).rejects.toSatisfy(mutationSettlementIsUnknown);
+      await original.close();
+      const [accepted] = (await fixture.client.sessions.list().autoPagingToArray()).filter(
+        (session) => session.title === title,
+      );
+      if (!accepted) throw new Error("the original Session was not committed");
+
+      const fresh = cold.sessions.create(params);
+      await expect(fresh).resolves.not.toMatchObject({ id: accepted.id });
+      expect(fresh.idempotencyKey).not.toBe(committed.idempotencyKey);
+      const [pending] = cold.runtime.pendingCommands();
+      expect(pending).toMatchObject({ method, idempotencyKey: committed.idempotencyKey });
+      if (!pending || pending.method !== method) throw new Error("expected the retained command");
+
+      clientName = "replacement-configuration-client";
+      await expect(
+        cold.runtime.retryCommand(method, pending, { ...params, title: "changed" }),
+      ).rejects.toBeInstanceOf(MutationJournalOwnershipError);
+      expect(deliveries).toBe(1);
+      await expect(cold.runtime.retryCommand(method, pending, params)).resolves.toEqual(accepted);
+      expect(cold.runtime.pendingCommands()).toEqual([]);
+      await expect(cold.runtime.retryCommand(method, pending, params)).rejects.toBeInstanceOf(
+        MutationJournalOwnershipError,
+      );
+      expect(deliveries).toBe(2);
+    } finally {
+      await Promise.all([original.close(), cold.close()]);
+      for (const session of await fixture.client.sessions.list().autoPagingToArray()) {
+        if (session.title === title) await fixture.client.sessions.delete(asSessionId(session.id));
+      }
+    }
+  }, 30_000);
+
+  it("retries journal cleanup without dispatching a confirmed command again", async () => {
+    const title = "Confirmed Session with retained local journal entry";
+    const mutationStorage = new MemoryMutationStorage();
+    const unavailable = new Error("injected refusal to remove the local journal entry");
+    const removal = vi.spyOn(mutationStorage, "remove").mockImplementation(() => {
+      throw unavailable;
+    });
+    const diagnostics: MutationJournalCleanupError[] = [];
+    let deliveries = 0;
+    const client = createFlameClient(
+      createHttpTransport({
+        baseUrl: fixture.baseUrl,
+        fetch: (url, init) => {
+          if (new Headers(init?.headers).get(HTTP_HEADERS.method) === "sessions.create") deliveries++;
+          return globalThis.fetch(url, init);
+        },
+      }),
+      {
+        capabilities: () => fixture.negotiated,
+        mutationStorage,
+        onMutationJournalCleanupFailure: (failure: MutationJournalCleanupError) => {
+          diagnostics.push(failure);
+        },
+      },
+    );
+    try {
+      const mutation = client.sessions.create({ title });
+      const result = await mutation;
+      expect(diagnostics).toHaveLength(1);
+      const [failure] = diagnostics;
+      if (!failure) throw new Error("missing journal cleanup diagnostic");
+      expect(failure.cause).toHaveProperty("cause", unavailable);
+      expect(deliveries).toBe(1);
+      expect(mutationStorage.size).toBe(1);
+      expect(client.runtime.pendingCommands()).toEqual([]);
+      const [accepted] = (await fixture.client.sessions.list().autoPagingToArray()).filter(
+        (session) => session.title === title,
+      );
+      if (!accepted) throw new Error("the Session was not committed");
+      expect(result).toEqual(accepted);
+      expect(failure.confirmation).toEqual({ type: "accepted", result: accepted });
+
+      await expect(mutation.retry()).resolves.toEqual(accepted);
+      expect(diagnostics).toHaveLength(2);
+      expect(deliveries).toBe(1);
+      expect(() => failure.retryCleanup()).toThrow(MutationJournalCleanupError);
+
+      removal.mockRestore();
+      await expect(mutation.retry()).resolves.toEqual(accepted);
+      failure.retryCleanup();
+      expect(deliveries).toBe(1);
+      expect(mutationStorage.size).toBe(0);
+    } finally {
+      removal.mockRestore();
+      await client.close();
+      for (const session of await fixture.client.sessions.list().autoPagingToArray()) {
+        if (session.title === title) await fixture.client.sessions.delete(asSessionId(session.id));
+      }
+    }
+  }, 30_000);
+
+  it("withdraws an unsent mutation and keeps its confirmed retry settled", async () => {
     const mutationStorage = new MemoryMutationStorage();
     let dispatched = 0;
     let available = true;
@@ -579,8 +857,19 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
     );
     let sessionId: ReturnType<typeof asSessionId> | undefined;
     try {
-      const command = client.sessions.create({ title: "Confirmed before disconnect" });
-      const created = await command;
+      const controller = new AbortController();
+      const command = client.sessions.create(
+        { title: "Confirmed before disconnect" },
+        controller.signal,
+      );
+      controller.abort();
+      await expect(command).rejects.toMatchObject({ name: "RpcCancellationError" });
+      expect(mutationStorage.size).toBe(0);
+      expect(dispatched).toBe(0);
+
+      const resumed = command.retry({});
+      expect(resumed.idempotencyKey).toBe(command.idempotencyKey);
+      const created = await resumed;
       sessionId = asSessionId(created.id);
       expect(mutationStorage.size).toBe(0);
 
@@ -666,7 +955,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
     }
   }, 30_000);
 
-  it("requires the durable command to recover a cold opening and its snapshot tail", async () => {
+  it("recovers a cold opening without turning the same input into a retry", async () => {
     if (!fixture.negotiated) throw new Error("runtime client was not initialized");
     const session = await fixture.client.sessions.create({
       workspace: { path: fixture.root },
@@ -742,7 +1031,8 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
       const commands = await cold.runs.recoverCommands();
       expect(commands).toHaveLength(1);
       const [recorded] = commands;
-      if (recorded?.operation !== "start") throw new Error("expected the original Run opening");
+      if (recorded?.operation !== "start" || recorded.observation.type !== "recorded")
+        throw new Error("expected the original Run opening receipt");
       expect(recorded).toMatchObject({
         idempotencyKey: pending.idempotencyKey,
         observation: {
@@ -751,12 +1041,10 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
         },
       });
       expect(mutationStorage.snapshot()).toEqual(evidence);
-      const recovered = cold.runs.start(params);
+      const recovered = recorded.retry();
       expect(recovered.idempotencyKey).toBe(pending.idempotencyKey);
-      expect(mutationStorage.snapshot()).toEqual(evidence);
       const opening = await recovered;
       expect(opening.observation).toEqual({ type: "snapshot", sessionId: session.id });
-      expect(mutationStorage.size).toBe(0);
       expect(fault.attempts()).toBe(1);
       const receipt = await cold.runs.getAcceptance({
         namespace: fixture.negotiated.limits.idempotency.namespace,
@@ -786,6 +1074,18 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
       ).toHaveLength(1);
       expect(damagedRecovery).toMatchObject({ error: { name: "MutationJournalStorageError" } });
       expect(damagedRecord).toMatchObject({ command: null });
+
+      const fresh = cold.runs.start(params);
+      const second = await fresh;
+      expect(fresh.idempotencyKey).not.toBe(pending.idempotencyKey);
+      expect(second.result.runId).not.toBe(opening.result.runId);
+      if (second.observation.type !== "stream") throw new Error("expected the new Run stream");
+      expect((await collectRunEvents(second.observation.events)).at(-1)?.event).toMatchObject({
+        type: "segment.finished",
+        run: { id: second.result.runId, status: "finished" },
+      });
+      expect(mutationStorage.snapshot()).toEqual(evidence);
+      recorded.observation.acknowledge();
 
       coldLookupAvailable = false;
       const observedLookups = coldLookups;

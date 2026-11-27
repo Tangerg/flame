@@ -1,5 +1,15 @@
-import { type Session } from "@flame/runtime-client";
+import { type FlameClient, type Session } from "@flame/runtime-client";
 import { type AgentSessionSummary } from "@/features/agent/application/session/sessionQueries";
+
+export async function readRuntimeSessionSummaries(
+  client: FlameClient,
+  signal?: AbortSignal,
+): Promise<AgentSessionSummary[]> {
+  return (await client.sessions.list(undefined, signal).autoPagingToArray()).map(
+    toAgentSessionSummary,
+  );
+}
+
 export function toAgentSessionSummary(session: Session): AgentSessionSummary {
   return {
     id: session.id,

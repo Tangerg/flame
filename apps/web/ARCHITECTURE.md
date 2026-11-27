@@ -457,7 +457,8 @@ inconclusive reads, expiry and store replacement preserve it.
 
 `runs.recoverCommands()` enumerates those original Run commands and reads their
 receipts without dispatch. Its explicit retry uses the captured original request,
-key, namespace and deadline. Session mounting renders unresolved opening submissions
+key, namespace and deadline. A new submission has its own key, even when its
+input matches an earlier command. Session mounting renders unresolved opening submissions
 with those original choices and blocks a fresh Start or Resume until the original
 outcome is resolved. After a committed opening, Agent refreshes coherent Session
 material and uses the existing subscription owner for its current Segment. Acceptance

@@ -57,9 +57,10 @@ export function JsonImport({
   const errorRef = useRef<HTMLDivElement>(null);
   const errorId = useId();
   const command = state.commands.get(IMPORT);
-  const busy = settings.busy(IMPORT);
-  const feedback = state.feedback.get(IMPORT);
-  const completed = feedback?.kind === "imported";
+  const busy = command !== undefined;
+  const progress = state.importProgress;
+  const completed =
+    progress !== undefined && progress.completed === progress.total;
   useLayoutEffect(() => {
     if (error) errorRef.current?.scrollIntoView({ block: "nearest" });
   }, [error]);
@@ -138,11 +139,11 @@ export function JsonImport({
           aria-describedby={error?.invalid ? errorId : undefined}
           placeholder={EXAMPLE}
         />
-        {state.importProgress && !completed && (
+        {progress && !completed && (
           <RecordBody>
             {t("mcp.import.partial", {
-              count: state.importProgress.completed,
-              total: state.importProgress.total,
+              count: progress.completed,
+              total: progress.total,
             })}
           </RecordBody>
         )}
@@ -162,6 +163,13 @@ export function JsonImport({
           resource={IMPORT}
           t={t}
         />
+        {completed && (
+          <div role="status">
+            <RecordBody>
+              {t("mcp.import.ok", { count: progress.total })}
+            </RecordBody>
+          </div>
+        )}
       </ModalDialog>
     </>
   );

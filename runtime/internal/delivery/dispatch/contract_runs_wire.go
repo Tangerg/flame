@@ -398,7 +398,7 @@ func registerRunValues(s *Shapes) {
 			Constraints: []FieldConstraint{
 				{Field: "namespace", Kind: ConstraintNonEmpty},
 				{Field: "namespace", Kind: ConstraintPattern, Value: operation.ReplayNamespacePattern()},
-				{Field: "key", Kind: ConstraintNonEmpty},
+				{Field: "key", Kind: ConstraintPattern, Value: protocol.IdempotencyKeyPattern},
 				{Field: "key", Kind: ConstraintMaxLength, Limit: protocol.MaximumIdempotencyKeyCharacters},
 			},
 		})

@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-11-27.6",
+  "protocolVersion": "2026-11-27.8",
   "features": [
     "reasoning",
     "multimodal",
@@ -8575,7 +8575,7 @@
         },
         {
           "field": "key",
-          "constraint": "nonEmpty"
+          "constraint": "pattern(\"^[!-~]+$\")"
         },
         {
           "field": "key",
@@ -8596,7 +8596,7 @@
         },
         {
           "field": "key",
-          "constraint": "nonEmpty"
+          "constraint": "pattern(\"^[!-~]+$\")"
         },
         {
           "field": "key",

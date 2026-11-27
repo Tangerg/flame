@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"iter"
 	"reflect"
-	"unicode/utf8"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 
@@ -15,8 +14,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/samber/lo"
 )
-
-const maxIdempotencyKeyBytes = 255
 
 type Endpoint struct {
 	target               any
@@ -256,13 +253,15 @@ func allowsEvent(ctx context.Context, event any) bool {
 
 func validateCallerIdentity(options protocol.CallMetadata) *protocol.Failure {
 	key := options.IdempotencyKey
+	if key != "" {
+		if err := protocol.ValidateIdempotencyKey(key); err != nil {
+			return protocol.InvalidParameters(err)
+		}
+		if runs.ReservedCommandKey(key) {
+			return protocol.NewFailure(protocol.ErrInvalidParams, "idempotency key belongs to a Runtime workflow")
+		}
+	}
 	switch {
-	case runs.ReservedCommandKey(key):
-		return protocol.NewFailure(protocol.ErrInvalidParams, "idempotency key belongs to a Runtime workflow")
-	case !utf8.ValidString(key):
-		return protocol.NewFailure(protocol.ErrInvalidParams, "idempotency key must be valid UTF-8")
-	case len(key) > maxIdempotencyKeyBytes:
-		return protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("idempotency key must not exceed %d bytes", maxIdempotencyKeyBytes))
 	case options.IdempotencyNamespace == "":
 		return nil
 	case key == "":

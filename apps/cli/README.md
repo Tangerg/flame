@@ -36,7 +36,9 @@ The client does not parse raw patches into a second diff model.
 The terminal captures the latest root Run and workspace in the rollback
 confirmation. The Workbench retains the exact keyed command across a lost
 reply. The original Runtime receipt supplies the dropped input for draft
-recovery, including when the Session already contains later work.
+recovery, including when the Session already contains later work. The Workbench
+adds the recovered opening before distinct draft text and consumes the receipt
+in the same local transaction.
 
 ## Configuration
 
@@ -117,6 +119,11 @@ Neither action shuts down the shared Runtime. Drafts, outboxes, deletion journal
 and history are stored separately for each configured endpoint beneath
 `$FLAME_HOME/cli/targets/`; embedded state retains `$FLAME_HOME/cli`. One writable Workbench owns each physical
 partition from loading through Close; a second terminal targeting it is refused.
+Each partition uses a private SQLite `authoring.db`. Draft transfers, stashing,
+prompt settlement and session retirement publish their local changes in single
+transactions. Pending Runtime commands retain their original keys across reconnects.
+This development cutover starts a fresh authoring database in each partition and
+leaves existing JSON records on disk for prior builds.
 Runtime's durable idempotency namespace still guards command replay independently
 of that local endpoint partition. Equivalent endpoint spellings share their authoring partition. Distinct reverse-proxy prefixes have separate partitions.
 

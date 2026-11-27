@@ -38,6 +38,7 @@ import type {
   MCPToolExposure,
   SetMCPToolExposureRequest,
   SetApprovalRuleRequest,
+  ForgetApprovalRuleRequest,
 } from "./generated/wire.generated";
 import type { RpcCallOptions } from "./client";
 import { type MutationPromise } from "./mutation";
@@ -136,6 +137,7 @@ import { createRuntimeEventFeed } from "./runtimeEventFeed";
 import type { AutoPagingPromise } from "./pagination";
 import { RUNTIME_SUBSCRIBE_METHOD } from "./transport";
 import type { PluginCommandInput, PluginCommandBinding } from "./mutationJournal";
+import type { PendingRuntimeCommand } from "./mutationJournalEntry";
 
 import { callOrDispose, type StreamingResult } from "./stream";
 import {
@@ -178,6 +180,8 @@ interface WorkspaceMethods {
 export interface Methods {
   runtime: {
     discover: (signal?: AbortSignal) => Promise<DiscoverResponse>;
+    pendingCommands: () => readonly PendingRuntimeCommand[];
+    retryCommand: WireCallPath["retryCommand"];
   };
   sessions: {
     list: (query?: ListSessionsRequest, signal?: AbortSignal) => AutoPagingPromise<Page<Session>>;
@@ -421,7 +425,7 @@ export interface Methods {
     setMode: (mode: ApprovalMode) => MutationPromise<ApprovalModeResult>;
     listRules: (sessionId?: SessionId, signal?: AbortSignal) => Promise<ListApprovalRulesResult>;
     setRule: (params: SetApprovalRuleRequest) => MutationPromise<void>;
-    forgetRule: (id: string) => MutationPromise<void>;
+    forgetRule: (params: ForgetApprovalRuleRequest) => MutationPromise<void>;
   };
 }
 
@@ -477,6 +481,8 @@ export function createMethods(
   return {
     runtime: {
       discover: (signal) => call("runtime.discover", {}, { signal }),
+      pendingCommands: () => mutationJournal.pendingRuntimeCommands(),
+      retryCommand: wire.retryCommand,
     },
     sessions: {
       list: (query, signal) => call("sessions.list", query ?? {}, { signal }),
@@ -656,7 +662,7 @@ export function createMethods(
       setMode: (mode) => call("approval.setMode", { mode }),
       listRules: (sessionId, signal) => call("approval.listRules", { sessionId }, { signal }),
       setRule: (params) => call("approval.setRule", params),
-      forgetRule: (id) => call("approval.forgetRule", { id }),
+      forgetRule: (params) => call("approval.forgetRule", params),
     },
   };
 }

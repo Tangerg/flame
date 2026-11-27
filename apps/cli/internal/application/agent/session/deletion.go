@@ -38,9 +38,6 @@ func Delete(
 		return DeletionResult{}, err
 	}
 	pending, exists := authoring.PendingSessionDeletion(sessionID)
-	if exists && pending.Phase == workbench.CommandConfirmed {
-		return DeletionResult{Request: pending.Request(), Outcome: mutation.Confirmed}, nil
-	}
 	request := pending.Request()
 	if exists && !policy.Replayable(pending.Replay) {
 		outcome, err := resolveExpired(ctx, runtime, pending.SessionID, pending.Replay, policy)
@@ -109,11 +106,7 @@ func settleDeletion(
 }
 
 func ConfirmDeletion(authoring *workbench.Store, result DeletionResult) error {
-	pending, exists := authoring.PendingSessionDeletion(result.Request.SessionID)
-	if exists && pending.Phase == workbench.CommandPrepared {
-		return authoring.ConfirmSessionDeletion(result.Request.SessionID, result.Request.CommandID)
-	}
-	return authoring.RetireSessionState(result.Request.SessionID)
+	return authoring.ConfirmSessionDeletion(result.Request.SessionID, result.Request.CommandID)
 }
 
 func RejectDeletion(authoring *workbench.Store, result DeletionResult) error {
@@ -128,12 +121,6 @@ func RecoverDeletions(
 	backoff retry.Backoff,
 ) error {
 	for _, pending := range authoring.PendingSessionDeletions() {
-		if pending.Phase == workbench.CommandConfirmed {
-			if err := authoring.RetireSessionState(pending.SessionID); err != nil {
-				return err
-			}
-			continue
-		}
 		result := DeletionResult{Request: pending.Request()}
 		if !policy.Replayable(pending.Replay) {
 			outcome, err := resolveExpired(ctx, runtime, pending.SessionID, pending.Replay, policy)

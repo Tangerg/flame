@@ -246,11 +246,11 @@ func (r *RuntimePolicy) visibleRules(ctx context.Context, sessionID identity.Ses
 	return rules, nil
 }
 
-func (r *RuntimePolicy) ForgetRule(ctx context.Context, id string, complete operation.Reply[struct{}]) error {
+func (r *RuntimePolicy) ForgetRule(ctx context.Context, id string, expected *approval.Decision, complete operation.Reply[struct{}]) error {
 	if id == "" {
 		return fmt.Errorf("%w: id is required", approval.ErrInvalidRule)
 	}
 	return r.commitPolicyChange(ctx, complete, func(tx context.Context) error {
-		return r.store.Delete(tx, id)
+		return r.store.Delete(tx, id, expected)
 	})
 }

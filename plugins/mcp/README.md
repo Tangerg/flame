@@ -13,10 +13,11 @@ without one, the editor presents the latest server list observation. An accepted
 save clears its submitted draft and refreshes the list.
 Source retirement clears secrets and fences new work. Writes
 to one exact server identity are blocked while an earlier command is unconfirmed.
-Reconciliation observes its original promise and key. Sequential imports retain
-the accepted prefix and original in-flight command; they never restart that
-prefix after an unknown result. Accepted writes refresh read projections without
-making a failed read appear to undo a successful command.
+Reconciliation observes its original promise and key. A sequential import's
+cursor supplies progress and points to the next write. Closing the view between
+writes leaves the remaining import ready to submit. Reconciliation is available
+once the current write has an uncertain outcome. Accepted writes refresh read
+projections without making a failed read appear to undo a successful command.
 
 Escape inside Add or Edit follows the inline Cancel action, retains the source
 draft, and returns focus to the corresponding opener. A nested confirmation

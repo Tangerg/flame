@@ -16,7 +16,7 @@ import (
 )
 
 type toolCatalog interface {
-	MCPTools(server *mcpserver.ID) ([]mcpserver.AdvertisedTool, map[tool.Ref][]tool.Ref, error)
+	MCPTools(ctx context.Context, server *mcpserver.ID) ([]mcpserver.AdvertisedTool, map[tool.Ref][]tool.Ref, error)
 }
 
 type Attempt interface {
@@ -80,7 +80,6 @@ type Coordinator struct {
 	exposureStore exposureStore
 	toolCatalog   toolCatalog
 	connections   Connections
-	exposure      *ExposureState
 	mutationMu    sync.Mutex
 	statusQueue   *statusQueue
 	external      ExternalWorkflow
@@ -96,7 +95,6 @@ type Config struct {
 	ExposureStore exposureStore
 	ToolCatalog   toolCatalog
 	Connections   Connections
-	Exposure      *ExposureState
 	Invalidations invalidation.Publish
 }
 
@@ -114,9 +112,6 @@ func New(cfg Config) (*Coordinator, error) {
 			return nil, fmt.Errorf("mcp: %s is required", required.name)
 		}
 	}
-	if cfg.Exposure == nil || cfg.Exposure.snapshot.Load() == nil {
-		return nil, errors.New("mcp: initialized exposure is required")
-	}
 	coordinator := &Coordinator{
 		external:      cfg.External,
 		registry:      cfg.Registry,
@@ -124,7 +119,6 @@ func New(cfg Config) (*Coordinator, error) {
 		exposureStore: cfg.ExposureStore,
 		toolCatalog:   cfg.ToolCatalog,
 		connections:   cfg.Connections,
-		exposure:      cfg.Exposure,
 		invalidations: cfg.Invalidations,
 	}
 	coordinator.statusQueue = newStatusQueue(func(name mcpserver.ID) {

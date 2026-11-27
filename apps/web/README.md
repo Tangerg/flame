@@ -28,8 +28,16 @@ animated formats export a still frame. Browser reports download dispatch, while
 Desktop reports a completed write or cancellation. The download action names PNG
 explicitly. [SVG image contexts](https://developer.mozilla.org/en-US/docs/Web/SVG/Guides/SVG_as_an_image)
 disable scripts and external resource loading.
-Streamed native save failures preserve both transfer and cleanup diagnostics in
+Native save failures preserve both transfer and cleanup diagnostics in
 the visible error; an unconfirmed cleanup is never reported as cancellation.
+
+Edit and rerun takes the original input from the committed rollback receipt.
+The composer recovers it into the captured Session and preserves text and
+attachments authored while the rollback was pending. Session reads update the
+conversation independently after the command settles.
+When regeneration cannot start a new Run, the composer keeps its input beside
+the Session's existing draft. An unresolved Run opening retains its original
+command identity.
 
 From the repository root:
 

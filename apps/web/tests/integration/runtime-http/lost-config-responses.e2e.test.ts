@@ -7,6 +7,7 @@ import {
 } from "./memoryOperations";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
+import { stringifyJSON } from "@frame/sdk/json";
 import { describe, expect, it } from "vitest";
 import {
   createFlameClient,
@@ -14,7 +15,13 @@ import {
   createHttpTransport,
   mutationSettlementIsUnknown,
 } from "@flame/runtime-client";
-import { HTTP_HEADERS, PROTOCOL_VERSION, type RequestMeta } from "@flame/runtime-client/wire";
+import {
+  HTTP_HEADERS,
+  PROTOCOL_VERSION,
+  type CallPluginRequest,
+  type RequestMeta,
+} from "@flame/runtime-client/wire";
+import { CAPABILITY_JSON } from "../../../../../plugins/memory/package/io.github.tangerg.flame/contracts/methods.generated";
 import { nextRuntimeEvent, nextUserMCPChange } from "./observation";
 import { managedSkillName, useRuntimeFixture } from "./fixture";
 import { MemoryMutationStorage } from "./mutationStorage";
@@ -267,6 +274,71 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: configuration commits after lo
       await events.return?.();
     }
   }, 30_000);
+
+  it("preserves caller-chosen keys for commands with identical input", async () => {
+    const namespace = fixture.negotiated?.limits.idempotency.namespace;
+    if (!namespace) throw new Error("expected the Runtime's idempotency namespace");
+    const installation = await fixture.activateManagedOwner("memory");
+    const cwd = join(fixture.root, "explicit-command-keys");
+    await mkdir(cwd);
+    const request: CallPluginRequest = {
+      route: {
+        installationId: installation.id,
+        digest: installation.selected.digest,
+        contribution: "memory-provider",
+        target: { scope: "installation", reference: installation.id },
+        contract: CAPABILITY_JSON,
+        method: "flame.memory/add.v3",
+      },
+      input: stringifyJSON({ scope: "project", cwd, content: "Same input, distinct commands" }),
+    };
+    const firstKey = crypto.randomUUID();
+    const secondKey = crypto.randomUUID();
+    const lost = faultUnaryResponse("plugins.call", "afterCommit");
+    const options = {
+      capabilities: () => fixture.negotiated,
+      mutationStorage: new MemoryMutationStorage(),
+    };
+    const original = createFlameClient(
+      createHttpTransport({
+        baseUrl: fixture.baseUrl,
+        fetch: async (url, init) => {
+          if (lost.attempts() > 0) throw new Error("injected disconnect before receipt recovery");
+          return lost.fetch(url, init);
+        },
+      }),
+      options,
+    );
+    const cold = createFlameClient(createHttpTransport({ baseUrl: fixture.baseUrl }), options);
+
+    try {
+      await expect(original.plugins.call(request, { idempotencyKey: firstKey })).rejects.toSatisfy(
+        mutationSettlementIsUnknown,
+      );
+      await original.close();
+      const first = await cold.plugins.getCommand({ namespace, key: firstKey });
+      await expect(cold.plugins.call(request, { idempotencyKey: secondKey })).resolves.toMatchObject({
+        output: expect.any(String),
+      });
+      await expect(cold.plugins.getCommand({ namespace, key: secondKey })).resolves.toEqual(first);
+      const fresh = cold.plugins.call(request);
+      if (!("idempotencyKey" in fresh)) throw new Error("expected the new plugin command handle");
+      await expect(fresh).resolves.toMatchObject({ output: expect.any(String) });
+      expect(fresh.idempotencyKey).not.toBe(firstKey);
+      await expect(cold.plugins.getCommand({ namespace, key: fresh.idempotencyKey })).resolves.toEqual(
+        first,
+      );
+      expect(cold.plugins.pendingCommands().map((command) => command.idempotencyKey)).toEqual([
+        firstKey,
+      ]);
+      await expect(cold.plugins.call(request, { idempotencyKey: firstKey })).resolves.toMatchObject({
+        output: expect.any(String),
+      });
+      expect(cold.plugins.pendingCommands()).toEqual([]);
+    } finally {
+      await Promise.all([original.close(), cold.close()]);
+    }
+  });
 
   it("reconciles MCP and managed-Skill moves after their responses are lost", async () => {
     const retainedSkills = (

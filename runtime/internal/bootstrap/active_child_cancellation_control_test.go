@@ -78,11 +78,11 @@ func TestActiveChildCancellationRetainsItsOriginalControlOwner(t *testing.T) {
 		t.Fatal("the competing request did not reach the child cancellation boundary")
 	}
 	waitForRunOutcomeAfter(t, ctx, api, child.RootRunID, protocol.OutcomeCompleted, releaseModel)
-	if controls := childHostCancelControls(readWaitingChildScopeLog(t, home)); controls != 1 {
-		t.Errorf("the child has %d durable cancellation controls, want one", controls)
-	}
 	if err := host.Close(); err != nil {
 		t.Fatal(err)
+	}
+	if controls := childHostCancelControls(readWaitingChildScopeLog(t, home)); controls != 1 {
+		t.Errorf("the child has %d durable cancellation controls, want one", controls)
 	}
 	gate.drop(t, home)
 	restarted, cold := openProtocolRuntime(t, newReplyStub("the canceled child is already terminal"))

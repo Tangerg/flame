@@ -16,10 +16,11 @@ export function forkSessionAt(
   const key = fromRunId ? `${id}:${fromRunId}` : id;
   return owner
     .runSessionFork(key, async () => {
-      const fork = await runtime.forkSession({ sessionId: id, fromRunId });
+      const sessionId = await runtime.forkSession({ sessionId: id, fromRunId });
       owner.assertCurrent();
-      state.selectSession(fork.id);
-      void invalidateAgentSessions();
+      await owner.settle(invalidateAgentSessions());
+      owner.assertCurrent();
+      state.selectSession(sessionId);
     })
     .catch((error: unknown) => {
       if (owner.isCurrent()) reportSessionError(agentAccess.notifications, "fork", error);

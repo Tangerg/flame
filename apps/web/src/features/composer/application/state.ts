@@ -20,7 +20,7 @@ export interface ComposerSubmission {
   consume(historyText?: string): boolean;
 }
 
-export type ComposerDraftReplacement = (input: ComposerDraftInput) => boolean;
+export type ComposerDraftRecovery = (input: ComposerDraftInput) => boolean;
 export type RequestDraftReplacementConfirmation = (replace: () => boolean) => void;
 
 export type ComposerPersistenceState =
@@ -63,13 +63,15 @@ export interface ComposerStatePort {
   retryPersistence(): void;
   getRecoveryDrafts(): string;
   captureSubmission(): ComposerSubmission;
+  captureDraftRecovery(sessionId: string): ComposerDraftRecovery;
   replaceDraft(
     input: ComposerDraftInput,
     requestConfirmation: RequestDraftReplacementConfirmation,
   ): void;
-  beginDraftReplacement(
+  beginDraftRecovery(
+    sessionId: string,
     requestConfirmation: RequestDraftReplacementConfirmation,
-    begin: (replace: ComposerDraftReplacement) => boolean,
+    begin: (recover: ComposerDraftRecovery) => boolean,
   ): void;
   // The returned function adds to the draft that was current when it was
   // captured and reports false once another draft has replaced it.

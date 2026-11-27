@@ -21,11 +21,6 @@ type workingDirectoryPicker interface {
 	ChooseWorkingDirectory() (string, error)
 }
 
-type fileSaver interface {
-	SaveFile(suggestedFilename string, contents []byte) (bool, error)
-	exportDestinationPicker
-}
-
 type pathRevealer interface {
 	OpenFileManager(path string, selectFile bool) error
 }
@@ -40,7 +35,7 @@ type nativeShell struct {
 	pathRevealer  pathRevealer
 	pathOpener    pathOpener
 	directories   workingDirectoryPicker
-	files         fileSaver
+	exports       exportDestinationPicker
 	notifications systemNotifications
 }
 
@@ -94,7 +89,7 @@ func (d *DesktopHost) bind(shell nativeShell) error {
 		return errors.New("desktop host: native shell is already bound")
 	}
 	if shell.window == nil || shell.reveal == nil || shell.pathRevealer == nil || shell.pathOpener == nil ||
-		shell.directories == nil || shell.files == nil || shell.notifications == nil {
+		shell.directories == nil || shell.exports == nil || shell.notifications == nil {
 		return errors.New("desktop host: native shell is incomplete")
 	}
 	d.shell = &shell
@@ -202,21 +197,6 @@ func (d *DesktopHost) ChooseWorkingDirectory() (string, error) {
 	return filepath.Clean(absolute), nil
 }
 
-func (d *DesktopHost) SaveFile(suggestedFilename, contentBase64 string) (bool, error) {
-	contents, err := bridge.DecodeFileSave(suggestedFilename, contentBase64)
-	if err != nil {
-		return false, fmt.Errorf("desktop host: save file: %w", err)
-	}
-	if d.shell == nil {
-		return false, errShellUnbound
-	}
-	saved, err := d.shell.files.SaveFile(suggestedFilename, contents)
-	if err != nil {
-		return false, fmt.Errorf("desktop host: save file: %w", err)
-	}
-	return saved, nil
-}
-
 func (d *DesktopHost) Bootstrap() (bridge.DesktopBootstrap, error) {
 	token, err := d.localToken()
 	if err != nil {
@@ -242,7 +222,7 @@ func (d *DesktopHost) BeginFileSave(name string, size int) (string, error) {
 	if d.shell == nil {
 		return "", errShellUnbound
 	}
-	return d.transfer.begin(name, size, d.shell.files)
+	return d.transfer.begin(name, size, d.shell.exports)
 }
 
 func (d *DesktopHost) AppendFileSave(id string, offset int, encoded string) error {

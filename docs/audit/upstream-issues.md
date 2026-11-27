@@ -30,7 +30,7 @@ A browser Realm's executions and Uses are released only by the original page's `
 
 The smallest framework change is an explicit Realm-loss settlement: an authenticated, idempotent request through which the trusted host or a successor document holding the Realm's resume credential attests that the Realm's JavaScript heap no longer exists, after which the Bridge releases that Realm's executions and Uses with a distinct abandonment exit kind.
 
-## Scope retries inside Anthropic Messages calls (Scope v0.64.0)
+## Scope retries inside model calls (Scope v0.64.0)
 
 A model created with `NewMessages` sent three HTTP requests during one call
 against a loopback endpoint that always returned HTTP 503 (reproduced 2026-11-26
@@ -40,9 +40,17 @@ Messages configuration provides no retry setting. Flame records evidence around
 one Scope model call, so those additional requests have no separate attempts in
 the Run history. [Anthropic protocol client](https://github.com/Tangerg/scope/blob/da8f279591bdb46459dcae26b15ca0b76de083f1/models/protocol/anthropic/api.go)
 
-Expose the retry limit on both Messages configurations, as Scope does for
-OpenAI. Flame can then disable SDK retries so its Run attempt owner controls
-whether to send another request and records each decision.
+Loopback probes on 2026-11-27 observed three HTTP requests per call on both
+429 and 503 for DeepSeek Chat Completions, Perplexity Responses and OpenAI
+embeddings. OpenAI Responses with `MaxRetries` set to zero sent one request.
+The DeepSeek and Perplexity builders omit the protocol's retry limit, and the
+OpenAI embedding binding has no field for it. [DeepSeek chat builder](https://github.com/Tangerg/scope/blob/da8f279591bdb46459dcae26b15ca0b76de083f1/models/deepseek/chat_protocol.go)
+[Perplexity Responses builder](https://github.com/Tangerg/scope/blob/da8f279591bdb46459dcae26b15ca0b76de083f1/models/perplexity/responses.go)
+[OpenAI embedding configuration](https://github.com/Tangerg/scope/blob/379b392eca5226a01761810c1ff28c3c2ab26d68/models/protocol/openai/embedding.go)
+
+Expose the transport attempt policy through the vendor chat and embedding
+configurations. Flame can then select one request per recorded attempt while
+each Scope binding continues to own its vendor request dialect.
 
 ## Scope child cancellation at publication (Scope Agent v0.64.0)
 
@@ -57,3 +65,20 @@ Let the live root handle submit a descendant cancellation by Process ID. Scope's
 tree queue can order the control after the in-progress append and resolve the
 target there. Flame can address the child using its durable start binding and
 use the Scope response as the control acknowledgement.
+
+## A2UI schema dependency (A2UI v0.16.1)
+
+`npm audit` reported one high-severity Zod advisory through four packages on
+2026-11-27. Flame uses Zod 4.6.7 for the GenUI document and Zod 3.25.76 for the
+custom Dialog schema registered with A2UI. The published `@a2ui/react` and
+`@a2ui/web_core` 0.16.1 packages require `^3.25.76`, and the advisory includes
+that entire range.
+[Zod advisory](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5)
+[A2UI React dependencies](https://registry.npmjs.org/@a2ui%2freact/0.16.1)
+[A2UI web core dependencies](https://registry.npmjs.org/@a2ui%2fweb_core/0.16.1)
+
+Flame's interface document boundary applies limits of 512 KiB, 20,000 JSON
+nodes and 48 levels before passing incoming documents to A2UI's message parser.
+The advisory remains open for the dependency. A2UI can resolve it by moving its
+parser and React peer range to a patched Zod release, then verifying the same
+protocol messages against that parser before publishing.

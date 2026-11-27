@@ -8,6 +8,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { rolldown } from "rolldown";
 import { expect, it } from "vitest";
+import { A2UI_VERSION, CATALOG_ID } from "../contracts/catalog";
 import { limits, Presentation } from "../contracts/document";
 import { interfaceRequest } from "../contracts/fixture";
 
@@ -55,6 +56,27 @@ it(
           ]),
           additionalProperties: false,
         },
+      );
+      const discovery = await client.callTool({
+        name: "ui_catalog",
+        arguments: { kind: "catalog" },
+      });
+      expect(discovery.structuredContent).toMatchObject({
+        catalog: {
+          catalogId: CATALOG_ID,
+          protocolVersion: A2UI_VERSION,
+          components: {
+            Dialog: {
+              required: expect.arrayContaining(["component", "label", "child"]),
+            },
+          },
+          functions: expect.objectContaining({
+            formatString: expect.anything(),
+          }),
+        },
+      });
+      expect(discovery.structuredContent.catalog.functions).not.toHaveProperty(
+        "openUrl",
       );
       const request = interfaceRequest();
       await expect(

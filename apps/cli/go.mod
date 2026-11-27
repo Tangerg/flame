@@ -3,9 +3,9 @@ module github.com/Tangerg/flame/apps/cli
 go 1.27.4
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.85-dev.20261127.t2faffef65d06
+	github.com/Tangerg/flame/packages/go-sdk v0.1.87-dev.20261127.t9515741d8c71
 	github.com/Tangerg/flame/packages/local-runtime v0.1.14-dev.20261123.tca9fa5e1c260
-	github.com/Tangerg/flame/runtime v0.1.156-dev.20261127.t8c53fe564d3c
+	github.com/Tangerg/flame/runtime v0.1.158-dev.20261127.t1b03fcbcd20f
 	github.com/Tangerg/frame v0.5.0
 	github.com/Tangerg/oolong/extensions/highlight v0.27.2
 	github.com/Tangerg/oolong/extensions/latex v0.30.0
@@ -21,6 +21,7 @@ require (
 	github.com/spf13/pflag v1.1.0
 	github.com/spf13/viper v1.21.0
 	golang.org/x/mod v0.43.0
+	modernc.org/sqlite v1.62.0
 )
 
 require (
@@ -92,5 +93,4 @@ require (
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
 	modernc.org/quickjs v0.27.0 // indirect
-	modernc.org/sqlite v1.62.0 // indirect
 )

@@ -43,11 +43,15 @@ from independent readers. Expected aborts
 alone remain successful cleanup.
 
 After capability discovery, `runtimeEvents.subscribe` can share one connection
-for negotiated topics. A subscriber's abort settles its own call while the
+for negotiated topics. Each subscriber's request is validated before sharing
+the connection. A subscriber's abort settles its own call while the
 shared stream is still awaiting acknowledgement. Canceling a subscription or
 returning its iterator discards that subscriber's unread events. The last
 subscriber to leave closes the shared connection. File watch subscriptions use
-dedicated connections. A Run stream completes when its acknowledged root Run
+dedicated connections. The SDK checks the source sequence before filtering
+events and ends the observation on a discontinuity. Shared subscribers retain
+the Runtime's sequence numbers, including gaps between their selected topics.
+A Run stream completes when its acknowledged root Run
 and Segment publish `segment.finished`. An event matching just one of those
 identities fails the observation before delivery. The active observer can drain
 unread events through the terminal event.
@@ -63,9 +67,10 @@ from the matching durable receipt. The SDK retains a previously dispatched
 command when a replay is refused without that evidence.
 
 HTTP credentials and metadata must be ASCII field values without surrounding
-whitespace. Fetch byte strings cannot preserve non-ASCII UTF-8 identities, and
-header normalization must never replace a captured command key or replay cursor.
-Unrepresentable values are refused before opening Fetch.
+whitespace. Caller-chosen command keys are 1–255 visible ASCII characters
+without spaces and are retained exactly for receipt lookup. A caller-chosen key
+selects its exact command, even if another pending command has identical input.
+The HTTP transport refuses unrepresentable header values before opening Fetch.
 
 Consumers use explicit public entries: the main API, `wire`, `methods`,
 `validation`, `testing`, and `testing/samples/*`. Internal implementation paths
@@ -102,9 +107,28 @@ Mutation handles retain the original key and receipt authority after uncertain
 responses. An unresolved retry continues the original command. After
 confirmation, retries return the observed result or refusal directly. To open a
 fresh observation of an acknowledged Run, use `runs.subscribe`.
+The client reports local journal maintenance through
+`onMutationJournalCleanupFailure`, with console diagnostics by default.
+`MutationJournalCleanupError` carries the confirmed outcome and the local
+storage failure. Its `retryCleanup()` retries removal of the record. The original
+handle also attempts removal again when returning its confirmed result or refusal.
 Presentation components
 must not rebuild settlement or invent a replacement identity. Streaming reads
 and durable commands retain their registry-classified distinction.
+
+Each new Runtime command without a supplied key gets a fresh command identity.
+Retry the original handle or select the pending command by its retained identity
+after reconnect. For ordinary unary commands, `runtime.pendingCommands()` lists
+the original method, namespace and idempotency key. Pass those values and the
+original input to `runtime.retryCommand(method, identity, params)`. Admission
+verifies the retained command using its captured metadata. The journal stores a
+fingerprint for ordinary command inputs, so credentials and other inputs stay
+with the caller. The stable-intent plugin API can recover the original command
+through its authored intent.
+
+`approval.forgetRule` accepts `{ id, expectedDecision }`. Supply the decision
+when withdrawing an observed approval or denial. Omit it when deliberately
+forgetting the rule at that identity regardless of its decision.
 
 `createMutationSettler().settle` accepts `onMutation(idempotencyKey)` to project
 the identity of the selected original mutation, including retained or shared
@@ -153,6 +177,9 @@ been dispatched. Dispatched identities survive cancellation and process loss,
 including a canceled retry. Plugin preparation observes the same cancellation
 boundary before reserving an intent. `RpcCancellationError` identifies explicit
 cancellation without treating an arbitrary transport failure as proof of it.
+A recovery handle can read an original receipt after another observer clears
+the pending record. Dispatch requires the original reservation. Only the
+handle that withdrew an unsent reservation can reopen it.
 That one captured metadata value belongs to every original dispatch and explicit
 retry, including stable-intent plugin commands. Replacing client defaults cannot
 change an unresolved command. A replay refusal at the HTTP boundary does not

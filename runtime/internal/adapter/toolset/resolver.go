@@ -42,7 +42,7 @@ type Resolver struct {
 
 	mcp atomic.Pointer[mcpCatalog]
 
-	mcpToolDisabled func(domaintool.Ref) bool
+	listMCPExposure func(context.Context) ([]domaintool.Ref, error)
 	restoreMCP      func(context.Context, []domaintool.Ref, []plugin.Activation) ([]toolcontract.Tool, func() error, error)
 }
 
@@ -111,7 +111,7 @@ type resolverDeps struct {
 	ProposeSkill    toolcontract.Tool
 	CodeIntel       CodeIntelligence
 	ReadTracker     *readTracker
-	MCPToolDisabled func(domaintool.Ref) bool
+	ListMCPExposure func(context.Context) ([]domaintool.Ref, error)
 	RestoreMCP      func(context.Context, []domaintool.Ref, []plugin.Activation) ([]toolcontract.Tool, func() error, error)
 }
 
@@ -122,7 +122,7 @@ func newResolver(d resolverDeps) (*Resolver, error) {
 	}{
 		{"read tracker", d.ReadTracker}, {"code intelligence", d.CodeIntel}, {"Skill usage recorder", d.SkillUsage},
 		{"Goal availability", d.GoalAvailable}, {"Plan availability", d.PlanAvailable},
-		{"MCP exposure policy", d.MCPToolDisabled}, {"MCP restoration", d.RestoreMCP},
+		{"MCP exposure policy", d.ListMCPExposure}, {"MCP restoration", d.RestoreMCP},
 		{"ask_user", d.AskUser}, {"enter_plan_mode", d.EnterPlan}, {"exit_plan_mode", d.ExitPlan}, {"set_plan", d.Plan},
 		{"read_tool_result", d.ToolResult}, {"run_script", d.Script}, {"get_goal", d.GoalGet}, {"report_goal_outcome", d.GoalReport}, {"propose_skill", d.ProposeSkill},
 	} {
@@ -158,7 +158,7 @@ func newResolver(d resolverDeps) (*Resolver, error) {
 		codeIntel:       d.CodeIntel,
 		readTracker:     d.ReadTracker,
 		pathLocker:      keylock.NewSet(),
-		mcpToolDisabled: d.MCPToolDisabled,
+		listMCPExposure: d.ListMCPExposure,
 		restoreMCP:      d.RestoreMCP,
 	}
 	return resolver, nil
@@ -200,12 +200,16 @@ type mcpCatalog struct {
 }
 
 func (r *Resolver) mcpTools(ctx context.Context, retained *Retained) ([]toolcontract.Tool, []mcpserver.ID, func() error, error) {
+	disabled, err := r.disabledMCPTools(ctx)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 	snapshot := r.mcp.Load()
 	if snapshot == nil {
 		snapshot = &mcpCatalog{}
 	}
 	if retained == nil {
-		tools, err := r.exposedMCPTools(snapshot.tools, nil)
+		tools, err := exposedMCPTools(snapshot.tools, nil, disabled)
 		return tools, slices.Clone(snapshot.pending), nil, err
 	}
 	users := make([]domaintool.Ref, 0, len(retained.MCP))
@@ -218,7 +222,7 @@ func (r *Resolver) mcpTools(ctx context.Context, retained *Retained) ([]toolcont
 			users = append(users, ref)
 		}
 	}
-	current, err := r.exposedMCPTools(snapshot.tools, users)
+	current, err := exposedMCPTools(snapshot.tools, users, disabled)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -247,7 +251,7 @@ func (r *Resolver) mcpTools(ctx context.Context, retained *Retained) ([]toolcont
 	if err := validateRestoredMCP(original, installed, retained.Bindings); err != nil {
 		return nil, nil, nil, errors.Join(err, release())
 	}
-	original, err = r.exposedMCPTools(original, installed)
+	original, err = exposedMCPTools(original, installed, disabled)
 	if err != nil {
 		return nil, nil, nil, errors.Join(err, release())
 	}
@@ -299,17 +303,15 @@ func (r *Resolver) mcpSnapshot() []toolcontract.Tool {
 	return p.tools
 }
 
-func (r *Resolver) exposedMCPTools(values []toolcontract.Tool, capturedMCP []domaintool.Ref) ([]toolcontract.Tool, error) {
+func exposedMCPTools(values []toolcontract.Tool, captured []domaintool.Ref, disabled map[domaintool.Ref]struct{}) ([]toolcontract.Tool, error) {
 	var out []toolcontract.Tool
 	for i, tool := range values {
-		ref, found, err := mcp.IdentifyTool(tool)
+		ref, err := mcpToolRef(tool)
 		if err != nil {
-			return nil, fmt.Errorf("toolset: resolve MCP tool identity: %w", err)
+			return nil, err
 		}
-		if !found {
-			return nil, errors.New("toolset: MCP tool has no source identity")
-		}
-		if (capturedMCP != nil && !slices.Contains(capturedMCP, ref)) || r.mcpToolDisabled(ref) {
+		_, hidden := disabled[ref]
+		if hidden || (captured != nil && !slices.Contains(captured, ref)) {
 			if out == nil {
 				out = append(make([]toolcontract.Tool, 0, len(values)-1), values[:i]...)
 			}

@@ -6,7 +6,9 @@ import type {
 } from "@flame/runtime-client/wire";
 import { createPushPullChannel } from "./channel";
 import { RpcConnectionError } from "./errors";
+import { checkRequest } from "./request";
 import { iterableOf, MAXIMUM_BUFFERED_RUNTIME_EVENTS, type StreamingResult } from "./stream";
+import { RUNTIME_SUBSCRIBE_METHOD } from "./transport";
 
 type RuntimeEventSubscription = StreamingResult<RuntimeSubscribeResponse, RuntimeEvent>;
 
@@ -20,7 +22,6 @@ class Subscriber {
     capacity: MAXIMUM_BUFFERED_RUNTIME_EVENTS,
   });
   readonly #cancellation: PromiseWithResolvers<never> | undefined;
-  #sequence = 0;
 
   constructor(
     private readonly topics: ReadonlySet<RuntimeTopic>,
@@ -67,11 +68,9 @@ class Subscriber {
     this.leave(this);
   };
 
-  // A dedicated subscription numbers only the frames it receives, so a shared
-  // stream renumbers each subscriber's subset to keep gaps meaning loss.
   deliver(event: RuntimeEvent): boolean {
     const routed = this.#route(event);
-    return routed === undefined || this.#channel.tryPush({ ...routed, sequence: ++this.#sequence });
+    return routed === undefined || this.#channel.tryPush({ ...routed });
   }
 
   #route(event: RuntimeEvent): RuntimeEvent | undefined {
@@ -144,7 +143,8 @@ export function createRuntimeEventFeed(
     if (current === stream) current = undefined;
   };
   return {
-    async subscribe(request, signal) {
+    async subscribe(input, signal) {
+      const request = checkRequest(RUNTIME_SUBSCRIBE_METHOD, input);
       const topics = negotiatedTopics();
       if (
         request.watches?.length ||

@@ -83,9 +83,15 @@ func (a *ApprovalRuleStore) Visible(ctx context.Context, sessionID identity.Sess
 	})
 }
 
-func (a *ApprovalRuleStore) Delete(ctx context.Context, id string) error {
+func (a *ApprovalRuleStore) Delete(ctx context.Context, id string, expected *approval.Decision) error {
 	return a.db.write(ctx, func(ctx context.Context) error {
-		if _, err := a.db.connection(ctx).ExecContext(ctx, `DELETE FROM approval_rules WHERE id = ?`, id); err != nil {
+		statement := `DELETE FROM approval_rules WHERE id = ?`
+		args := []any{id}
+		if expected != nil {
+			statement += ` AND decision = ?`
+			args = append(args, *expected)
+		}
+		if _, err := a.db.connection(ctx).ExecContext(ctx, statement, args...); err != nil {
 			return fmt.Errorf("sqlite: delete approval rule: %w", err)
 		}
 		return nil
