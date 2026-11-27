@@ -10,13 +10,6 @@ import (
 
 const MaximumExportChunkBytes = 1 << 20
 
-func DecodeFileSave(suggestedFilename, contentBase64 string) ([]byte, error) {
-	if err := ValidateFileName(suggestedFilename); err != nil {
-		return nil, err
-	}
-	return DecodeExportChunk(contentBase64)
-}
-
 func ValidateFileName(suggestedFilename string) error {
 	if !utf8.ValidString(suggestedFilename) {
 		return errors.New("filename is not valid UTF-8")

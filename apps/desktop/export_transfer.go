@@ -12,10 +12,16 @@ type exportDestinationPicker interface{ ChooseFileDestination(string) (string, e
 
 type exportTransfer struct {
 	mu      sync.Mutex
-	id      string
-	pending *exportFile
-	size    int
+	current *exportAttempt
 }
+
+type exportAttempt struct {
+	id   string
+	size int
+	file *exportFile
+}
+
+var errUnownedExport = errors.New("export does not belong to this transfer")
 
 func (s *exportTransfer) abort() error {
 	s.mu.Lock()
@@ -25,15 +31,13 @@ func (s *exportTransfer) abort() error {
 
 func (s *exportTransfer) discard() error {
 	var err error
-	if s.pending != nil {
-		err = s.pending.discard()
-		if s.pending.ownsStagingFile() {
+	if s.current != nil && s.current.file != nil {
+		err = s.current.file.discard()
+		if s.current.file.ownsStagingFile() {
 			return err
 		}
 	}
-	s.pending = nil
-	s.id = ""
-	s.size = 0
+	s.current = nil
 	return err
 }
 
@@ -41,43 +45,51 @@ func (s *exportTransfer) begin(name string, size int, picker exportDestinationPi
 	if err := bridge.ValidateFileName(name); err != nil {
 		return "", err
 	}
-	if size <= 0 {
-		return "", errors.New("export size must be positive")
+	if size < 0 {
+		return "", errors.New("export size cannot be negative")
 	}
-	id := rand.Text()
 	s.mu.Lock()
-	if s.id != "" {
+	if s.current != nil {
 		s.mu.Unlock()
 		return "", errors.New("another file export is in progress")
 	}
-	s.id = id
+	attempt := &exportAttempt{id: rand.Text(), size: size}
+	s.current = attempt
 	s.mu.Unlock()
 	// Navigation can revoke the originating document while the native picker is open.
 	destination, err := picker.ChooseFileDestination(name)
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.id != id {
+	if s.current != attempt {
 		return "", nil
 	}
 	if err != nil || destination == "" {
-		return "", errors.Join(err, s.discard())
+		s.current = nil
+		return "", err
 	}
-	f, err := prepareExport(destination)
+	attempt.file, err = prepareExport(destination)
 	if err != nil {
-		return "", errors.Join(err, s.discard())
+		s.current = nil
+		return "", err
 	}
-	s.pending = f
-	s.size = size
-	return id, nil
+	return attempt.id, nil
+}
+
+func (s *exportTransfer) stagedAttempt(id string) *exportAttempt {
+	if s.current != nil && s.current.id == id && s.current.file != nil {
+		return s.current
+	}
+	return nil
 }
 
 func (s *exportTransfer) appendChunk(id string, offset int, encoded string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.pending == nil || id != s.id {
-		return errors.New("export does not belong to this transfer")
+	attempt := s.stagedAttempt(id)
+	if attempt == nil {
+		return errUnownedExport
 	}
-	position, err := s.pending.position()
+	position, err := attempt.file.position()
 	if err != nil {
 		return errors.Join(err, s.discard())
 	}
@@ -88,10 +100,10 @@ func (s *exportTransfer) appendChunk(id string, offset int, encoded string) erro
 	if err != nil {
 		return err
 	}
-	if len(contents) == 0 || len(contents) > s.size-offset {
+	if len(contents) == 0 || len(contents) > attempt.size-offset {
 		return errors.New("export chunk exceeds remaining bytes")
 	}
-	if _, err := s.pending.Write(contents); err != nil {
+	if _, err := attempt.file.Write(contents); err != nil {
 		return errors.Join(err, s.discard())
 	}
 	return nil
@@ -100,24 +112,25 @@ func (s *exportTransfer) appendChunk(id string, offset int, encoded string) erro
 func (s *exportTransfer) finish(id string) (returned error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.pending == nil || id != s.id {
-		return errors.New("export does not belong to this transfer")
+	attempt := s.stagedAttempt(id)
+	if attempt == nil {
+		return errUnownedExport
 	}
 	defer func() { returned = errors.Join(returned, s.discard()) }()
-	position, err := s.pending.position()
+	position, err := attempt.file.position()
 	if err != nil {
 		return err
 	}
-	if position != int64(s.size) {
+	if position != int64(attempt.size) {
 		return errors.New("export is incomplete")
 	}
-	return s.pending.publish()
+	return attempt.file.publish()
 }
 
 func (s *exportTransfer) cancel(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.pending != nil && id == s.id {
+	if s.stagedAttempt(id) != nil {
 		return s.discard()
 	}
 	return nil

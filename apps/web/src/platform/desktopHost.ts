@@ -1,6 +1,5 @@
 import { type NotificationAuthorization } from "@flame/component-sdk/notifications";
-import { normalizeRuntimeEndpoint } from "@flame/runtime-client";
-import { errorMessage } from "@flame/runtime-client";
+import { errorMessage, normalizeRuntimeEndpoint } from "@flame/runtime-client";
 import { type ClientBootstrap, type ClientHost } from "@/platform/host";
 import {
   callDesktop,
@@ -34,7 +33,7 @@ async function readAuthorization(
   return parsed.data;
 }
 
-function exportChunk(bytes: Uint8Array): string {
+function encodeExportChunk(bytes: Uint8Array): string {
   let binary = "";
   const batchSize = 0x8000;
   for (let offset = 0; offset < bytes.byteLength; offset += batchSize) {
@@ -48,10 +47,6 @@ async function saveExport(
   filename: string,
   bytes: Uint8Array,
 ): Promise<"saved" | "canceled"> {
-  if (bytes.byteLength <= MAXIMUM_EXPORT_CHUNK_BYTES) {
-    const result = await callDesktop(binding, "SaveFile", filename, exportChunk(bytes));
-    return DesktopMethods.SaveFile.result.parse(result) ? "saved" : "canceled";
-  }
   // The picker yields. A plugin may reuse its buffer as soon as saveFile returns the promise.
   const snapshot = new Uint8Array(bytes);
   const transfer = DesktopMethods.BeginFileSave.result.parse(
@@ -60,7 +55,9 @@ async function saveExport(
   if (!transfer) return "canceled";
   try {
     for (let offset = 0; offset < snapshot.byteLength; offset += MAXIMUM_EXPORT_CHUNK_BYTES) {
-      const encoded = exportChunk(snapshot.subarray(offset, offset + MAXIMUM_EXPORT_CHUNK_BYTES));
+      const encoded = encodeExportChunk(
+        snapshot.subarray(offset, offset + MAXIMUM_EXPORT_CHUNK_BYTES),
+      );
       await callDesktop(binding, "AppendFileSave", transfer, offset, encoded);
     }
     await callDesktop(binding, "FinishFileSave", transfer);
@@ -125,13 +122,11 @@ export function createDesktopHostClient(binding: DesktopHostBinding): ClientHost
       }
       return parsed.data.length > 0 ? parsed.data : null;
     },
-    // Encoding captures the selected byte range before yielding. The native panel
-    // owns the destination; neither the plugin nor IPC supplies a path.
     async saveFile({ filename, bytes }) {
       try {
         return await saveExport(binding, filename, bytes);
       } catch (error) {
-        throw new Error(`desktop host file save failed: ${errorMessage(error)}`);
+        throw new Error(`desktop host file save failed: ${errorMessage(error)}`, { cause: error });
       }
     },
     async revealPath(path) {

@@ -90,15 +90,3 @@ func (f *exportFile) publish() error {
 	f.stagingPath = ""
 	return nil
 }
-
-func publishExport(destination string, content io.Reader) (returned error) {
-	f, err := prepareExport(destination)
-	if err != nil {
-		return err
-	}
-	defer func() { returned = errors.Join(returned, f.discard()) }()
-	if _, err := io.Copy(f, content); err != nil {
-		return err
-	}
-	return f.publish()
-}

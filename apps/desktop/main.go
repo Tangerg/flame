@@ -33,7 +33,7 @@ func main() {
 		pathRevealer: app.Env,
 		pathOpener:   app.Browser,
 		directories:  wailsWorkingDirectoryPicker{dialogs: app.Dialog, window: window},
-		files:        wailsFileSaver{dialogs: app.Dialog, window: window},
+		exports:      wailsExportPicker{dialogs: app.Dialog, window: window},
 		notifications: wailsNotifications{
 			service: notifications.New(),
 			opened: func(target bridge.NotificationTarget) {

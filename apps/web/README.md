@@ -28,7 +28,7 @@ animated formats export a still frame. Browser reports download dispatch, while
 Desktop reports a completed write or cancellation. The download action names PNG
 explicitly. [SVG image contexts](https://developer.mozilla.org/en-US/docs/Web/SVG/Guides/SVG_as_an_image)
 disable scripts and external resource loading.
-Streamed native save failures preserve both transfer and cleanup diagnostics in
+Native save failures preserve both transfer and cleanup diagnostics in
 the visible error; an unconfirmed cleanup is never reported as cancellation.
 
 From the repository root:
