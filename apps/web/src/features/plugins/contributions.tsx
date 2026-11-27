@@ -20,8 +20,10 @@ import { reportPluginError } from "@/extensions/errors";
 import { contributeLayout } from "@/extensions/contributeHelpers";
 import { createLocaleReconciler } from "@/features/i18n/public/locales";
 import { type RuntimeConnectionGeneration } from "@/features/connection/public/services";
+import { ProviderSelectionCommands } from "@/features/plugins/adapters/providerSelectionCommands";
 import {
   type InstalledPackageState,
+  type PackageOperations,
   type PackageRealizationFailure,
   INSTALLED_PLUGIN_LOADER,
   PACKAGE_ID_PREFIX,
@@ -164,14 +166,19 @@ export function registerPackageContributions(
     id: "installed-shared-effects",
     component: SharedEffects,
   });
+  const signal = scope.lifetime.signal;
+  const track: PackageOperations["track"] = (operation) => trackContributionIO(scope, operation);
+  const { selectProvider, ...pluginOperations } = client.plugins;
+  const providerSelections = new ProviderSelectionCommands({
+    signal,
+    select: (request) => track((owned) => selectProvider(request, owned)),
+    retry: (original) => track((owned) => original.retry({ signal: owned })),
+    refreshCatalog: () => void replaceCachedRead({ queryKey: [PROVIDERS_KEY] }),
+  });
   scope.lifetime.defer(
     onAbort(
-      scope.lifetime.signal,
-      packages.publishOperations({
-        ...client.plugins,
-        signal: scope.lifetime.signal,
-        track: (operation) => trackContributionIO(scope, operation),
-      }),
+      signal,
+      packages.publishOperations({ ...pluginOperations, signal, track, providerSelections }),
     ),
   );
   const fetcher = async (_params?: unknown, signal?: AbortSignal) =>

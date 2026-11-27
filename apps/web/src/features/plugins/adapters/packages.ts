@@ -1,4 +1,5 @@
 import { WorkflowProviders } from "../application/workflowProviders";
+import { type ProviderSelectionCommands } from "./providerSelectionCommands";
 import { createPresentationPreferences } from "./presentationPreferences";
 import { create } from "zustand";
 import { createDataQuery } from "@/extensions/dataQuery";
@@ -26,8 +27,9 @@ export const PROVIDERS_KEY = "runtime-plugin-providers";
 
 export const usePluginProviders = createDataQuery<PluginProviderSelection[]>(PROVIDERS_KEY);
 
-export type PackageOperations = Methods["plugins"] & {
+export type PackageOperations = Omit<Methods["plugins"], "selectProvider"> & {
   signal: AbortSignal;
+  providerSelections: ProviderSelectionCommands;
   track<P extends Promise<unknown>>(operation: (signal: AbortSignal) => P): P;
 };
 

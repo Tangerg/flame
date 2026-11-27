@@ -8,6 +8,7 @@ import { contributionsTo } from "@/extensions/kernel";
 import { RuntimeConnectionGeneration } from "@/features/connection/public/services";
 import { ComponentModules } from "@/features/plugins/adapters/componentModules";
 import { createInstalledPackageState, PACKAGES_KEY } from "@/features/plugins/adapters/packages";
+import { ProviderSelectionCommands } from "@/features/plugins/adapters/providerSelectionCommands";
 import { registerPackageContributions } from "@/features/plugins/contributions";
 import { createAppearanceStore } from "@/features/theme/adapters/appearanceStore";
 import { createWorkspace } from "@/features/workspace/adapters/workspace";
@@ -20,6 +21,69 @@ import { openWebSession } from "./webSessionFixture";
 
 describe("Go Runtime ↔ HTTP ↔ Web: installed package catalogs", () => {
   const fixture = useRuntimeFixture("plugin-catalog");
+
+  it("checks one original provider selection and refreshes only after confirmation", async () => {
+    const provider = (await fixture.client.plugins.listProviders()).data.find(
+      ({ role }) => role === "memory",
+    );
+    if (!provider) throw new Error("Runtime did not select its bundled Memory provider");
+    const request = {
+      role: provider.role,
+      installationId: provider.installationId,
+      contribution: provider.contribution,
+    };
+    const checking = Promise.withResolvers<void>();
+    const releaseCheck = Promise.withResolvers<void>();
+    const commandKeys = new Set<string | null>();
+    let loseOriginal = true;
+    let refreshes = 0;
+    const client = fixture.createRuntimeClient(async (url, init) => {
+      const headers = new Headers(init?.headers);
+      if (headers.get(HTTP_HEADERS.method) !== "plugins.selectProvider") return fetch(url, init);
+      commandKeys.add(headers.get(HTTP_HEADERS.idempotencyKey));
+      if (!loseOriginal) {
+        checking.resolve();
+        await releaseCheck.promise;
+        return fetch(url, init);
+      }
+      const response = await fetch(url, init);
+      await response.arrayBuffer();
+      throw new TypeError("the original provider selection response was lost");
+    });
+    const owner = new AbortController();
+    const commands = new ProviderSelectionCommands({
+      signal: owner.signal,
+      select: (input) => client.plugins.selectProvider(input, owner.signal),
+      retry: (original) => original.retry({ signal: owner.signal }),
+      refreshCatalog: () => {
+        refreshes++;
+      },
+    });
+    try {
+      await expect(commands.select(request)).resolves.toBe(false);
+      const pending = commands.snapshot(provider.role);
+      if (pending?.kind !== "unconfirmed") throw new Error("original selection was not retained");
+      expect(refreshes).toBe(0);
+      loseOriginal = false;
+      const recovery = commands.check(provider.role, pending);
+      await within(checking.promise, "the original selection check");
+      await expect(commands.check(provider.role, pending)).resolves.toBe(false);
+      await expect(commands.select(request)).resolves.toBe(false);
+      releaseCheck.resolve();
+      await expect(within(recovery, "the accepted provider selection")).resolves.toBe(true);
+      await expect(commands.check(provider.role, pending)).resolves.toBe(false);
+      expect(commandKeys).toEqual(new Set([pending.idempotencyKey]));
+      expect(commands.snapshot(provider.role)).toBeUndefined();
+      expect(refreshes).toBe(1);
+      await expect(fixture.client.plugins.listProviders()).resolves.toMatchObject({
+        data: expect.arrayContaining([expect.objectContaining(request)]),
+      });
+    } finally {
+      releaseCheck.resolve();
+      owner.abort();
+      await client.close();
+    }
+  }, 30_000);
 
   it("does not publish a stale catalog after a newer settings query", async () => {
     const initial = (await fixture.client.plugins.list()).data.find(
