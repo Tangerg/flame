@@ -1,26 +1,15 @@
 import type { GoalTarget, StartGoalRequest, UpdateGoalRequest } from "@flame/runtime-client/wire";
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { RetirableTaskCohort } from "@/lib/taskQueue";
-import {
-  type GoalCommandsGateway,
-  type GoalCommandReceipt,
-} from "@/features/goal/application/ports/goalCommandsGateway";
+import { type GoalCommandsGateway } from "@/features/goal/application/ports/goalCommandsGateway";
 export type GoalProjectionRepair = (sessionId: string) => Promise<unknown>;
 
-class GoalCommandSessionMismatchError extends Error {
-  constructor(expectedSessionId: string, actualSessionId: string) {
-    super(`goal command committed to session ${actualSessionId}, expected ${expectedSessionId}`);
-    this.name = "GoalCommandSessionMismatchError";
-  }
-}
+export const GOAL_COMMAND_SCOPE = "goal_command_scope";
 
-export const GOAL_COMMAND_GENERATION = "goal_command_generation";
-
-class GoalCommandGeneration {
+class GoalCommandScope {
   readonly #gateway: GoalCommandsGateway;
   readonly #repairProjection: GoalProjectionRepair;
-  readonly #retiredError = new GenerationRetiredError(GOAL_COMMAND_GENERATION);
-  readonly #cohort = new RetirableTaskCohort(this.#retiredError);
+  readonly #cohort = new RetirableTaskCohort(new GenerationRetiredError(GOAL_COMMAND_SCOPE));
 
   constructor(gateway: GoalCommandsGateway, repairProjection: GoalProjectionRepair) {
     this.#gateway = gateway;
@@ -49,18 +38,16 @@ class GoalCommandGeneration {
 
   retire(): void {
     this.#cohort.retire();
+    this.#gateway.dispose();
   }
 
-  #run(sessionId: string, command: () => Promise<GoalCommandReceipt>): Promise<void> {
+  #run(sessionId: string, command: () => Promise<void>): Promise<void> {
     return this.#cohort.runSerial(sessionId, () => this.#mutate(sessionId, command));
   }
 
-  async #mutate(sessionId: string, command: () => Promise<GoalCommandReceipt>): Promise<void> {
+  async #mutate(sessionId: string, command: () => Promise<void>): Promise<void> {
     try {
-      const committed = await this.#cohort.run(command);
-      if (committed.sessionId !== sessionId) {
-        throw new GoalCommandSessionMismatchError(sessionId, committed.sessionId);
-      }
+      await this.#cohort.run(command);
     } catch (error) {
       if (this.#cohort.retired) throw error;
       await this.#repairStandingProjection(sessionId);
@@ -80,56 +67,47 @@ class GoalCommandGeneration {
   }
 }
 
-export type GoalCommands = Pick<
-  GoalCommandGeneration,
-  "start" | "update" | "clear" | "stop" | "resume"
->;
+export type GoalCommands = Pick<GoalCommandScope, "start" | "update" | "clear" | "stop" | "resume">;
 
 export type GoalCommandAccess = Pick<GoalCommandOwner, "capture" | "subscribe">;
 
 export class GoalCommandOwner {
-  #generation: GoalCommandGeneration | null;
+  #scope: GoalCommandScope | null = null;
   readonly #repairProjection: GoalProjectionRepair;
   readonly #listeners = new Set<() => void>();
   #disposed = false;
 
-  constructor(gateway: GoalCommandsGateway | null, repairProjection: GoalProjectionRepair) {
+  constructor(repairProjection: GoalProjectionRepair) {
     this.#repairProjection = repairProjection;
-    this.#generation = gateway ? new GoalCommandGeneration(gateway, repairProjection) : null;
   }
 
-  readonly capture = (): GoalCommands | null => this.#generation;
+  readonly capture = (): GoalCommands | null => this.#scope;
 
   readonly subscribe = (listener: () => void): (() => void) => {
     this.#listeners.add(listener);
     return () => this.#listeners.delete(listener);
   };
 
-  replaceRuntimeGeneration(createGateway: () => GoalCommandsGateway): boolean {
-    if (this.#disposed) return false;
-    const successor = new GoalCommandGeneration(createGateway(), this.#repairProjection);
-    const predecessor = this.#generation;
-    this.#generation = successor;
+  replaceTarget(createGateway: () => GoalCommandsGateway): void {
+    if (this.#disposed) return;
+    const predecessor = this.#scope;
+    this.#scope = new GoalCommandScope(createGateway(), this.#repairProjection);
     predecessor?.retire();
     this.#publish();
-    return true;
   }
 
-  retireRuntimeGeneration(): boolean {
-    if (this.#disposed) return false;
-    const predecessor = this.#generation;
-    this.#generation = null;
-    predecessor?.retire();
-    if (predecessor) this.#publish();
-    return true;
+  retireTarget(): void {
+    const predecessor = this.#scope;
+    if (!predecessor) return;
+    this.#scope = null;
+    predecessor.retire();
+    this.#publish();
   }
 
   dispose(): void {
     if (this.#disposed) return;
     this.#disposed = true;
-    this.#generation?.retire();
-    this.#generation = null;
-    this.#publish();
+    this.retireTarget();
     this.#listeners.clear();
   }
 

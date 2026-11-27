@@ -1,5 +1,6 @@
 import { type AgentAccess } from "@/features/agent/public/agent";
 import { type RuntimeAccess } from "@/features/connection/public/runtime";
+import { type RuntimeServerScope } from "@/features/connection/public/services";
 import {
   asSessionId,
   createMutationSettler,
@@ -11,10 +12,7 @@ import {
 } from "@flame/runtime-client";
 import { runtimeCapability } from "@/features/connection/public/capabilities";
 
-import {
-  type GoalCommandReceipt,
-  type GoalCommandsGateway,
-} from "@/features/goal/application/ports/goalCommandsGateway";
+import { type GoalCommandsGateway } from "@/features/goal/application/ports/goalCommandsGateway";
 import { type GoalCommandOwner } from "@/features/goal/application/goalCommands";
 import {
   GOAL_MATERIAL,
@@ -38,8 +36,12 @@ function toGoalReadModel(goal: Goal): GoalReadModel {
   };
 }
 
-function toGoalCommandReceipt(goal: Pick<Goal, "sessionId">): GoalCommandReceipt {
-  return { sessionId: goal.sessionId };
+function assertGoalSession(expectedSessionId: string, goal: Goal): void {
+  if (goal.sessionId !== expectedSessionId) {
+    throw new Error(
+      `goal command committed to session ${goal.sessionId}, expected ${expectedSessionId}`,
+    );
+  }
 }
 
 function runtimeGoalMaterial(goal: Goal | undefined, available: boolean): GoalState {
@@ -61,29 +63,27 @@ class RuntimeGoalCommandsGateway implements GoalCommandsGateway {
     const goal = await this.#mutations.settle((signal) =>
       this.#client.goals.start({ ...input, sessionId: asSessionId(input.sessionId) }, signal),
     );
-    return toGoalCommandReceipt(goal);
+    assertGoalSession(input.sessionId, goal);
   }
 
   async update(input: Parameters<GoalCommandsGateway["update"]>[0]) {
     const goal = await this.#mutations.settle((signal) => this.#client.goals.update(input, signal));
-    return toGoalCommandReceipt(goal);
+    assertGoalSession(input.sessionId, goal);
   }
 
-  async clear(target: GoalTarget) {
-    await this.#mutations.settle((signal) => this.#client.goals.clear(target, signal));
-    return { sessionId: target.sessionId };
+  clear(target: GoalTarget) {
+    return this.#mutations.settle((signal) => this.#client.goals.clear(target, signal));
   }
 
-  async stop(target: GoalTarget) {
-    await this.#mutations.settle((signal) => this.#client.goals.stop(target, signal));
-    return { sessionId: target.sessionId };
+  stop(target: GoalTarget) {
+    return this.#mutations.settle((signal) => this.#client.goals.stop(target, signal));
   }
 
   async resume(target: GoalTarget) {
     const goal = await this.#mutations.settle((signal) =>
       this.#client.goals.resume(target, signal),
     );
-    return toGoalCommandReceipt(goal);
+    assertGoalSession(target.sessionId, goal);
   }
 
   dispose(): void {
@@ -91,53 +91,26 @@ class RuntimeGoalCommandsGateway implements GoalCommandsGateway {
   }
 }
 
-interface GoalRuntimeAdapter {
-  replaceRuntimeGeneration(): void;
-  retireRuntimeGeneration(): void;
-  dispose(): void;
-}
-
-export function createGoalRuntimeAdapter(
+export function bindGoalRuntime(
   agentAccess: AgentAccess,
   runtimeAccess: RuntimeAccess,
   runtimeClient: () => FlameClient,
   commandOwner: GoalCommandOwner,
-  hasRuntimeGeneration: boolean,
-): GoalRuntimeAdapter {
-  let gateway: RuntimeGoalCommandsGateway | null = null;
-  if (hasRuntimeGeneration) {
-    commandOwner.replaceRuntimeGeneration(
-      () => (gateway = new RuntimeGoalCommandsGateway(runtimeClient())),
-    );
-  }
+  scope: RuntimeServerScope,
+): () => void {
+  const replaceTarget = () =>
+    commandOwner.replaceTarget(() => new RuntimeGoalCommandsGateway(runtimeClient()));
+  replaceTarget();
+  const unsubscribe = scope.subscribeReplacement(replaceTarget);
   const disposeSharedMaterial = agentAccess.registerAgentSessionSharedMaterial<SessionSnapshot>(
     GOAL_MATERIAL,
     (_sessionId, snapshot) => {
       return runtimeGoalMaterial(snapshot.goal, runtimeCapability(runtimeAccess, "goals"));
     },
   );
-  return {
-    replaceRuntimeGeneration() {
-      const predecessor = gateway;
-      if (
-        !commandOwner.replaceRuntimeGeneration(
-          () => (gateway = new RuntimeGoalCommandsGateway(runtimeClient())),
-        )
-      )
-        return;
-      predecessor?.dispose();
-    },
-    retireRuntimeGeneration() {
-      if (!commandOwner.retireRuntimeGeneration()) return;
-      const predecessor = gateway;
-      gateway = null;
-      predecessor?.dispose();
-    },
-    dispose() {
-      disposeSharedMaterial();
-      commandOwner.retireRuntimeGeneration();
-      gateway?.dispose();
-      gateway = null;
-    },
+  return () => {
+    unsubscribe();
+    disposeSharedMaterial();
+    commandOwner.retireTarget();
   };
 }
