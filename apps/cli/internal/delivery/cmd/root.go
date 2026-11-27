@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Tangerg/acp"
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
@@ -85,9 +86,12 @@ const (
 	groupSetup  = "setup"
 )
 
-func NewRoot(dependencies Dependencies) (*cobra.Command, error) {
+func NewRoot(dependencies Dependencies, agentTransport acp.Transport) (*cobra.Command, error) {
 	if dependencies.OpenRuntime == nil || dependencies.StartTerminal == nil || dependencies.OpenWorkbench == nil {
 		return nil, errors.New("cli: runtime, terminal and workbench factories are required")
+	}
+	if agentTransport == nil {
+		return nil, errors.New("cli: ACP transport is required")
 	}
 	v := viper.New()
 	loaded := false
@@ -121,7 +125,7 @@ func NewRoot(dependencies Dependencies) (*cobra.Command, error) {
 		&cobra.Group{ID: groupManage, Title: "Manage:"},
 		&cobra.Group{ID: groupSetup, Title: "Setup:"},
 	)
-	addRootCommands(root, provider, v)
+	addRootCommands(root, provider, v, agentTransport)
 	return root, nil
 }
 
@@ -134,7 +138,7 @@ func newRootCommand(
 		Use:   "flame [prompt...]",
 		Short: "Terminal front end for the flame agent runtime",
 		Long: "flame drives an agent runtime from the terminal: an interactive session by\n" +
-			"default, and one-shot runs for scripts and pipelines.",
+			"default, and one-shot runs for scripts and pipelines. Editors use flame acp.",
 		Example: "  # Interactive\n" +
 			"  flame\n\n" +
 			"  # One-shot run, output written for a person\n" +
@@ -171,9 +175,11 @@ func configIndependent(cmd *cobra.Command) bool {
 	return cmd.Annotations[configIndependentAnnotation] == annotationSet || cmd.Name() == cobra.ShellCompRequestCmd
 }
 
-func addRootCommands(root *cobra.Command, provider runtimeProvider, v *viper.Viper) {
+func addRootCommands(root *cobra.Command, provider runtimeProvider, v *viper.Viper, agentTransport acp.Transport) {
 	run := newRunCommand(provider, v)
 	run.GroupID = groupWork
+	agent := newACPCommand(provider, agentTransport)
+	agent.GroupID = groupWork
 	sessions := newSessionsCommand(provider)
 	sessions.GroupID = groupManage
 	runs := newRunsCommand(provider)
@@ -188,7 +194,7 @@ func addRootCommands(root *cobra.Command, provider runtimeProvider, v *viper.Vip
 	completion.GroupID = groupSetup
 	plugins := newPluginsCommand(provider)
 	plugins.GroupID = groupManage
-	root.AddCommand(run, sessions, runs, approvals, plugins, runtimeCommand, config, completion)
+	root.AddCommand(run, agent, sessions, runs, approvals, plugins, runtimeCommand, config, completion)
 }
 
 func runInteractive(

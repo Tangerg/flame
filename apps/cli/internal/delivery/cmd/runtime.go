@@ -13,6 +13,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/spf13/cobra"
 )
@@ -25,6 +26,7 @@ type RuntimeProfile interface {
 }
 
 type Runtime interface {
+	Resolve(context.Context, workspace.ResolveRequest) (workspace.Workspace, error)
 	PrepareInput(context.Context, authoring.Message) ([]protocol.ContentBlock, error)
 	ListSessions(context.Context, conversation.SessionQuery) (conversation.SessionPage, error)
 	GetSession(context.Context, string) (conversation.SessionSnapshot, error)
