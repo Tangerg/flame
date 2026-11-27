@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/Tangerg/acp"
 	"github.com/Tangerg/flame/apps/cli/internal/delivery/cmd"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 )
@@ -35,7 +36,7 @@ func runWithDependencies(dependencies cmd.Dependencies, closer runtimeCloser) in
 	ctx, stop := processSignalContext(context.Background())
 	defer stop()
 
-	root, err := cmd.NewRoot(dependencies)
+	root, err := cmd.NewRoot(dependencies, acp.NewStdioTransport())
 	if err != nil {
 		return reportFailure(errors.Join(err, closeRuntimeOwner(closer)))
 	}

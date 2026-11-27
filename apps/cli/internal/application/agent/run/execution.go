@@ -39,20 +39,23 @@ type Runtime interface {
 }
 
 type Invocation struct {
-	Runtime    Runtime
-	Renderer   Renderer
-	Start      authoring.StartRun
-	ApproveAll bool
+	Runtime          Runtime
+	Renderer         Renderer
+	Start            authoring.StartRun
+	AnswerInterrupts func(context.Context, []conversation.Interrupt) ([]conversation.InterruptAnswer, error)
 
 	ReplayPolicy mutation.ReplayPolicy
 }
 
 func Execute(ctx context.Context, invocation Invocation) (runErr error) {
 	if invocation.Runtime == nil {
-		return errors.New("one-shot run requires a runtime")
+		return errors.New("run execution requires a runtime")
 	}
 	if invocation.Renderer == nil {
-		return errors.New("one-shot run requires a renderer")
+		return errors.New("run execution requires a renderer")
+	}
+	if invocation.AnswerInterrupts == nil {
+		return errors.New("run execution requires an interrupt handler")
 	}
 	if invocation.Start.CommandID == "" {
 		invocation.Start.CommandID = mutation.NewCommandID()
@@ -61,24 +64,50 @@ func Execute(ctx context.Context, invocation Invocation) (runErr error) {
 		return err
 	}
 	defer func() { runErr = errors.Join(runErr, invocation.Renderer.Close()) }()
-	observationCtx, releaseObservation := context.WithCancel(ctx)
-	defer releaseObservation()
 	invocation.Start = invocation.Start.Clone()
 	if invocation.Start.Input == nil {
 		prepared, err := invocation.Runtime.PrepareInput(ctx, invocation.Start.Message)
 		if err != nil {
-			return fmt.Errorf("prepare one-shot input: %w", err)
+			return fmt.Errorf("prepare run input: %w", err)
 		}
 		invocation.Start.Input = prepared
 	}
 
 	startReplay, err := invocation.ReplayPolicy.NewGuard()
 	if err != nil {
-		return fmt.Errorf("prepare one-shot start replay guard: %w", err)
+		return fmt.Errorf("prepare run start replay guard: %w", err)
 	}
+	if err := context.Cause(ctx); err != nil {
+		return err
+	}
+	observationCtx, releaseObservation := context.WithCancelCause(context.WithoutCancel(ctx))
+	defer releaseObservation(nil)
+	// Keep an admitted opening and its stream readable during cancellation so the
+	// original Run can be identified and its final events delivered.
+	stopDrain := context.AfterFunc(ctx, func() {
+		timer := time.NewTimer(cancellationTimeout)
+		defer timer.Stop()
+		select {
+		case <-timer.C:
+			releaseObservation(context.Cause(ctx))
+		case <-observationCtx.Done():
+		}
+	})
+	defer stopDrain()
+	var startAttempted bool
 	opened, err := mutation.ConfirmAdmitted(observationCtx, mutation.AcknowledgementBackoff(), nil,
-		func(ctx context.Context) (conversation.SegmentStream, error) {
-			return openStart(ctx, invocation.Runtime, invocation.Start, startReplay, invocation.ReplayPolicy)
+		func(observation context.Context) (conversation.SegmentStream, error) {
+			return openStartCommand(observation, invocation.Runtime, invocation.Start, startReplay, invocation.ReplayPolicy,
+				func() (conversation.SegmentStream, error) {
+					if cause := context.Cause(ctx); cause != nil {
+						if !startAttempted {
+							releaseObservation(cause)
+						}
+						return conversation.SegmentStream{}, cause
+					}
+					startAttempted = true
+					return invocation.Runtime.StartRun(observation, invocation.Start)
+				})
 		})
 	if _, retired := errors.AsType[*conversation.RetiredOpeningError](err); retired {
 		return err
@@ -87,12 +116,14 @@ func Execute(ctx context.Context, invocation Invocation) (runErr error) {
 		if receipt, accepted := conversation.AcceptedMutationReceipt(err); accepted {
 			opened = receipt
 		} else {
+			if startAttempted && ctx.Err() != nil && mutation.OutcomeUnknown(err) {
+				return &CancellationError{cause: fmt.Errorf("confirm opening before cancellation: %w", err)}
+			}
 			return err
 		}
 	}
-	var watcher *cancellationWatcher
 	if opened.RunID != "" {
-		watcher = watchCancellation(ctx, invocation.Runtime, opened.RunID, invocation.ReplayPolicy)
+		watcher := watchCancellation(ctx, invocation.Runtime, opened.RunID, invocation.ReplayPolicy)
 		defer func() { runErr = errors.Join(runErr, watcher.Finish()) }()
 	}
 	if err != nil {
@@ -106,7 +137,7 @@ func Execute(ctx context.Context, invocation Invocation) (runErr error) {
 		return beginErr
 	}
 
-	return drive(observationCtx, invocation, opened)
+	return drive(observationCtx, ctx, invocation, opened)
 }
 
 type cancellationWatcher struct {
@@ -130,7 +161,11 @@ func watchCancellation(
 			watcher.result <- nil
 			return
 		}
-		watcher.result <- cancelRequestedRun(ctx, runtime, runID, replayPolicy)
+		if err := cancelRequestedRun(ctx, runtime, runID, replayPolicy); err != nil {
+			watcher.result <- &CancellationError{cause: err}
+			return
+		}
+		watcher.result <- nil
 	}()
 	return watcher
 }
@@ -139,6 +174,12 @@ func (c *cancellationWatcher) Finish() error {
 	close(c.exit)
 	return <-c.result
 }
+
+type CancellationError struct{ cause error }
+
+func (c *CancellationError) Error() string { return c.cause.Error() }
+
+func (c *CancellationError) Unwrap() error { return c.cause }
 
 func cancelRequestedRun(
 	ctx context.Context,
@@ -173,12 +214,12 @@ func cancelRequestedRun(
 	return nil
 }
 
-func drive(ctx context.Context, invocation Invocation, opened conversation.SegmentStream) error {
+func drive(ctx, turn context.Context, invocation Invocation, opened conversation.SegmentStream) error {
 	driver := executionDriver{
 		invocation: invocation, openedRunID: opened.RunID,
 		conversation: conversation.New(), current: opened,
 	}
-	return driver.run(ctx)
+	return driver.run(ctx, turn)
 }
 
 type executionDriver struct {
@@ -189,7 +230,7 @@ type executionDriver struct {
 	failures     int
 }
 
-func (e *executionDriver) run(ctx context.Context) error {
+func (e *executionDriver) run(ctx, turn context.Context) error {
 	for {
 		followed := consume(e.current.Events, e.conversation, e.invocation.Renderer)
 		if followed.err == nil && e.conversation.RunID() == e.current.RunID {
@@ -197,7 +238,7 @@ func (e *executionDriver) run(ctx context.Context) error {
 			case conversation.Idle:
 				return errorForOutcome(e.conversation.Outcome())
 			case conversation.Waiting:
-				if err := e.resume(ctx, e.conversation.Interrupts(), e.current.RunID); err != nil {
+				if err := e.resume(ctx, turn, e.conversation.Interrupts(), e.current.RunID); err != nil {
 					return err
 				}
 				continue
@@ -211,30 +252,40 @@ func (e *executionDriver) run(ctx context.Context) error {
 		if followed.applied > 0 {
 			e.failures = 0
 		}
-		continued, err := e.reconnect(ctx, cause)
+		continued, err := e.reconnect(ctx, turn, cause)
 		if !continued {
 			return err
 		}
 	}
 }
 
-func (e *executionDriver) resume(ctx context.Context, interrupts []conversation.Interrupt, runID string) error {
-	answers, err := unattendedAnswers(interrupts, e.invocation.ApproveAll, e.invocation.Start.SessionID)
+func (e *executionDriver) resume(ctx, turn context.Context, interrupts []conversation.Interrupt, runID string) error {
+	if err := context.Cause(turn); err != nil {
+		return err
+	}
+	answers, err := e.invocation.AnswerInterrupts(turn, interrupts)
 	if err != nil {
+		return err
+	}
+	if err := context.Cause(turn); err != nil {
 		return err
 	}
 	commandID := mutation.NewCommandID()
 	command := conversation.ResumeRun{CommandID: commandID, RunID: runID, Answers: answers}
 	replayGuard, err := e.invocation.ReplayPolicy.NewGuard()
 	if err != nil {
-		return fmt.Errorf("prepare one-shot resume replay guard: %w", err)
+		return fmt.Errorf("prepare run resume replay guard: %w", err)
 	}
-	continued, err := mutation.ConfirmAdmitted(
-		ctx, mutation.AcknowledgementBackoff(), nil,
-		func(ctx context.Context) (conversation.SegmentStream, error) {
-			return openResume(ctx, e.invocation.Runtime, command, replayGuard, e.invocation.ReplayPolicy)
-		},
-	)
+	continued, err := mutation.ConfirmAdmitted(turn, mutation.AcknowledgementBackoff(), nil,
+		func(turn context.Context) (conversation.SegmentStream, error) {
+			return openResumeCommand(turn, e.invocation.Runtime, command, replayGuard, e.invocation.ReplayPolicy,
+				func() (conversation.SegmentStream, error) {
+					if err := context.Cause(turn); err != nil {
+						return conversation.SegmentStream{}, err
+					}
+					return e.invocation.Runtime.ResumeRun(ctx, command)
+				})
+		})
 	if err != nil {
 		return err
 	}
@@ -246,12 +297,12 @@ func (e *executionDriver) resume(ctx context.Context, interrupts []conversation.
 	return nil
 }
 
-func (e *executionDriver) reconnect(ctx context.Context, cause error) (bool, error) {
+func (e *executionDriver) reconnect(ctx, turn context.Context, cause error) (bool, error) {
 	for {
 		if RecoveryRequired(cause) {
 			recovered, err := RecoverSegment(ctx, e.invocation.Runtime, e.invocation.Start.SessionID, e.current.RunID)
 			if err == nil {
-				return e.installRecovery(ctx, recovered)
+				return e.installRecovery(ctx, turn, recovered)
 			}
 			e.failures++
 			if err := e.waitBeforeRecovery(ctx, err); err != nil {
@@ -297,7 +348,7 @@ func (e *executionDriver) waitBeforeRecovery(ctx context.Context, cause error) e
 	return e.waitBeforeReconnect(ctx, cause)
 }
 
-func (e *executionDriver) installRecovery(ctx context.Context, recovered Recovery) (bool, error) {
+func (e *executionDriver) installRecovery(ctx, turn context.Context, recovered Recovery) (bool, error) {
 	if err := e.invocation.Renderer.Reconcile(recovered.Snapshot); err != nil {
 		return false, err
 	}
@@ -308,7 +359,7 @@ func (e *executionDriver) installRecovery(ctx context.Context, recovered Recover
 	case protocol.RunStatusFinished:
 		return false, errorForOutcome(recovered.Run.Outcome)
 	case protocol.RunStatusWaiting:
-		if err := e.resume(ctx, recovered.Snapshot.Interrupts, recovered.Run.ID); err != nil {
+		if err := e.resume(ctx, turn, recovered.Snapshot.Interrupts, recovered.Run.ID); err != nil {
 			return false, err
 		}
 	case protocol.RunStatusRunning:
@@ -360,35 +411,37 @@ func consume(stream conversation.EventStream, projection *conversation.Conversat
 	return followed
 }
 
-type outcomeError struct{ outcome conversation.Outcome }
+type OutcomeError struct{ Outcome conversation.Outcome }
 
-func (o *outcomeError) Error() string {
-	if detail := o.outcome.Explanation(); detail != "" {
-		return "run " + string(o.outcome.Status) + ": " + detail
+func (o *OutcomeError) Error() string {
+	if detail := o.Outcome.Explanation(); detail != "" {
+		return "run " + string(o.Outcome.Status) + ": " + detail
 	}
-	return "run " + string(o.outcome.Status)
+	return "run " + string(o.Outcome.Status)
 }
 
 func errorForOutcome(outcome conversation.Outcome) error {
 	if outcome.Status == protocol.OutcomeCompleted {
 		return nil
 	}
-	return &outcomeError{outcome: outcome}
+	return &OutcomeError{Outcome: outcome}
 }
 
-func unattendedAnswers(interrupts []conversation.Interrupt, approveAll bool, sessionID string) ([]conversation.InterruptAnswer, error) {
-	answers := make([]conversation.InterruptAnswer, 0, len(interrupts))
-	for _, interrupt := range interrupts {
-		switch item := interrupt.(type) {
-		case conversation.Approval:
-			answers = append(answers, conversation.InterruptAnswer{ItemID: item.ItemID, Answer: approvalAnswer(approveAll)})
-		case conversation.Question:
-			return nil, &interruptRequiredError{title: item.Title, sessionID: sessionID}
-		default:
-			return nil, fmt.Errorf("%w: %T", conversation.ErrUnsupportedInterrupt, interrupt)
+func UnattendedAnswers(approveAll bool, sessionID string) func(context.Context, []conversation.Interrupt) ([]conversation.InterruptAnswer, error) {
+	return func(_ context.Context, interrupts []conversation.Interrupt) ([]conversation.InterruptAnswer, error) {
+		answers := make([]conversation.InterruptAnswer, 0, len(interrupts))
+		for _, interrupt := range interrupts {
+			switch item := interrupt.(type) {
+			case conversation.Approval:
+				answers = append(answers, conversation.InterruptAnswer{ItemID: item.ItemID, Answer: approvalAnswer(approveAll)})
+			case conversation.Question:
+				return nil, &interruptRequiredError{title: item.Title, sessionID: sessionID}
+			default:
+				return nil, fmt.Errorf("%w: %T", conversation.ErrUnsupportedInterrupt, interrupt)
+			}
 		}
+		return answers, nil
 	}
-	return answers, nil
 }
 
 func approvalAnswer(approveAll bool) conversation.ApprovalAnswer {

@@ -130,7 +130,7 @@ func (b Block) validateEnvelope(completed bool) error {
 	if b.Kind != BlockUser && len(b.Attachments) != 0 {
 		return fmt.Errorf("%s block %s carries attachments", b.Kind, b.ID)
 	}
-	if b.Kind != BlockAssistant && len(b.Images) != 0 {
+	if b.Kind != BlockAssistant && b.Kind != BlockUser && len(b.Images) != 0 {
 		return fmt.Errorf("%s block %s carries inline images", b.Kind, b.ID)
 	}
 	if b.Kind == BlockTool && !b.CreatedAt.IsZero() {

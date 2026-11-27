@@ -77,22 +77,20 @@ func (i *itemProjection) project() error {
 }
 
 func (i *itemProjection) projectUserMessage() error {
-	text, attachments, err := projectContent(i.source.ID, i.source.Content)
+	content, err := projectContentValue(i.source.ID, i.source.Content)
 	if err != nil {
 		return err
 	}
-	i.block.Text = text
-	i.block.Attachments = attachments
+	i.block.Text, i.block.Images, i.block.Attachments = content.text, content.images, content.attachments
 	return nil
 }
 
 func (i *itemProjection) projectAgentMessage() error {
-	text, images, err := projectAssistantContent(i.source.ID, i.source.Content)
+	content, err := projectContentValue(i.source.ID, i.source.Content)
 	if err != nil {
 		return err
 	}
-	i.block.Text = text
-	i.block.Images = images
+	i.block.Text, i.block.Images = content.text, content.images
 	return nil
 }
 

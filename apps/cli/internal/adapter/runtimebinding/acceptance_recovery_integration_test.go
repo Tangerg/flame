@@ -77,7 +77,10 @@ func TestOneShotQueriesAcceptedStartAndResumeAfterDeliveryExpiry(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 	command := authoring.StartRun{CommandID: mutation.NewCommandID(), SessionID: session.ID, Message: authoring.Message{Text: runtimefixture.DelegateApprovalProbe}, Options: authoring.RunOptions{Provider: "deepseek", Model: "deepseek-chat"}}
-	if err := runworkflow.Execute(ctx, runworkflow.Invocation{Runtime: runtime, Renderer: new(recoveryRenderer), ReplayPolicy: policy, ApproveAll: true, Start: command}); err != nil {
+	if err := runworkflow.Execute(ctx, runworkflow.Invocation{
+		Runtime: runtime, Renderer: new(recoveryRenderer), ReplayPolicy: policy, Start: command,
+		AnswerInterrupts: runworkflow.UnattendedAnswers(true, command.SessionID),
+	}); err != nil {
 		t.Fatal(err)
 	}
 	if len(runtime.starts) != 1 || len(runtime.resumes) != 1 || len(runtime.queries) != 4 || len(runtime.receipts) != 2 {

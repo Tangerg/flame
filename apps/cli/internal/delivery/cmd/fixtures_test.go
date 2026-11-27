@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/acp"
 	"github.com/Tangerg/flame/apps/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
@@ -53,7 +54,7 @@ func executeCommandWithRuntime(
 			return errors.New("the terminal is not part of command tests")
 		},
 	}
-	root, err := NewRoot(dependencies)
+	root, err := NewRoot(dependencies, acp.NewStdioTransport())
 	if err != nil {
 		t.Fatal(err)
 	}
