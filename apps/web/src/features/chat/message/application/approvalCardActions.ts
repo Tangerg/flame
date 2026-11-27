@@ -1,7 +1,6 @@
 import { useCallback, useEffect } from "react";
 import { useApprovalSubmit, type ApprovalSubmitOptions } from "@/features/agent/public/hitl";
 import { type RememberScope } from "@/features/agent/public/hitl";
-import { canSubmitApproval } from "@/features/agent/public/messagePresentation";
 interface ApprovalArgsCommitter {
   commit: () => Record<string, unknown> | undefined | null;
 }
@@ -52,7 +51,7 @@ export function useApprovalCardActions({
   argsEditor?: ApprovalArgsCommitter;
   runtimeAvailable: boolean;
 }): ApprovalCardActionState {
-  const { submit, pending, submitted, registerActions } = useApprovalSubmit(
+  const { submit, available, responseStaged, registerActions } = useApprovalSubmit(
     sessionId,
     resumeRunId,
     itemId,
@@ -81,9 +80,8 @@ export function useApprovalCardActions({
   }, [approve, decline, registerable, registerActions]);
 
   return {
-    disabled:
-      !runtimeAvailable || submitted || !canSubmitApproval({ resumeRunId, itemId, pending }),
-    argsReadOnly: pending !== null || submitted,
+    disabled: !runtimeAvailable || !available,
+    argsReadOnly: responseStaged,
     approve,
     decline,
   };

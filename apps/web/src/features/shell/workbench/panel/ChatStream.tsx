@@ -140,9 +140,7 @@ export function ChatStream({ onSend }: Props) {
 
   const composer = pendingQuestion ? (
     <QuestionCard
-      // The composer card lives outside the session-keyed transcript, so its own
-      // identity key is what resets draft/submit state when the awaiting question
-      // changes; without it a prior question's state would bleed into the next.
+      // The composer slot survives changes to which question owns its draft.
       key={tupleKey(sessionId, pendingQuestion.resumeRunId, pendingQuestion.itemId)}
       sessionId={sessionId}
       status={pendingQuestion.block.status}

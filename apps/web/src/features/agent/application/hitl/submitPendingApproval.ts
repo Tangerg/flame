@@ -1,58 +1,27 @@
 import { type AgentDependencies } from "@/features/agent/application/agentDependencies";
-
 import { type ApprovalDecision } from "@/features/agent/domain/hitl";
-import { resumeInterrupt } from "@/features/agent/application/hitl/useInterruptResume";
-
 import { selectAwaitingGroups } from "@/features/agent/application/view/awaitingInterrupts";
 export function submitPendingApproval(
   agentAccess: AgentDependencies,
   decision: ApprovalDecision,
 ): boolean {
-  const sid = agentAccess.state.getActiveSessionId();
-  const entry = agentAccess.view.getSession(sid);
+  const sessionId = agentAccess.state.getActiveSessionId();
+  const entry = agentAccess.view.getSession(sessionId);
   if (!entry) return false;
 
-  const awaiting = selectAwaitingGroups(entry.view);
-  const hasPendingApproval = awaiting.some((group) =>
-    group.interrupts.some((interrupt) => interrupt.type === "approval"),
-  );
-  const oi = awaiting.find((group) =>
-    group.interrupts.some(
-      (interrupt) =>
-        interrupt.type === "approval" &&
-        !agentAccess.interrupts.isStaged({
-          sessionId: sid,
-          rootRunId: group.rootRunId,
-          itemId: interrupt.itemId,
-        }),
-    ),
-  );
-  const interrupt = oi?.interrupts.find(
-    (candidate) =>
-      candidate.type === "approval" &&
-      !agentAccess.interrupts.isStaged({
-        sessionId: sid,
-        rootRunId: oi.rootRunId,
-        itemId: candidate.itemId,
-      }),
-  );
-  if (!oi || !interrupt) return hasPendingApproval;
-
-  const itemId = interrupt.itemId;
-  const actions = agentAccess.approvalActions.find({
-    sessionId: sid,
-    rootRunId: oi.rootRunId,
-    itemId,
-  });
-  if (actions) {
-    if (decision === "approve") actions.approve();
-    else actions.decline();
-    return true;
+  let hasApproval = false;
+  for (const { rootRunId, interrupts } of selectAwaitingGroups(entry.view)) {
+    for (const { itemId, type } of interrupts) {
+      if (type !== "approval") continue;
+      hasApproval = true;
+      if (agentAccess.interrupts.responseState(sessionId, itemId) !== "unsubmitted") continue;
+      const ref = { sessionId, rootRunId, itemId };
+      const actions = agentAccess.approvalActions.find(ref);
+      if (!actions) agentAccess.interrupts.stage(ref, { type: "approval", decision });
+      else if (decision === "approve") actions.approve();
+      else actions.decline();
+      return true;
+    }
   }
-
-  resumeInterrupt(agentAccess, sid, oi.rootRunId, itemId, {
-    type: "approval",
-    decision,
-  });
-  return true;
+  return hasApproval;
 }

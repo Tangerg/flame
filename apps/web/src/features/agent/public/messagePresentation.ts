@@ -22,9 +22,7 @@ export type {
   ToolMetaItem,
   ToolMetaTone,
 } from "@/features/agent/presentation/toolPresentation";
-export { canSubmitApproval } from "@/features/agent/presentation/approvalPresentation";
 export {
-  canSubmitQuestion,
   clearQuestionAnswer,
   createQuestionDraft,
   questionAnswerText,

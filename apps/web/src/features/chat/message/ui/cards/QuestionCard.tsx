@@ -256,8 +256,6 @@ export function QuestionCard({
     resumeRunId,
     answered,
     pending: actions.pending,
-    questions,
-    draft,
     answers,
   });
 

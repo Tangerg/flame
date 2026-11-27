@@ -17,6 +17,84 @@ import { openWebSession } from "./webSessionFixture";
 describe("Web agent Session recovery over Runtime HTTP", () => {
   const fixture = useRuntimeFixture("agent-session-recovery");
 
+  it("publishes one response lifecycle and persists its original answer", async () => {
+    const session = await fixture.client.sessions.create({ workspace: { path: fixture.root } });
+    const sessionId = asSessionId(session.id);
+    const opening = await fixture.client.runs.start({
+      sessionId,
+      input: [{ type: "text", text: "E2E_HITL ask before continuing." }],
+    });
+    const rootRunId = asRunId(opening.result.runId);
+    const events = await collectRunEvents(originalOpeningEvents(opening));
+    expect(events.at(-1)?.event).toMatchObject({
+      type: "segment.finished",
+      run: { status: "waiting" },
+    });
+    const durable = await fixture.client.interrupts.list({ rootRunId });
+    const question = durable.data[0]?.interrupts[0];
+    if (question?.type !== "question") throw new Error("Runtime did not park the question");
+
+    const dispatching = Promise.withResolvers<void>();
+    const releaseDispatch = Promise.withResolvers<void>();
+    let resumeRequests = 0;
+    const client = fixture.createRuntimeClient(async (url, init) => {
+      if (new Headers(init?.headers).get(HTTP_HEADERS.method) !== "runs.resume")
+        return fetch(url, init);
+      resumeRequests++;
+      dispatching.resolve();
+      await releaseDispatch.promise;
+      const response = await fetch(url, init);
+      const body = await response.arrayBuffer();
+      return new Response(body, { status: response.status, headers: response.headers });
+    });
+
+    const web = openWebSession(client, fixture.baseUrl, sessionId);
+    const unbind = bindAgentSession(
+      web.agent.sessionDependencies(),
+      () => client,
+      sessionId,
+      () => {},
+    );
+    const { interrupts, view } = web.agent.dependencies;
+    const finished = Promise.withResolvers<void>();
+    const stopView = view.subscribeSessions((sessions) => {
+      if (sessions[sessionId]?.view.runsById[rootRunId]?.status === "finished") finished.resolve();
+    });
+    const states: string[] = [];
+    const stopResponse = interrupts.subscribe(() => {
+      states.push(interrupts.responseState(sessionId, question.itemId));
+    });
+    try {
+      const synchronize = view.getSession(sessionId)?.synchronize;
+      if (!synchronize) throw new Error("Session is not bound");
+      await expect(within(synchronize("after-live"), "waiting Session material")).resolves.toBe(true);
+      const ref = { sessionId, rootRunId, itemId: question.itemId };
+      const answers = [["Original answer"]];
+      expect(interrupts.stage(ref, { type: "answer", answers })).toBe(true);
+      await within(dispatching.promise, "the original answer dispatch");
+      expect(states).toEqual(["pending"]);
+      expect(interrupts.stage(ref, { type: "answer", answers: [["Replacement answer"]] })).toBe(false);
+      releaseDispatch.resolve();
+      await within(finished.promise, "the resumed Run settling");
+      expect(resumeRequests).toBe(1);
+      expect(states).toEqual(["pending", "accepted", "unsubmitted"]);
+      const items = await client.items
+        .list({ scope: { type: "run", runId: rootRunId } })
+        .autoPagingToArray();
+      const answered = items.find(({ id }) => id === question.itemId);
+      if (answered?.type !== "question") throw new Error("Runtime lost the original question");
+      expect(answered.question.answers).toEqual(answers);
+      await expect(client.interrupts.list({ rootRunId })).resolves.toMatchObject({ data: [] });
+    } finally {
+      releaseDispatch.resolve();
+      stopResponse();
+      stopView();
+      unbind();
+      web.dispose();
+      await client.close();
+    }
+  }, 30_000);
+
   it.each(["refresh", "explicit retry"] as const)(
     "retires the displayed Start retry when %s confirms the original Run",
     async (settlement) => {
