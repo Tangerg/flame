@@ -291,37 +291,21 @@ func (b *sessionBrowser) updateSessionFromCenter(request conversation.UpdateSess
 
 func (b *sessionBrowser) deleteSessionFromCenter(id string) {
 	started := b.tasks.application(sessionCenterOperation,
-		func(ctx context.Context) (session.DeletionResult, error) {
+		func(ctx context.Context) (session.ConfirmedDeletion, error) {
 			return session.Delete(
 				ctx, b.runtime, b.workbench, id, b.replayPolicy, runtimeRecoveryBackoff,
 			)
 		},
-		func(result session.DeletionResult, err error) {
-			switch result.Outcome {
-			case mutation.Rejected:
-				if rejectErr := session.RejectDeletion(b.workbench, result); rejectErr != nil {
-					b.notify("delete session failed; local intent cleanup failed: " + errors.Join(err, rejectErr).Error())
-					return
-				}
-				b.notify("delete session failed: " + err.Error())
-				return
-			case mutation.Unknown:
-				if result.Request.CommandID == "" {
-					b.notify("delete session failed: " + err.Error())
-					return
-				}
-				b.notify("delete session outcome is unknown; the original request is saved for recovery; inspect the session before issuing a new command: " + err.Error())
-				return
-			case mutation.Confirmed:
-			default:
-				b.notify("delete session returned an invalid settlement outcome")
-				return
-			}
-			if err := session.ConfirmDeletion(b.workbench, result); err != nil {
-				b.notify("deleted session; local state cleanup failed: " + err.Error())
+		func(result session.ConfirmedDeletion, err error) {
+			if err != nil {
+				b.notify(err.Error())
 				return
 			}
 			b.pane.Remove(id)
+			if result.LocalCleanupError != nil {
+				b.notify("session deleted. Local state cleanup is pending (" + result.LocalCleanupError.Error() + ")")
+				return
+			}
 			b.notify("deleted session")
 		},
 	)
