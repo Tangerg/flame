@@ -1039,6 +1039,8 @@ Session recovery observes the original command receipts before taking a single
 Runtime snapshot. The snapshot supplies the ordered transcript, Run states and
 retained Steer inputs together. A retired Steer is shown as a local receipt with
 its original input. Recovery acknowledges the journal after publishing the view.
+A pending Start or Resume card carries its original retry capability. The
+mounted Session accepts activation from the command currently in its view.
 
 Client, workspace and Session components receive `context.composer`. It captures
 `captureAppendText` from the Composer when the component context is created, so

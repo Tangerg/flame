@@ -13,6 +13,7 @@ import {
 } from "@/features/agent/domain/hitl";
 import { type AgentInput } from "@/features/agent/domain/input";
 import { type AgentPlan } from "@/features/agent/public/sessionView";
+import { type AgentOpeningAcceptance } from "@/features/agent/application/input/inputSubmission";
 export interface AgentSteerInput {
   runId: string;
   userItemId: string;
@@ -42,6 +43,10 @@ export interface AgentSessionMaterialRead {
   unresolvedOpenings?: AgentOpeningCommand[];
 }
 
+export interface AgentOpeningRecovery extends AgentOpeningAcceptance {
+  releaseObservation?(): Promise<void>;
+}
+
 export type AgentOpeningCommand = (
   | {
       operation: "start";
@@ -53,6 +58,7 @@ export type AgentOpeningCommand = (
 ) & {
   idempotencyKey: string;
   receipt: "notRecorded" | "unknown";
+  retry(signal: AbortSignal): Promise<AgentOpeningRecovery>;
 };
 
 export interface AgentSessionUsage {

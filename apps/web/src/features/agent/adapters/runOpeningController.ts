@@ -1,10 +1,8 @@
-import { disposeAsyncIterable } from "@/lib/asyncOwnership";
-import { type RunId, type SegmentId, type RunOpeningResult } from "@flame/runtime-client";
 import { type AgentProblem } from "@/features/agent/public/sessionView";
 import { endSpan, startRunSpan, withSpan } from "@/lib/observability/tracing";
 import { agentProblemFromRpcFailure } from "@/features/agent/adapters/rpcProblem";
 import { mutationSettlementIsUnknown } from "@flame/runtime-client";
-type RunOpening = { runId: RunId; segmentId: SegmentId };
+type OpenedRun = { runId: string };
 
 interface RunOpeningControllerOptions {
   sessionId: string;
@@ -18,14 +16,15 @@ interface RunOpeningControllerOptions {
 
 interface RunOpeningController {
   isStarting: () => boolean;
-  begin: <Result extends RunOpening>(
-    run: (signal: AbortSignal) => Promise<RunOpeningResult<Result>>,
+  begin: <Result extends OpenedRun>(
+    run: (signal: AbortSignal) => Promise<Result>,
     callbacks: {
-      observe: (opening: RunOpeningResult<Result>, signal: AbortSignal) => Promise<void>;
-      onResult?: (result: Result, observation: RunOpeningResult<Result>["observation"]) => void;
+      observe: (opening: Result, signal: AbortSignal) => Promise<void>;
+      release?: (opening: Result) => Promise<void> | undefined;
+      onResult?: (opening: Result) => void;
       onStartError?: () => void;
     },
-  ) => Promise<RunOpeningResult<Result>>;
+  ) => Promise<Result>;
   retire: () => void;
 }
 
@@ -42,7 +41,7 @@ export function createRunOpeningController({
 
   return {
     isStarting: () => active !== null,
-    begin(run, { observe, onResult, onStartError }) {
+    begin(run, { observe, release, onResult, onStartError }) {
       active?.releaseDraft();
       active?.finishSpan();
       markInteracted();
@@ -75,15 +74,13 @@ export function createRunOpeningController({
         .then(
           async (opening) => {
             if (isCanceled() || ctrl.signal.aborted || active !== openingLease) {
-              if (opening.observation.type === "stream") {
-                void disposeAsyncIterable(opening.observation.events);
-              }
+              void release?.(opening);
               return;
             }
             try {
               releasePendingDraft = undefined;
-              onResult?.(opening.result, opening.observation);
-              span.setAttribute("flame.run_id", opening.result.runId);
+              onResult?.(opening);
+              span.setAttribute("flame.run_id", opening.runId);
               await observe(opening, ctrl.signal);
             } catch (err) {
               if (isCanceled() || ctrl.signal.aborted || active !== openingLease) return;

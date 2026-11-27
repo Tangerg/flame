@@ -63,9 +63,7 @@ export function PendingRunOpenings() {
       </div>
       <Button
         size="sm"
-        onClick={() =>
-          agentAccess.view.getSession(sessionId)?.retryOpening?.(command.idempotencyKey)
-        }
+        onClick={() => agentAccess.view.getSession(sessionId)?.retryOpening?.(command)}
       >
         {t("agent.command.retry")}
       </Button>

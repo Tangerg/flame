@@ -15,8 +15,17 @@ import {
 } from "@flame/runtime-client";
 import type { ResumeRunRequest } from "@flame/runtime-client/wire";
 import type { AgentRunStartOptions } from "@/features/agent/public/runOptions";
+import { disposeAsyncIterable } from "@/lib/asyncOwnership";
 
-type StartedRunOpening = RunOpeningResult<{
+export type RuntimeRunOpening<Result> = Result & Pick<RunOpeningResult<Result>, "observation">;
+
+export function releaseRuntimeOpening({
+  observation,
+}: RuntimeRunOpening<unknown>): Promise<void> | undefined {
+  if (observation.type === "stream") return disposeAsyncIterable(observation.events);
+}
+
+type StartedRunOpening = RuntimeRunOpening<{
   runId: RunId;
   segmentId: SegmentId;
   userItemId: ItemId;
@@ -71,11 +80,9 @@ export class RuntimeRunOpenings {
       { parent: signal },
     );
     return {
-      result: {
-        runId: asRunId(result.runId),
-        segmentId: asSegmentId(result.segmentId),
-        ...(result.userItemId ? { userItemId: asItemId(result.userItemId) } : {}),
-      },
+      runId: asRunId(result.runId),
+      segmentId: asSegmentId(result.segmentId),
+      ...(result.userItemId ? { userItemId: asItemId(result.userItemId) } : {}),
       observation,
     };
   }
@@ -108,7 +115,7 @@ async function observeRunStart(
             observeRunStart(owner, (attempt) => command.retry({ signal: attempt }), signal),
         })),
   });
-  return { result: brandStartedRun(result), observation };
+  return { ...brandStartedRun(result), observation };
 }
 
 function brandStartedRun(result: StartRunResponse) {

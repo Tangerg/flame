@@ -14,6 +14,7 @@ import {
   runtimeRunFact,
 } from "@/features/agent/adapters/runtimeAgentFacts";
 import { contentBlocksToAgentInput } from "@/features/agent/adapters/wireInput";
+import { disposeAsyncIterable } from "@/lib/asyncOwnership";
 export function runtimeSessionMaterial(
   sharedMaterial: AgentSharedMaterial,
   sessionId: string,
@@ -37,7 +38,7 @@ export function runtimeSessionMaterial(
 }
 
 type RecoveredSteer = Extract<RunCommandRecovery, { operation: "steer" }>;
-export type RecoveredOpening = Exclude<RunCommandRecovery, { operation: "steer" }>;
+type RecoveredOpening = Exclude<RunCommandRecovery, { operation: "steer" }>;
 
 // An unrecorded command names its Session only through its request: a start
 // carries it, while resume and steer name a Run of the Session.
@@ -74,6 +75,8 @@ export function unresolvedSteer(command: RecoveredSteer): AgentUnresolvedSteer {
 export function unresolvedOpening(
   command: RecoveredOpening,
   receipt: Exclude<RunCommandRecovery["observation"]["type"], "recorded">,
+  sessionId: string,
+  assertCurrent: () => void,
 ): AgentOpeningCommand {
   const request =
     command.operation === "start"
@@ -95,5 +98,23 @@ export function unresolvedOpening(
             : {}),
           responses: command.params.responses,
         };
-  return { ...request, idempotencyKey: command.idempotencyKey, receipt };
+  return {
+    ...request,
+    idempotencyKey: command.idempotencyKey,
+    receipt,
+    async retry(signal) {
+      assertCurrent();
+      signal.throwIfAborted();
+      const { result, observation } = await command.retry({ signal });
+      return {
+        status: observation.type === "retired" ? "retired" : "accepted",
+        sessionId: observation.type === "stream" ? sessionId : observation.sessionId,
+        runId: result.runId,
+        userItemId: result.userItemId,
+        ...(observation.type === "stream"
+          ? { releaseObservation: () => disposeAsyncIterable(observation.events) }
+          : {}),
+      };
+    },
+  };
 }

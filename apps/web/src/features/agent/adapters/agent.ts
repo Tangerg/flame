@@ -73,7 +73,6 @@ export function composeAgent(
     projection,
     sessions,
     runOpenings,
-    retries: gateway.retries,
   });
   const defaultSession = createAgentDefaultSession(navigation, sessionDependencies, client, () => {
     const generation = stream.connectionGeneration();

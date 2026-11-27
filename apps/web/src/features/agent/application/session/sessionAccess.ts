@@ -55,7 +55,9 @@ export type SendAgentInputAction = (
   options?: AgentRunStartOptions,
 ) => Promise<AgentInputSettlement> | null;
 
-export type RetryOpeningAction = (idempotencyKey: string) => Promise<AgentOpeningAcceptance> | null;
+export type RetryOpeningAction = (
+  command: AgentOpeningCommand,
+) => Promise<AgentOpeningAcceptance> | null;
 
 export type ResumeRunAction = (
   runId: string,

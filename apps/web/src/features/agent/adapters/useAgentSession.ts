@@ -14,18 +14,18 @@ export function useAgentSession(
   sessionId: string,
   onConnectionLost: () => void,
 ): AgentSession {
-  const { agentAccess, projection, sessions, runOpenings, retries } = dependencies;
+  const { agentAccess, projection, sessions, runOpenings } = dependencies;
   const reportConnectionLoss = useEffectEvent(onConnectionLost);
 
   useEffect(() => {
     if (!sessionId) return;
     return bindAgentSession(
-      { agentAccess, projection, sessions, runOpenings, retries },
+      { agentAccess, projection, sessions, runOpenings },
       client,
       sessionId,
       reportConnectionLoss,
     );
-  }, [client, sessionId, agentAccess, projection, sessions, runOpenings, retries]);
+  }, [client, sessionId, agentAccess, projection, sessions, runOpenings]);
 
   return {
     send: (input: AgentInput, options?: AgentRunStartOptions) =>

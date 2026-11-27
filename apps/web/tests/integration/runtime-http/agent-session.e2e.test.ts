@@ -7,6 +7,7 @@ import {
   createHttpTransport,
 } from "@flame/runtime-client";
 import { HTTP_HEADERS } from "@flame/runtime-client/wire";
+import { bindAgentSession } from "@/features/agent/adapters/agentSessionBinding";
 import { createProviderGate } from "./fakeProvider";
 import { useRuntimeFixture } from "./fixture";
 import { MemoryMutationStorage } from "./mutationStorage";
@@ -15,6 +16,81 @@ import { openWebSession } from "./webSessionFixture";
 
 describe("Web agent Session recovery over Runtime HTTP", () => {
   const fixture = useRuntimeFixture("agent-session-recovery");
+
+  it.each(["refresh", "explicit retry"] as const)(
+    "retires the displayed Start retry when %s confirms the original Run",
+    async (settlement) => {
+      const session = await fixture.client.sessions.create({ workspace: { path: fixture.root } });
+      const sessionId = asSessionId(session.id);
+      let loseAcknowledgement = true;
+      let runFinished = false;
+      const client = fixture.createRuntimeClient(async (url, init) => {
+        const method = new Headers(init?.headers).get(HTTP_HEADERS.method);
+        if (method === "runs.getAcceptance" && runFinished && loseAcknowledgement)
+          throw new TypeError("the original acceptance read was interrupted");
+        const response = await fetch(url, init);
+        if (method === "runs.start" && loseAcknowledgement) {
+          await response.arrayBuffer();
+          runFinished = true;
+          throw new TypeError("the original Start response was interrupted");
+        }
+        return response;
+      });
+      const web = openWebSession(client, fixture.baseUrl, sessionId);
+      const unbind = bindAgentSession(
+        web.agent.sessionDependencies(),
+        () => client,
+        sessionId,
+        () => {},
+      );
+      try {
+        const view = web.agent.dependencies.view;
+        const entry = view.getSession(sessionId);
+        if (!entry?.synchronize || !entry.retryOpening) throw new Error("Session is not bound");
+        await expect(
+          within(entry.synchronize("after-live"), "initial Session material"),
+        ).resolves.toBe(true);
+        const original = client.runs.start({
+          sessionId,
+          input: [{ type: "text", text: "Complete this Start with a lost reply." }],
+        });
+        await expect(original).rejects.toThrow();
+        await expect(
+          within(entry.synchronize("after-live"), "the unconfirmed command"),
+        ).resolves.toBe(true);
+        const pending = view.getSession(sessionId)?.openingCommands[0];
+        if (!pending) throw new Error("the original Start was not offered for recovery");
+        expect(pending).toMatchObject({
+          idempotencyKey: original.idempotencyKey,
+          operation: "start",
+          receipt: "unknown",
+        });
+        loseAcknowledgement = false;
+        if (settlement === "explicit retry") {
+          const retry = entry.retryOpening(pending);
+          if (!retry) throw new Error("the current original Start could not be retried");
+          await expect(within(retry, "the original Start retry")).resolves.toMatchObject({
+            status: "accepted",
+            sessionId,
+          });
+        }
+        await expect(
+          within(entry.synchronize("after-live"), "the confirmed original command"),
+        ).resolves.toBe(true);
+        expect(view.getSession(sessionId)?.openingCommands).toEqual([]);
+        const staleRetry = entry.retryOpening(pending);
+        expect(staleRetry).toBeNull();
+        const runs = await fixture.client.runs.list({ sessionId });
+        expect(runs.data).toHaveLength(1);
+        expect(runs.data[0]?.status).toBe("finished");
+      } finally {
+        unbind();
+        web.dispose();
+        await client.close();
+      }
+    },
+    30_000,
+  );
 
   it.each([
     { scenario: "keeps applied input in the coherent transcript", retire: false },
@@ -118,7 +194,9 @@ describe("Web agent Session recovery over Runtime HTTP", () => {
           } else {
             expect(view.runsById[runId]?.status).toBe("finished");
             const applied = view.messages.findIndex((message) => message.id === userItemId);
-            const answer = view.messages.findLastIndex((message) => message.phase === "finalAnswer");
+            const answer = view.messages.findLastIndex(
+              (message) => message.phase === "finalAnswer",
+            );
             expect(applied).toBeGreaterThanOrEqual(0);
             expect(view.messages[applied]).toMatchObject({
               runId,

@@ -1,9 +1,7 @@
-import type { RuntimeRunOpenings } from "./runtimeRunOpenings";
 import type { ApprovalRuleDecision } from "@/foundation/protocolValues.generated";
 import { type FlameClient } from "@flame/runtime-client";
 import {
   asRunId,
-  asItemId,
   asSegmentId,
   asSessionId,
   createMutationSettler,
@@ -31,7 +29,6 @@ import {
   runtimeSteerInput,
   unresolvedOpening,
   unresolvedSteer,
-  type RecoveredOpening,
 } from "@/features/agent/adapters/runtimeSessionMaterial";
 import { type AgentCommands } from "@/features/agent/application/agentCommandOwner";
 import { type createAgentSessionUsage } from "@/features/agent/application/session/sessionUsage";
@@ -39,57 +36,15 @@ import { type createAgentSessionUsage } from "@/features/agent/application/sessi
 type RuntimeCapabilities = Pick<RuntimeAccess["capabilities"], "hasCapability">;
 type CreateSessionMutation = ReturnType<FlameClient["sessions"]["create"]>;
 
-function openingRetry(sessionId: string, command: RecoveredOpening) {
-  return {
-    sessionId,
-    retry: async (signal: AbortSignal) => {
-      const opening = await command.retry({ signal });
-      return {
-        ...opening,
-        result: {
-          runId: asRunId(opening.result.runId),
-          segmentId: asSegmentId(opening.result.segmentId),
-          ...(opening.result.userItemId ? { userItemId: asItemId(opening.result.userItemId) } : {}),
-        },
-      };
-    },
-  };
-}
-
 class RuntimeAgentGateway implements AgentRuntimeGateway {
   constructor(
     private readonly runtimeClient: () => FlameClient,
     private readonly capabilities: RuntimeCapabilities,
     private readonly sharedMaterial: AgentSharedMaterial,
+    private readonly commands: AgentCommands,
   ) {}
 
   #sessionMutations = createMutationSettler();
-  // Each Runtime generation owns its opening-retry registry. A snapshot read
-  // captures its generation and registers into that registry, so a read that
-  // finishes after the gateway switched writes a stale handle into a discarded
-  // registry rather than the current one; retries resolve only the current one.
-  #generation: {
-    retries: Map<
-      string,
-      {
-        sessionId: string;
-        retry: (signal: AbortSignal) => ReturnType<RuntimeRunOpenings["resume"]>;
-      }
-    >;
-  } = { retries: new Map() };
-  retryOpening(
-    sessionId: string,
-    key: string,
-    signal: AbortSignal,
-  ): ReturnType<RuntimeRunOpenings["resume"]> {
-    const original = this.#generation.retries.get(key);
-    if (!original || original.sessionId !== sessionId)
-      return Promise.reject(
-        new Error("opening command does not belong to this Runtime generation"),
-      );
-    return original.retry(signal);
-  }
-
   createSession(input: Parameters<AgentRuntimeGateway["createSession"]>[0]) {
     const client = this.runtimeClient();
     return this.#observeCreation(this.#sessionMutations, (signal) =>
@@ -156,7 +111,7 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
 
   async loadSessionSnapshot(sessionId: string, signal?: AbortSignal) {
     const client = this.runtimeClient();
-    const generation = this.#generation;
+    const commandOwner = this.commands.current();
     const sid = asSessionId(sessionId);
     const includeDescendants = this.capabilities.hasCapability("childRuns");
     try {
@@ -173,8 +128,6 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
       const runIds = new Set(snapshot.runs.map((run) => run.id));
       for (const command of commands) {
         if (!recoveredCommandBelongs(command, sessionId, runIds)) continue;
-        if (command.operation !== "steer")
-          generation.retries.set(command.idempotencyKey, openingRetry(sessionId, command));
         const { observation } = command;
         if (observation.type === "recorded") {
           acknowledge.push(observation.acknowledge);
@@ -197,7 +150,13 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
           if (observation.type === "unknown")
             console.warn("[session] original steer query failed:", observation.cause);
           unresolvedSteers.push(unresolvedSteer(command));
-        } else unresolvedOpenings.push(unresolvedOpening(command, observation.type));
+        } else {
+          unresolvedOpenings.push(
+            unresolvedOpening(command, observation.type, sessionId, () =>
+              commandOwner.assertCurrent(),
+            ),
+          );
+        }
       }
       material.retiredSteers = retiredSteers;
       material.unresolvedSteers = unresolvedSteers;
@@ -274,14 +233,12 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
   }
 
   replaceRuntimeGeneration(): void {
-    this.#generation = { retries: new Map() };
     const predecessor = this.#sessionMutations;
     this.#sessionMutations = createMutationSettler();
     predecessor.dispose();
   }
 
   dispose(): void {
-    this.#generation = { retries: new Map() };
     this.#sessionMutations.dispose();
   }
 }
@@ -294,15 +251,11 @@ export function createAgentRuntimeGateway(
   usage: ReturnType<typeof createAgentSessionUsage>,
 ) {
   let commandOwner = commands.replace();
-  const gateway = new RuntimeAgentGateway(runtimeClient, capabilities, sharedMaterial);
+  const gateway = new RuntimeAgentGateway(runtimeClient, capabilities, sharedMaterial, commands);
   let usageOwner = usage.replace(gateway);
   let disposed = false;
   return {
     gateway,
-    retries: {
-      retry: (sessionId: string, key: string, signal: AbortSignal) =>
-        gateway.retryOpening(sessionId, key, signal),
-    },
     replaceRuntimeGeneration() {
       if (disposed) return;
       gateway.replaceRuntimeGeneration();

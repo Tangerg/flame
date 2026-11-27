@@ -1,10 +1,14 @@
 import { type AgentDependencies } from "@/features/agent/application/agentDependencies";
 import { type AgentStoreOwner } from "@/features/agent/adapters/agentStore";
 import { type AgentSessionStore } from "@/features/agent/adapters/agentSessionStore";
-import { type createAgentRuntimeGateway } from "@/features/agent/adapters/agentRuntimeGateway";
 import { type FlameClient } from "@flame/runtime-client";
 import { t } from "@/lib/i18n/index";
-import { type RuntimeRunOpenings, type RunStartRecovery } from "./runtimeRunOpenings";
+import {
+  releaseRuntimeOpening,
+  type RuntimeRunOpening,
+  type RuntimeRunOpenings,
+  type RunStartRecovery,
+} from "./runtimeRunOpenings";
 import { type AgentRunStartOptions } from "@/features/agent/public/runOptions";
 import {
   asItemId,
@@ -32,19 +36,16 @@ import { agentProblemFromRpcFailure } from "@/features/agent/adapters/rpcProblem
 import { createSessionProjectionSynchronization } from "@/features/agent/application/session/sessionProjectionSynchronization";
 import { createRunCancellationController } from "@/features/agent/adapters/runCancellationController";
 import { revalidateRunTermination } from "@/features/agent/application/run/revalidateRunTermination";
-import { disposeAsyncIterable } from "@/lib/asyncOwnership";
-import { type RunOpeningResult, type RunId, type SegmentId } from "@flame/runtime-client";
 
 export interface AgentSessionDependencies {
   agentAccess: AgentDependencies;
   projection: AgentStoreOwner;
   sessions: AgentSessionStore;
   runOpenings: RuntimeRunOpenings;
-  retries: ReturnType<typeof createAgentRuntimeGateway>["retries"];
 }
 
 export function bindAgentSession(
-  { agentAccess, projection, sessions, runOpenings, retries }: AgentSessionDependencies,
+  { agentAccess, projection, sessions, runOpenings }: AgentSessionDependencies,
   client: () => FlameClient,
   sessionId: string,
   reportConnectionLoss: () => void,
@@ -136,22 +137,22 @@ export function bindAgentSession(
     },
   });
 
-  const recoverOpeningObservation = async (
-    opening: RunOpeningResult<{ runId: RunId; segmentId: SegmentId }>,
+  const observeRecoveredOpening = async (
+    receipt: AgentOpeningAcceptance,
     signal: AbortSignal,
+    release?: () => Promise<void> | undefined,
   ): Promise<void> => {
     commandsReady = false;
     try {
-      const outcome = opening.observation;
-      if (outcome.type !== "stream" && outcome.sessionId !== sessionId) {
+      if (receipt.sessionId !== sessionId) {
         throw new Error("accepted opening belongs to another Session");
       }
-      if (outcome.type === "retired") {
+      if (receipt.status === "retired") {
         agentAccess.notifications.notify("info", t("agent.acceptedRunRetired"), {
           source: "session",
         });
       }
-      if (outcome.type === "stream") await disposeAsyncIterable(outcome.events);
+      await release?.();
       if (!disposed && !signal.aborted) await projectionSynchronization.request();
     } catch (error) {
       if (!disposed && !signal.aborted) reportSynchronizationFailure(error);
@@ -159,14 +160,19 @@ export function bindAgentSession(
     }
   };
 
-  const acceptance = (
-    opening: RunOpeningResult<{ runId: RunId; segmentId: SegmentId; userItemId?: string }>,
-  ): AgentOpeningAcceptance => ({
-    status: opening.observation.type === "retired" ? "retired" : "accepted",
-    sessionId,
-    runId: opening.result.runId,
-    ...(opening.result.userItemId ? { userItemId: opening.result.userItemId } : {}),
+  type RuntimeOpening = RuntimeRunOpening<{ runId: string; userItemId?: string }>;
+  const acceptance = ({
+    runId,
+    userItemId,
+    observation,
+  }: RuntimeOpening): AgentOpeningAcceptance => ({
+    status: observation.type === "retired" ? "retired" : "accepted",
+    sessionId: observation.type === "stream" ? sessionId : observation.sessionId,
+    runId,
+    ...(userItemId ? { userItemId } : {}),
   });
+  const recoverRuntimeOpening = (opening: RuntimeOpening, signal: AbortSignal) =>
+    observeRecoveredOpening(acceptance(opening), signal, () => releaseRuntimeOpening(opening));
 
   const send = (
     input: AgentInput,
@@ -185,20 +191,22 @@ export function bindAgentSession(
     store().appendLocalMessage(sessionId, optimistic.message);
     let original: RunStartRecovery | undefined;
     const opening = runOpening.begin(
-      (signal) =>
+      (signal: AbortSignal) =>
         runOpenings.start(sessionId, wireInput, options, signal, (command) => {
           original = command;
         }),
       {
-        onResult: (result, observation) => {
-          if (observation.type === "retired") store().dropMessage(sessionId, optimistic.localId);
-          else store().reconcileMessageIdentity(sessionId, optimistic.localId, result.userItemId);
+        onResult: (opening) => {
+          if (opening.observation.type === "retired")
+            store().dropMessage(sessionId, optimistic.localId);
+          else store().reconcileMessageIdentity(sessionId, optimistic.localId, opening.userItemId);
         },
         onStartError: () => store().dropMessage(sessionId, optimistic.localId),
+        release: releaseRuntimeOpening,
         observe: (opening, signal) =>
           opening.observation.type === "stream"
-            ? runPump.pump({ result: opening.result, events: opening.observation.events }, signal)
-            : recoverOpeningObservation(opening, signal),
+            ? runPump.pump({ result: opening, events: opening.observation.events }, signal)
+            : recoverRuntimeOpening(opening, signal),
       },
     );
     return settleAgentInput(opening.then(acceptance), {
@@ -211,23 +219,15 @@ export function bindAgentSession(
     });
   };
 
-  function retryOpening(
-    key: string,
-    retry: (signal: AbortSignal) => ReturnType<RuntimeRunOpenings["resume"]>,
-  ): Promise<AgentOpeningAcceptance> {
-    const opening = runOpening.begin(retry, {
-      onResult: () => store().projectOpeningAccepted(sessionId, key),
-      observe: recoverOpeningObservation,
-    });
-    const settlement = opening.then(acceptance);
-    void settlement.catch(() => {});
-    return settlement;
-  }
-
   function recoverStart(original: RunStartRecovery): Promise<AgentInputSettlement> {
     if (disposed || runOpening.isStarting())
       throw new Error("session is not ready to recover the original input");
-    return settleAgentInput(retryOpening(original.idempotencyKey, original.retry), {
+    const opening = runOpening.begin(original.retry, {
+      onResult: () => store().projectOpeningAccepted(sessionId, original.idempotencyKey),
+      release: releaseRuntimeOpening,
+      observe: recoverRuntimeOpening,
+    });
+    return settleAgentInput(opening.then(acceptance), {
       key: () => original.idempotencyKey,
       isUnknown: (error) => agentAccess.runtime.isInputReceiptUnknown(error),
       recover: () => recoverStart(original),
@@ -251,11 +251,13 @@ export function bindAgentSession(
       response: response.response,
     }));
     runOpening.begin(
-      (signal) => runOpenings.resume(asRunId(runId), { responses: wireResponses }, signal),
+      (signal: AbortSignal) =>
+        runOpenings.resume(asRunId(runId), { responses: wireResponses }, signal),
       {
         onResult: onSettled ? () => onSettled() : undefined,
         onStartError,
-        observe: recoverOpeningObservation,
+        release: releaseRuntimeOpening,
+        observe: recoverRuntimeOpening,
       },
     );
     return true;
@@ -317,9 +319,18 @@ export function bindAgentSession(
   store().setSend(sessionId, send);
   store().setStop(sessionId, stop);
   store().setResume(sessionId, resume);
-  store().setRetryOpening(sessionId, (key) => {
+  store().setRetryOpening(sessionId, (command) => {
     if (!commandsReady || runOpening.isStarting()) return null;
-    return retryOpening(key, (signal) => retries.retry(sessionId, key, signal));
+    if (!store().sessions[sessionId]?.openingCommands.includes(command)) return null;
+    const opening = runOpening.begin(command.retry, {
+      onResult: () => store().projectOpeningAccepted(sessionId, command.idempotencyKey),
+      release: (receipt) => receipt.releaseObservation?.(),
+      observe: (receipt, signal) =>
+        observeRecoveredOpening(receipt, signal, receipt.releaseObservation),
+    });
+    const settlement = opening.then(({ releaseObservation, ...receipt }) => receipt);
+    void settlement.catch(() => {});
+    return settlement;
   });
   store().setSynchronize(sessionId, (ownership) => {
     if (
