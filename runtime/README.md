@@ -106,6 +106,9 @@ workspace projection as ordinary Session creation. An explicitly supplied empty
 workspace remains invalid. Acceptance lookup retains the original omission and
 request identity; retries do not resolve a different default into that request.
 
+An opening conflict identifies the Session's active root Run so clients can
+target the operation that holds Session admission.
+
 Installed model Tool dispatch commits its immutable caller/source alongside the
 original pre-call observation. `installed_tool_callers` retains only logical
 caller, installed Tool, release and source authority, independently of transient

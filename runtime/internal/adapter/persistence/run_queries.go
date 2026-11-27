@@ -25,6 +25,32 @@ const runReadJoins = `LEFT JOIN interrupts AS i
 		        WHEN r.root_run_id = '' THEN r.run_id
 		        ELSE r.root_run_id
 		      END`
+const activeRootRunPredicate = `state != '` + string(rundomain.Finished) + `' AND root_run_id = ''`
+
+func (r *RunStore) ActiveRoot(ctx context.Context, sessionID identity.SessionID) (*runs.ActiveRoot, error) {
+	const operation = "read active root Run"
+	if err := validateResource(operation, sessionID); err != nil {
+		return nil, err
+	}
+	return scopedValue(ctx, r.db.read, func(ctx context.Context) (*runs.ActiveRoot, error) {
+		var active runs.ActiveRoot
+		var rawState string
+		err := r.db.connection(ctx).QueryRowContext(ctx,
+			`SELECT run_id, state FROM runs WHERE session_id = ? AND `+activeRootRunPredicate,
+			sessionID,
+		).Scan(&active.RunID, &rawState)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		if err == nil {
+			active.State, err = parseRunState(rawState)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("sqlite: %s in Session %q: %w", operation, sessionID, err)
+		}
+		return &active, nil
+	})
+}
 
 func (r *RunStore) PageRuns(ctx context.Context, sessionID identity.SessionID, statuses []rundomain.State, includeDescendants bool, before *rundomain.PageAnchor, limit int) ([]rundomain.Run, error) {
 	return scopedValue(ctx, r.db.read, func(ctx context.Context) ([]rundomain.Run, error) {

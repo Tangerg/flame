@@ -157,8 +157,8 @@ type sessionCreator interface {
 	PrepareOpening(ctx context.Context, opening SessionOpening, selection flamemodel.Selection) (session.Session, *session.Session, error)
 }
 
-type activeRunReader interface {
-	ActiveRun(ctx context.Context, sessionID identity.SessionID) (run.Run, bool, error)
+type activeRootReader interface {
+	ActiveRoot(ctx context.Context, sessionID identity.SessionID) (*ActiveRoot, error)
 }
 
 type pendingReader interface {

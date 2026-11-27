@@ -165,9 +165,8 @@ func currentSchema() []string {
 			string(run.Waiting),
 			string(run.Finished),
 		),
-		fmt.Sprintf(`CREATE UNIQUE INDEX IF NOT EXISTS idx_runs_session_active
-			ON runs(session_id) WHERE state != '%s' AND root_run_id = ''`,
-			string(run.Finished)),
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_runs_session_active
+			ON runs(session_id) WHERE ` + activeRootRunPredicate,
 		`CREATE INDEX IF NOT EXISTS idx_runs_session
 			ON runs(session_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_runs_root

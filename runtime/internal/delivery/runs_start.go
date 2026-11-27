@@ -135,7 +135,7 @@ func invalidWireContentBlock(index int, field, detail string) error {
 func wireRunStartErr(err error) error {
 	if conflict, ok := errors.AsType[*runs.ActiveRunConflictError](err); ok {
 		return &ActiveRunConflictError{ActiveRun: protocol.ActiveRunRef{
-			RunID: conflict.RunID.String(), Status: presentRunStatus(conflict.State),
+			RunID: conflict.Root.RunID.String(), Status: presentRunStatus(conflict.Root.State),
 		}}
 	}
 	switch {

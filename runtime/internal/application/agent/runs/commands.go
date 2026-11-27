@@ -383,13 +383,17 @@ func validateOptions(options *corechat.Options) error {
 	return nil
 }
 
-type ActiveRunConflictError struct {
+type ActiveRoot struct {
 	RunID identity.RunID
 	State run.State
 }
 
+type ActiveRunConflictError struct {
+	Root ActiveRoot
+}
+
 func (a *ActiveRunConflictError) Error() string {
-	return fmt.Sprintf("runs: session already has a %s run %q", a.State, a.RunID)
+	return fmt.Sprintf("runs: session already has a %s run %q", a.Root.State, a.Root.RunID)
 }
 
 func (r StartResult) Reopened() bool { return r.Opening != OpeningAdmitted }

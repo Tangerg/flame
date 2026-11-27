@@ -28,7 +28,7 @@ type Openings struct {
 	modelSelector      models.Selector
 	sessionReader      sessionReader
 	sessionCreator     sessionCreator
-	activeRuns         activeRunReader
+	activeRoots        activeRootReader
 	isolation          isolationProvider
 	releases           ExecutionReleaser
 	admission          *ownership.Gate
@@ -45,7 +45,7 @@ type OpeningDependencies struct {
 	ModelSelector      models.Selector
 	Sessions           sessionReader
 	SessionCreator     sessionCreator
-	ActiveRuns         activeRunReader
+	ActiveRoots        activeRootReader
 	Segments           *Segments
 	Admissions         *ownership.Gate
 	Isolation          isolationProvider
@@ -64,7 +64,7 @@ func NewOpenings(deps OpeningDependencies) (*Openings, error) {
 		{"model admitter", deps.Models},
 		{"session reader", deps.Sessions},
 		{"session creator", deps.SessionCreator},
-		{"active run reader", deps.ActiveRuns},
+		{"active root reader", deps.ActiveRoots},
 		{"segment supervisor", deps.Segments},
 		{"admission gate", deps.Admissions},
 		{"isolation provider", deps.Isolation},
@@ -85,7 +85,7 @@ func NewOpenings(deps OpeningDependencies) (*Openings, error) {
 		modelSelector:      deps.ModelSelector,
 		sessionReader:      deps.Sessions,
 		sessionCreator:     deps.SessionCreator,
-		activeRuns:         deps.ActiveRuns,
+		activeRoots:        deps.ActiveRoots,
 		isolation:          deps.Isolation,
 		releases:           deps.Releases,
 		admission:          deps.Admissions,
@@ -116,9 +116,9 @@ func (c *Openings) WaitSessionStartable(ctx context.Context, sessionID identity.
 		if err := c.admission.WaitRunStartable(ctx, sess.ID(), sess.Workspace().Path()); err != nil {
 			return err
 		}
-		_, active, err := c.activeRuns.ActiveRun(ctx, sess.ID())
+		active, err := c.activeRoots.ActiveRoot(ctx, sess.ID())
 		err = errors.Join(err, errors.Join(ctx.Err(), context.Cause(ctx)))
-		if err != nil || !active {
+		if err != nil || active == nil {
 			return err
 		}
 		select {
@@ -386,7 +386,7 @@ func (c *Openings) resolveOpeningError(ctx context.Context, sessionID identity.S
 	if !errors.Is(err, run.ErrSessionBusy) {
 		return err
 	}
-	if conflict, lookupErr := c.activeRunConflict(ctx, sessionID); lookupErr == nil && conflict != nil {
+	if conflict, lookupErr := c.activeRootConflict(ctx, sessionID); lookupErr == nil && conflict != nil {
 		return conflict
 	}
 	return err
@@ -438,7 +438,7 @@ func (c *Openings) claimFreshRun(ctx context.Context, sess session.Session) (own
 	if leaseErr != nil {
 		return ownership.RunAdmission{}, leaseErr
 	}
-	conflict, err := c.activeRunConflict(ctx, sess.ID())
+	conflict, err := c.activeRootConflict(ctx, sess.ID())
 	if err != nil {
 		runAdmission.Release()
 		return ownership.RunAdmission{}, err
@@ -453,12 +453,12 @@ func (c *Openings) claimFreshRun(ctx context.Context, sess session.Session) (own
 	return runAdmission, nil
 }
 
-func (c *Openings) activeRunConflict(ctx context.Context, sessionID identity.SessionID) (*ActiveRunConflictError, error) {
-	run, found, err := c.activeRuns.ActiveRun(ctx, sessionID)
-	if err != nil || !found {
+func (c *Openings) activeRootConflict(ctx context.Context, sessionID identity.SessionID) (*ActiveRunConflictError, error) {
+	root, err := c.activeRoots.ActiveRoot(ctx, sessionID)
+	if err != nil || root == nil {
 		return nil, err
 	}
-	return &ActiveRunConflictError{RunID: run.ID(), State: run.State()}, nil
+	return &ActiveRunConflictError{Root: *root}, nil
 }
 
 func (c *Openings) executionCWD(ctx context.Context, sess session.Session) (cwd string, isolated bool, err error) {

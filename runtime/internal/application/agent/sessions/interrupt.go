@@ -25,19 +25,6 @@ func (r RunExecutionBinding) executorRef() runs.ExecutorRef {
 	return runs.ExecutorRef{SessionID: r.SessionID, ExecutorID: r.ExecutorID}
 }
 
-func (c *Coordinator) ActiveRun(ctx context.Context, sessionID identity.SessionID) (rundomain.Run, bool, error) {
-	runs, err := c.runs.ListRuns(ctx, sessionID)
-	if err != nil {
-		return rundomain.Run{}, false, err
-	}
-	for _, run := range runs {
-		if !run.State().IsTerminal() {
-			return run, true, nil
-		}
-	}
-	return rundomain.Run{}, false, nil
-}
-
 // The caller holds Session admission from the Pending read through publication.
 func (c *Coordinator) CommitParkedTermination(
 	ctx context.Context,
