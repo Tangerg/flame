@@ -2068,6 +2068,59 @@ and caches are removed.
 The next review follows the same-basename folders in the
 sidebar before a Session is selected.
 
+### Folder rows reveal their path on keyboard focus
+
+Signed Wails at `739b55135` shows two sidebar folders
+called `workspace`. Their existing mouse hover displays
+the exact north and south paths in separate native tooltip
+windows. Both folder buttons carry their exact paths in native Help.
+Tab to North shows only the shared basename. Enter folds the intended group.
+
+FolderRow now attaches the shared path Tooltip to its
+existing expand button. It uses the actual folder path
+when the basename omits part of it. A separate accessible
+description on the same button carries that exact path.
+The adjacent creation button remains a separate Tab stop.
+WorkIndex keys each folder group by its full path.
+[Base UI Tooltip](https://base-ui.com/react/components/tooltip)
+
+- Chinese/light/14 px/Flame at 1120 × 728. Tab shows
+  the full North path. Escape closes the tooltip and
+  keeps that folder focused. Tab reaches its add-session
+  button and Shift+Tab comes back to the same folder.
+  Enter collapses North and leaves South's child present.
+  Hover still shows the path for the collapsed group.
+  Enter expands it again. Hover and entry into South's
+  tooltip preserve its own full path.
+- South's `note.txt` shows `South review source`. While
+  reading it, keyboard collapse of North keeps the
+  current South Session, the file and `2468` at caret 2.
+- English/dark/18 px/Blue at 1280 × 800. The first probe
+  expected the Settings round trip to retain a collapsed
+  folder. The observed expanded state leads to verified
+  Space collapse and reopen. Selecting North displays
+  `North review source`. Both directory paths and the
+  file selection are replayed on `601bfb31f`, which
+  includes the intervening plugin caller-identity change.
+
+Both private Sessions, empty Items and Runs, and the two
+file digests match through a Runtime restart. The provider
+serves nine catalog reads and zero generations.
+Real macOS Wails pointer, keyboard, focus, local expansion
+and the exact accessible paths are qualified. Screen reader
+speech and other hosts require separate checks.
+
+Web typecheck, 84 contracts, bootstrap, scoped Prettier,
+diff checks, production staging, Runtime packaging and
+strict Wails signatures pass. Three Wails hosts exit
+normally. Both private Runtime instances reach the existing
+drain deadline. The owned provider, listeners, app registration,
+profile, fixture, screenshots, diagnostics, checkout outputs
+and caches are removed.
+
+The next review isolates sidebar folder expansion across
+a visit to Settings, starting with a direct open and close.
+
 ## Error notes leave retrying to their buttons (2026-11-26)
 
 Five error notes ended by narrating the buttons beside them. The sidebar's folder error said `Check the Runtime connection, then retry.` above `Retry`. The shared data-view error said `… Check the connection and retry.`, and every caller offers Retry except provider selections, whose section has its own Refresh selections. The draft notices said `Keep this window open and retry, or copy drafts.` above `Retry` and `Copy draft text`. The startup failure said `Retry, or copy the diagnostics to report it.` above `Retry` and `Copy diagnostics`. Each now stops at what the buttons can't say:
