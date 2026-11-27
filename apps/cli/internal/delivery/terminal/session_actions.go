@@ -167,7 +167,7 @@ func (l *sessionLifecycle) applyRollbackSettlement(settlement rollbackSettlement
 		return nil
 	}
 	l.install(installation)
-	recovery := installation.rollbackRecovery
+	recovery := installation.authoring.Rollback
 	if recovery == nil {
 		return errors.New("confirmed rollback did not produce local recovery state")
 	}

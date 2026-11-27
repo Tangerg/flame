@@ -59,13 +59,15 @@ func TestDraftTransferDoesNotPublishHalfOfAMove(t *testing.T) {
 	if err := store.SaveDraft(destination, before); err != nil {
 		t.Fatal(err)
 	}
+	activation := workbench.SessionActivation{SessionID: destination, WorkspacePath: t.TempDir()}.
+		TransferringDraftFrom(source, remaining)
 	database := inspectWorkbenchDatabase(t, directory)
 	if _, err := database.Exec(`CREATE TRIGGER refuse_source_write
 		BEFORE UPDATE ON authoring_records WHEN old.key = 'session/` + source + `'
 		BEGIN SELECT RAISE(ABORT, 'source draft write refused'); END`); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.TransferSessionDraft(source, destination, remaining); err == nil {
+	if _, err := store.ActivateSession(activation); err == nil {
 		t.Fatal("transfer succeeded without updating its source")
 	}
 	assertDraft(store, source, moving)
@@ -79,7 +81,7 @@ func TestDraftTransferDoesNotPublishHalfOfAMove(t *testing.T) {
 	if _, err := database.Exec(`DROP TRIGGER refuse_source_write`); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.TransferSessionDraft(source, destination, remaining); err != nil {
+	if _, err := store.ActivateSession(activation); err != nil {
 		t.Fatal(err)
 	}
 	assertDraft(store, source, remaining)

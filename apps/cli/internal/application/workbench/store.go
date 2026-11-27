@@ -303,19 +303,6 @@ func (s *Store) DeleteStash(id string) (bool, error) {
 	return true, nil
 }
 
-func (s *Store) RememberWorkspace(path string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	workspace := Workspace{Path: path, LastOpened: s.now().UTC()}
-	if err := workspace.Validate(); err != nil {
-		return err
-	}
-	next := slices.DeleteFunc(slices.Clone(s.workspaces), func(item Workspace) bool { return item.Path == path })
-	next = slices.Insert(next, 0, workspace)
-	next = next[:min(len(next), s.workspaceCapacity)]
-	return s.save(workspacesName, next, func() { s.workspaces = next })
-}
-
 func (s *Store) Workspaces() []Workspace {
 	s.mu.Lock()
 	defer s.mu.Unlock()

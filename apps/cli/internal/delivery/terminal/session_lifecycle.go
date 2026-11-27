@@ -119,11 +119,10 @@ func (l *sessionLifecycle) switchSession(id string) {
 }
 
 type sessionInstallation struct {
-	snapshot         conversation.SessionSnapshot
-	attachments      *attachment.Resolver
-	projection       sessionProjection
-	draft            authoring.Message
-	rollbackRecovery *workbench.SessionRollbackRecovery
+	snapshot    conversation.SessionSnapshot
+	attachments *attachment.Resolver
+	projection  sessionProjection
+	authoring   workbench.ActivatedSession
 }
 
 func (l *sessionLifecycle) prepareSessionInstallation(snapshot conversation.SessionSnapshot) (sessionInstallation, error) {
@@ -135,68 +134,37 @@ func (l *sessionLifecycle) prepareSessionInstallation(snapshot conversation.Sess
 	if err != nil {
 		return sessionInstallation{}, fmt.Errorf("install session: %w", err)
 	}
-	draft, recovery, err := l.prepareDestinationDraft(snapshot.Session)
+	activated, err := l.activateSessionAuthoring(snapshot.Session)
 	if err != nil {
 		projection.close()
 		return sessionInstallation{}, err
 	}
 	return sessionInstallation{
-		snapshot: snapshot, attachments: attachments, projection: projection, draft: draft,
-		rollbackRecovery: recovery,
+		snapshot: snapshot, attachments: attachments, projection: projection, authoring: activated,
 	}, nil
 }
 
-func (l *sessionLifecycle) prepareDestinationDraft(
-	session conversation.Session,
-) (authoring.Message, *workbench.SessionRollbackRecovery, error) {
+func (l *sessionLifecycle) activateSessionAuthoring(session conversation.Session) (workbench.ActivatedSession, error) {
 	current, _, err := l.composer.draft()
 	if err != nil {
-		return authoring.Message{}, nil, err
+		return workbench.ActivatedSession{}, err
 	}
-	if saveDraftErr := l.composer.saveDraft(current); saveDraftErr != nil {
-		return authoring.Message{}, nil, fmt.Errorf("save source session draft: %w", saveDraftErr)
+	if err := l.composer.saveDraft(current); err != nil {
+		return workbench.ActivatedSession{}, fmt.Errorf("save source session draft: %w", err)
 	}
-	if err := l.workbench.CheckSessionActivation(session.ID); err != nil {
-		return authoring.Message{}, nil, fmt.Errorf("activate destination session state: %w", err)
-	}
-	if rememberWorkspaceErr := l.workbench.RememberWorkspace(session.Workspace.Path); rememberWorkspaceErr != nil {
-		return authoring.Message{}, nil, fmt.Errorf("remember workspace: %w", rememberWorkspaceErr)
-	}
-	if change := l.state.change; change != nil && session.ID != l.state.current.ID {
-		remaining := change.baseline
+	activation := workbench.SessionActivation{SessionID: session.ID, WorkspacePath: session.Workspace.Path}
+	if session.ID != l.state.current.ID {
 		if l.state.freshness == sessionMissing {
-			remaining = authoring.Message{}
+			activation = activation.ReplacingDeletedSession(l.state.current.ID)
+		} else if change := l.state.change; change != nil {
+			activation = activation.TransferringDraftFrom(l.state.current.ID, change.baseline)
 		}
-		if err := l.workbench.TransferSessionDraft(l.state.current.ID, session.ID, remaining); err != nil {
-			return authoring.Message{}, nil, fmt.Errorf("transfer session draft: %w", err)
-		}
 	}
-	activation, err := l.workbench.ActivateSessionDraft(session.ID, authoring.Message{})
+	activated, err := l.workbench.ActivateSession(activation)
 	if err != nil {
-		return authoring.Message{}, nil, fmt.Errorf("activate destination session draft: %w", err)
+		return workbench.ActivatedSession{}, fmt.Errorf("activate session authoring state: %w", err)
 	}
-	return activation.Draft, activation.Rollback, nil
-}
-
-// A replaced session is already installed, so its local cleanup is reported rather than failing the replacement.
-func (l *sessionLifecycle) reportRetiredSessionState(discarded int, err error) {
-	if err != nil {
-		l.root.message("replacement installed; local state cleanup failed: " + err.Error())
-		return
-	}
-	if discarded > 0 {
-		l.root.message(fmt.Sprintf("discarded %s from the deleted session", countedNoun(discarded, "queued prompt")))
-	}
-}
-
-func (l *sessionLifecycle) retireSessionState(sessionID string) (int, error) {
-	before := len(l.queue.Snapshot(sessionID).Entries)
-	err := l.workbench.RetireSessionState(sessionID)
-	discarded := before - len(l.queue.Snapshot(sessionID).Entries)
-	if err != nil {
-		return discarded, fmt.Errorf("discard session authoring state: %w", err)
-	}
-	return discarded, nil
+	return activated, nil
 }
 
 func (l *sessionLifecycle) readSessionAfterMutation(ctx context.Context, sessionID string) (conversation.SessionSnapshot, error) {
@@ -222,9 +190,7 @@ func (l *sessionLifecycle) readSessionAfterMutation(ctx context.Context, session
 func (l *sessionLifecycle) install(s sessionInstallation) {
 	previousSessionID := l.state.current.ID
 	previousWorkspace := l.state.current.Workspace
-	previousMissing := l.state.freshness == sessionMissing
-	switching := previousSessionID != s.snapshot.Session.ID
-	if switching || previousMissing {
+	if previousSessionID != s.snapshot.Session.ID || l.state.freshness == sessionMissing {
 		l.state.freshness = sessionObserved
 	}
 	l.prepareSessionProjectionReplacement(s.snapshot.Session, s.projection.conversation)
@@ -237,8 +203,8 @@ func (l *sessionLifecycle) install(s sessionInstallation) {
 	l.runs.switchProjection(s.projection.conversation)
 	l.composer.attachments = s.attachments
 	previousTranscript := l.root.presentTranscript(s.projection.transcript)
-	l.composer.restoreComposer(s.draft)
-	l.composer.drafts.adopt(l.state.current.ID, s.draft)
+	l.composer.restoreComposer(s.authoring.Draft)
+	l.composer.drafts.adopt(l.state.current.ID, s.authoring.Draft)
 	l.activity.Reset()
 	l.status.Reset()
 	l.root.enterSessionHealth()
@@ -259,9 +225,6 @@ func (l *sessionLifecycle) install(s sessionInstallation) {
 		}
 	}
 	l.steering.restoreSteerReceipts(s.snapshot)
-	if previousMissing && switching {
-		l.reportRetiredSessionState(l.retireSessionState(previousSessionID))
-	}
 }
 
 func (l *sessionLifecycle) installSnapshot(snapshot conversation.SessionSnapshot) error {
@@ -270,8 +233,15 @@ func (l *sessionLifecycle) installSnapshot(snapshot conversation.SessionSnapshot
 		return err
 	}
 	l.install(installation)
-	if installation.rollbackRecovery != nil {
-		l.root.message(rollbackRecoveryNotice(*installation.rollbackRecovery))
+	var notices []string
+	if recovery := installation.authoring.Rollback; recovery != nil {
+		notices = append(notices, rollbackRecoveryNotice(*recovery))
+	}
+	if discarded := installation.authoring.DiscardedPrompts; discarded != 0 {
+		notices = append(notices, fmt.Sprintf("discarded %s from the deleted session", countedNoun(discarded, "queued prompt")))
+	}
+	if len(notices) != 0 {
+		l.root.message(strings.Join(notices, " · "))
 	}
 	return nil
 }

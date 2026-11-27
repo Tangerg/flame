@@ -2,10 +2,7 @@ package terminal
 
 import (
 	"context"
-	"database/sql"
 	"errors"
-	"net/url"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -23,6 +20,7 @@ func TestTerminalKeepsTheOriginalReplacementWhenLocalActivationFails(t *testing.
 	config := sessionNavigationConfig(connection, backend, source)
 	config.OpenWorkbench = persistentTestWorkbench(t, directory)
 	host, stop, currentStore := runUIFromConfig(t, config)
+	defer stop()
 	host.Shows(t, "Ask flame")
 	const draftText = "draft kept after the current session was deleted"
 	if !host.Type(draftText) {
@@ -30,16 +28,7 @@ func TestTerminalKeepsTheOriginalReplacementWhenLocalActivationFails(t *testing.
 	}
 	host.Shows(t, draftText)
 
-	address := url.URL{Scheme: "file", Path: filepath.ToSlash(filepath.Join(directory, "authoring.db")), RawQuery: "mode=rw"}
-	database, err := sql.Open("sqlite", address.String())
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := database.Close(); err != nil {
-			t.Error(err)
-		}
-	})
+	database := inspectSessionWorkbench(t, directory)
 	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
 	defer cancel()
 	if _, err := database.ExecContext(ctx, `CREATE TRIGGER refuse_workspace_write

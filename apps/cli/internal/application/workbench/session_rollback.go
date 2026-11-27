@@ -83,11 +83,6 @@ type SessionRollbackRecovery struct {
 	Merged        bool
 }
 
-type SessionDraftActivation struct {
-	Draft    authoring.Message
-	Rollback *SessionRollbackRecovery
-}
-
 func (s *Store) PendingSessionRollbacks() []PendingSessionRollback {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -172,51 +167,6 @@ func (s *Store) RejectSessionRollback(sessionID string, commandID authoring.Comm
 		sessionID, s.drafts[sessionID], s.queue.bySession[sessionID],
 		s.pendingResumePointer(sessionID), nil, s.pendingSteerPointer(sessionID),
 	)
-}
-
-func (s *Store) ActivateSessionDraft(sessionID string, incoming authoring.Message) (SessionDraftActivation, error) {
-	if err := protocol.ValidateSessionID(sessionID); err != nil {
-		return SessionDraftActivation{}, err
-	}
-	incoming = incoming.Clone()
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	current := s.drafts[sessionID]
-	draft, err := mergeSessionDraft(current, incoming)
-	if err != nil {
-		return SessionDraftActivation{}, err
-	}
-	pending, exists := s.pendingRollbacks[sessionID]
-	confirmed := exists && pending.Restoration != nil
-	var recovery *SessionRollbackRecovery
-	if confirmed {
-		opening := authoring.Message{Text: pending.Restoration.OpeningText}
-		merged, err := mergeSessionDraft(opening, draft)
-		if err != nil {
-			return SessionDraftActivation{}, err
-		}
-		recovery = &SessionRollbackRecovery{
-			DroppedCount:  pending.Restoration.DroppedCount,
-			OpeningImages: pending.Restoration.OpeningImages,
-			Merged:        !draft.IsEmpty() && !draft.Equal(merged),
-		}
-		draft = merged
-	}
-	if current.Equal(draft) && !confirmed {
-		return SessionDraftActivation{Draft: draft.Clone()}, nil
-	}
-	var rollback *PendingSessionRollback
-	if exists && !confirmed {
-		cloned := pending.clone()
-		rollback = &cloned
-	}
-	if err := s.saveSessionStateRecord(
-		sessionID, draft, s.queue.bySession[sessionID], s.pendingResumePointer(sessionID), rollback,
-		s.pendingSteerPointer(sessionID),
-	); err != nil {
-		return SessionDraftActivation{}, err
-	}
-	return SessionDraftActivation{Draft: draft.Clone(), Rollback: recovery}, nil
 }
 
 func (s *Store) pendingResumePointer(sessionID string) *PendingResume {

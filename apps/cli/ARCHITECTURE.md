@@ -208,7 +208,8 @@ Workbench owns the authoring record keys, current encodings and mutation
 semantics. The SQLite adapter holds the partition's directory lease and commits
 record batches, with byte limits enforced at read and encoding boundaries.
 Workbench installs its in-memory projections after the transaction commits.
-Draft transfer merges the destination and adjusts the source in one commit.
+Opening a Session commits the recent workspace, draft transfer, rollback
+receipt consumption, and any deleted Session's local retirement together.
 Stashing adds the stash and clears the draft in one commit. A confirmed Runtime
 session deletion retires both its local state and its pending command together.
 Session document publication continues to report file visibility and durability

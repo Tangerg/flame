@@ -134,12 +134,13 @@ func TestRollbackRecoveryUsesTheOriginalReceiptAfterMoreRuns(t *testing.T) {
 	if err := sessionworkflow.RecoverRollbacks(ctx, connection, reopened, policy, backoff); err != nil {
 		t.Fatal(err)
 	}
-	restored, err := reopened.ActivateSessionDraft(created.ID, authoring.Message{})
+	activation := workbench.SessionActivation{SessionID: created.ID, WorkspacePath: committed.Session.Workspace.Path}
+	restored, err := reopened.ActivateSession(activation)
 	wantDraft := droppedInput + "\n\n" + newerDraft
 	if err != nil || restored.Rollback == nil || restored.Rollback.DroppedCount != 1 || !restored.Rollback.Merged || restored.Draft.Text != wantDraft {
 		t.Fatalf("recovered rollback draft = %+v, %v; want the original input of Run %q before the newer draft", restored, err, dropped)
 	}
-	repeated, err := reopened.ActivateSessionDraft(created.ID, authoring.Message{})
+	repeated, err := reopened.ActivateSession(activation)
 	if err != nil || repeated.Rollback != nil || repeated.Draft.Text != wantDraft {
 		t.Fatalf("draft after consuming rollback = %+v, %v; want the same draft without another receipt", repeated, err)
 	}
