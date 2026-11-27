@@ -122,7 +122,7 @@ func (environment *toolEnvironment) composeSkills(deps toolEnvironmentDependenci
 	if err != nil {
 		return promptsource.SkillSources{}, err
 	}
-	environment.skills, err = workspace.NewSkills(deps.workspace.scope, skillCatalog, deps.skillStore, reviews, deps.workspace.authoredWatch, deps.publish)
+	environment.skills, err = workspace.NewSkills(deps.workspace.scope, skillCatalog, deps.skillStore, reviews, deps.workspace.authoredWatch)
 	if err != nil {
 		return promptsource.SkillSources{}, err
 	}

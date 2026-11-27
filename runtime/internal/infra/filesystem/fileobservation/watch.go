@@ -20,14 +20,9 @@ type Target struct {
 	MaxEntries int
 }
 
-type Observation interface {
-	io.Closer
-	Accept(keys, identities []string) error
-}
-
 // Callbacks must return promptly and must not close the observation; Close joins
 // both before returning.
-func Watch(targets []Target, notify func([]string), report func(error)) (Observation, error) {
+func Watch(targets []Target, notify func([]string), report func(error)) (io.Closer, error) {
 	if notify == nil {
 		return nil, errors.New("observe files: change notifier is required")
 	}
@@ -35,7 +30,10 @@ func Watch(targets []Target, notify func([]string), report func(error)) (Observa
 	if err != nil {
 		return nil, err
 	}
-	return startObservation("observe files", canonical, func(candidate target) string {
+	if len(canonical) == 0 {
+		return nopWatch{}, nil
+	}
+	watcher, err := startObservation("observe files", canonical, func(candidate target) string {
 		return candidate.physicalBoundary
 	}, report, func(lifecycle *observerLifecycle, roots *observationRoots) *watch {
 		return &watch{
@@ -46,6 +44,10 @@ func Watch(targets []Target, notify func([]string), report func(error)) (Observa
 			roots:             roots,
 		}
 	})
+	if err != nil {
+		return nil, err
+	}
+	return watcher, nil
 }
 
 type target struct {
@@ -56,8 +58,7 @@ type target struct {
 	maxEntries       int
 }
 
-// The baseline pass records what exists without reporting it; every later pass
-// reports changes except the Runtime's own accepted writes.
+// The initial pass gives later filesystem events a baseline without publishing it.
 type reconcilePass int
 
 const (
@@ -66,8 +67,7 @@ const (
 )
 
 type baselineWatch interface {
-	Observation
-	reconcile(pass reconcilePass, accepted acceptance) error
+	observe(reconcilePass) error
 }
 
 func startObservation[T any, W baselineWatch](
@@ -76,29 +76,25 @@ func startObservation[T any, W baselineWatch](
 	boundary func(T) string,
 	report func(error),
 	assemble func(*observerLifecycle, *observationRoots) W,
-) (Observation, error) {
-	if len(canonical) == 0 {
-		return nopWatch{}, nil
-	}
+) (W, error) {
+	var zero W
 	boundaries := make([]string, len(canonical))
 	for index, candidate := range canonical {
 		boundaries[index] = boundary(candidate)
 	}
 	roots, err := openObservationRoots(boundaries)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", label, err)
+		return zero, fmt.Errorf("%s: %w", label, err)
 	}
 	lifecycle, err := newObserverLifecycle(label, report)
 	if err != nil {
-		return nil, errors.Join(err, roots.Close())
+		return zero, errors.Join(err, roots.Close())
 	}
 	w := assemble(lifecycle, roots)
-	if err := w.reconcile(baselinePass, acceptance{}); err != nil {
-		return nil, errors.Join(lifecycle.abort(err), roots.Close())
+	if err := w.observe(baselinePass); err != nil {
+		return zero, errors.Join(lifecycle.abort(err), roots.Close())
 	}
-	lifecycle.start(func(accepted acceptance) error {
-		return w.reconcile(observedPass, accepted)
-	})
+	lifecycle.start(func() error { return w.observe(observedPass) })
 	return w, nil
 }
 
@@ -169,14 +165,7 @@ type watch struct {
 	fingerprints []fingerprint
 }
 
-func (a acceptance) matches(candidate target, physical string) bool {
-	if !a.keys[candidate.key] {
-		return false
-	}
-	return a.identities[candidate.path] || (physical != "" && a.identities[physical])
-}
-
-func (w *watch) reconcile(pass reconcilePass, accepted acceptance) error {
+func (w *watch) observe(pass reconcilePass) error {
 	w.stateMu.Lock()
 	if w.closedLocked() {
 		w.stateMu.Unlock()
@@ -185,26 +174,14 @@ func (w *watch) reconcile(pass reconcilePass, accepted acceptance) error {
 	paths := make(map[string]struct{})
 	next := make([]fingerprint, len(w.targets))
 	changedKeys := make([]string, 0, len(w.targets))
-	accepting := len(accepted.keys) > 0 && len(accepted.identities) > 0
 	for index, candidate := range w.targets {
 		observed, err := fingerprintOf(candidate, w.roots)
 		if err != nil {
 			w.stateMu.Unlock()
 			return err
 		}
-		match := noAcceptedWrite
-		switch {
-		case !accepting:
-		case accepted.matches(candidate, observed.physical):
-			match = acceptedWriteHere
-		default:
-			match = acceptedWriteElsewhere
-		}
-		var changed bool
-		next[index], changed = advanceFingerprint(
-			pass, match, w.fingerprints[index], observed.fingerprint,
-		)
-		if changed && !slices.Contains(changedKeys, candidate.key) {
+		next[index] = observed.fingerprint
+		if pass == observedPass && next[index] != w.fingerprints[index] && !slices.Contains(changedKeys, candidate.key) {
 			changedKeys = append(changedKeys, candidate.key)
 		}
 		for _, path := range observed.dependencies {
@@ -221,34 +198,10 @@ func (w *watch) reconcile(pass reconcilePass, accepted acceptance) error {
 	}
 	w.fingerprints = next
 	w.stateMu.Unlock()
-	if !accepting && len(changedKeys) > 0 {
+	if len(changedKeys) > 0 {
 		w.notify(changedKeys)
 	}
 	return nil
-}
-
-type acceptanceMatch uint8
-
-const (
-	noAcceptedWrite acceptanceMatch = iota + 1
-	acceptedWriteElsewhere
-	acceptedWriteHere
-)
-
-func advanceFingerprint(
-	pass reconcilePass,
-	match acceptanceMatch,
-	previous fingerprint,
-	observed fingerprint,
-) (fingerprint, bool) {
-	switch {
-	case pass == baselinePass || match == acceptedWriteHere:
-		return observed, false
-	case match == acceptedWriteElsewhere:
-		return previous, false
-	default:
-		return observed, observed != previous
-	}
 }
 
 func collectParentDirectories(directories map[string]struct{}, paths ...string) error {
@@ -405,5 +358,4 @@ func nearestExistingDirectory(path string) (string, error) {
 
 type nopWatch struct{}
 
-func (nopWatch) Close() error                    { return nil }
-func (nopWatch) Accept([]string, []string) error { return nil }
+func (nopWatch) Close() error { return nil }

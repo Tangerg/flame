@@ -3,6 +3,7 @@ package workspace
 import (
 	"errors"
 	"fmt"
+	"io"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -60,53 +61,31 @@ func (a AuthoredWatcher) Watch(
 			}
 		}
 	}
-	notifyKeys := func(keys []string) {
-		for _, key := range keys {
-			if resource := workspaceapp.AuthoredResource(key); resource.Valid() {
-				notify(resource)
-			}
-		}
-	}
-	files, err := fileobservation.Watch(targets, notifyKeys, report)
+	hooks, err := fileobservation.Watch(targets, func([]string) { notify(workspaceapp.AuthoredHooks) }, report)
 	if err != nil {
 		return nil, err
 	}
-	directoryFiles, err := fileobservation.WatchChildFiles(a.directoryFileTargets(scopes, resources), notifyKeys, report)
+	skills, err := fileobservation.WatchChildFiles(a.skillTargets(scopes, resources), func() { notify(workspaceapp.AuthoredSkills) }, report)
 	if err != nil {
-		return nil, errors.Join(err, files.Close())
+		return nil, errors.Join(err, hooks.Close())
 	}
-	return &authoredObservation{observations: []fileobservation.Observation{files, directoryFiles}}, nil
+	return authoredObservation{hooks: hooks, skills: skills}, nil
 }
 
 type authoredObservation struct {
-	observations []fileobservation.Observation
+	hooks  io.Closer
+	skills fileobservation.ChildFilesObservation
 }
 
-func (a *authoredObservation) Close() error {
-	var errs []error
-	for _, observation := range a.observations {
-		errs = append(errs, observation.Close())
-	}
-	return errors.Join(errs...)
+func (a authoredObservation) Close() error {
+	return errors.Join(a.hooks.Close(), a.skills.Close())
 }
 
-func (a *authoredObservation) Accept(changes []workspaceapp.AuthoredChange) error {
-	keys := make([]string, 0, len(changes))
-	identities := make([]string, 0, len(changes))
-	for _, change := range changes {
-		if change.Resource.Valid() {
-			keys = append(keys, string(change.Resource))
-		}
-		identities = append(identities, change.Identities...)
-	}
-	var errs []error
-	for _, observation := range a.observations {
-		errs = append(errs, observation.Accept(keys, identities))
-	}
-	return errors.Join(errs...)
+func (a authoredObservation) ReconcileSkillPublication(paths []string) error {
+	return a.skills.AdvancePublishedPaths(paths)
 }
 
-func (a AuthoredWatcher) directoryFileTargets(
+func (a AuthoredWatcher) skillTargets(
 	scopes []workspaceapp.AuthoredScope,
 	resources []workspaceapp.AuthoredResource,
 ) []fileobservation.ChildFileTarget {
@@ -116,14 +95,13 @@ func (a AuthoredWatcher) directoryFileTargets(
 	}
 	if a.skillsHome != "" {
 		targets = append(targets, fileobservation.ChildFileTarget{
-			Key: string(workspaceapp.AuthoredSkills), Path: a.skillsHome, Boundary: a.skillsHome, FileName: skillspec.SkillFile,
+			Path: a.skillsHome, Boundary: a.skillsHome, FileName: skillspec.SkillFile,
 			MaxEntries: domainskills.MaxSkillDirectoryEntries,
 			MaxBytes:   domainskills.MaxAuthoredSkillDocumentBytes,
 		})
 	}
 	for _, scope := range scopes {
 		targets = append(targets, fileobservation.ChildFileTarget{
-			Key:  string(workspaceapp.AuthoredSkills),
 			Path: promptsource.RepositorySkillDir(scope.Workspace), Boundary: scope.Workspace,
 			FileName: skillspec.SkillFile, MaxEntries: domainskills.MaxSkillDirectoryEntries,
 			MaxBytes: domainskills.MaxAuthoredSkillDocumentBytes,

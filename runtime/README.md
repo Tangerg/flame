@@ -1744,8 +1744,9 @@ and recreation. Sampling does not enter child directories or read their files;
 symlink metadata belongs to the link entry rather than its target.
 Automatic retirement and explicit removal may overlap; an already absent
 registration completes removal. Other registration failures remain explicit
-observation failures. Accepted application writes advance only their exact
-content identities, so later external writes and recreated paths stay observable.
+observation failures. A committed Skill publication updates only the Skill
+observer's baseline for the published paths before it emits the catalog
+invalidation. Hook and workspace file observations follow filesystem events.
 
 ## Workspace search outcomes
 

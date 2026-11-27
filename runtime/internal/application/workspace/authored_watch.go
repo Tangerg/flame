@@ -44,14 +44,9 @@ type AuthoredResourceWatcher interface {
 	) (AuthoredObservation, error)
 }
 
-type AuthoredChange struct {
-	Resource   AuthoredResource
-	Identities []string
-}
-
 type AuthoredObservation interface {
 	io.Closer
-	Accept(changes []AuthoredChange) error
+	ReconcileSkillPublication(paths []string) error
 }
 
 type identityInspector interface {
@@ -59,14 +54,15 @@ type identityInspector interface {
 }
 
 type AuthoredWatch struct {
-	scope      *Scope
-	workspaces identityInspector
-	watcher    AuthoredResourceWatcher
-	mu         sync.Mutex
-	active     map[*managedAuthoredObservation]struct{}
+	scope         *Scope
+	workspaces    identityInspector
+	watcher       AuthoredResourceWatcher
+	invalidations invalidation.Publish
+	mu            sync.Mutex
+	skillWatchers map[*managedAuthoredObservation]struct{}
 }
 
-func NewAuthoredWatch(scope *Scope, workspaces identityInspector, watcher AuthoredResourceWatcher) (*AuthoredWatch, error) {
+func NewAuthoredWatch(scope *Scope, workspaces identityInspector, watcher AuthoredResourceWatcher, invalidations invalidation.Publish) (*AuthoredWatch, error) {
 	for _, required := range []struct {
 		name  string
 		value any
@@ -74,14 +70,15 @@ func NewAuthoredWatch(scope *Scope, workspaces identityInspector, watcher Author
 		{name: "scope", value: scope},
 		{name: "workspace inspector", value: workspaces},
 		{name: "resource watcher", value: watcher},
+		{name: "invalidations", value: invalidations},
 	} {
 		if lo.IsNil(required.value) {
 			return nil, fmt.Errorf("workspace: authored watch %s is required", required.name)
 		}
 	}
 	return &AuthoredWatch{
-		scope: scope, workspaces: workspaces, watcher: watcher,
-		active: make(map[*managedAuthoredObservation]struct{}),
+		scope: scope, workspaces: workspaces, watcher: watcher, invalidations: invalidations,
+		skillWatchers: make(map[*managedAuthoredObservation]struct{}),
 	}, nil
 }
 
@@ -90,13 +87,13 @@ func (a *AuthoredWatch) Watch(
 	resources []AuthoredResource,
 	notify func(AuthoredResource),
 	report func(error),
-) (AuthoredObservation, error) {
+) (io.Closer, error) {
 	resources, err := distinctAuthoredResources(resources)
 	if err != nil {
 		return nil, err
 	}
 	if len(resources) == 0 {
-		return nopAuthoredWatch{}, nil
+		return nil, nil
 	}
 	type authoredScopeKey struct {
 		workspace      string
@@ -127,28 +124,32 @@ func (a *AuthoredWatch) Watch(
 	if err != nil {
 		return nil, err
 	}
+	if !slices.Contains(resources, AuthoredSkills) {
+		return inner, nil
+	}
 	managed := &managedAuthoredObservation{owner: a, inner: inner}
 	a.mu.Lock()
-	a.active[managed] = struct{}{}
+	a.skillWatchers[managed] = struct{}{}
 	a.mu.Unlock()
 	return managed, nil
 }
 
-func (a *AuthoredWatch) Accept(change AuthoredChange) {
-	if a == nil || len(change.Identities) == 0 {
+func (a *AuthoredWatch) PublishSkillChanges(paths []string) {
+	if len(paths) == 0 {
 		return
 	}
 	a.mu.Lock()
-	active := make([]*managedAuthoredObservation, 0, len(a.active))
-	for observation := range a.active {
+	active := make([]*managedAuthoredObservation, 0, len(a.skillWatchers))
+	for observation := range a.skillWatchers {
 		active = append(active, observation)
 	}
 	a.mu.Unlock()
 	for _, observation := range active {
-		if err := observation.inner.Accept([]AuthoredChange{change}); err != nil {
-			slog.Warn("workspace: accept authored resource change", slog.Any("resource", change.Resource), telemetry.Error(err))
+		if err := observation.inner.ReconcileSkillPublication(paths); err != nil {
+			slog.Warn("workspace: reconcile published Skills", telemetry.Error(err))
 		}
 	}
+	a.invalidations.Notify(invalidation.Notice{Resource: invalidation.Skills})
 }
 
 type managedAuthoredObservation struct {
@@ -158,14 +159,10 @@ type managedAuthoredObservation struct {
 	closeErr error
 }
 
-func (m *managedAuthoredObservation) Accept(changes []AuthoredChange) error {
-	return m.inner.Accept(changes)
-}
-
 func (m *managedAuthoredObservation) Close() error {
 	m.once.Do(func() {
 		m.owner.mu.Lock()
-		delete(m.owner.active, m)
+		delete(m.owner.skillWatchers, m)
 		m.owner.mu.Unlock()
 		m.closeErr = m.inner.Close()
 	})
@@ -184,8 +181,3 @@ func distinctAuthoredResources(resources []AuthoredResource) ([]AuthoredResource
 	}
 	return out, nil
 }
-
-type nopAuthoredWatch struct{}
-
-func (nopAuthoredWatch) Close() error                  { return nil }
-func (nopAuthoredWatch) Accept([]AuthoredChange) error { return nil }

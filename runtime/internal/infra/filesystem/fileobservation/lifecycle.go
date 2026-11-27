@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"runtime"
 	"sync"
 	"syscall"
@@ -18,11 +17,6 @@ import (
 
 const debounce = 100 * time.Millisecond
 const retryDelay = 500 * time.Millisecond
-
-type acceptance struct {
-	keys       map[string]bool
-	identities map[string]bool
-}
 
 type pathRegistry interface {
 	Add(string) error
@@ -45,7 +39,7 @@ type observerLifecycle struct {
 	closeOnce sync.Once
 	closeErr  error
 	stateMu   sync.Mutex
-	reconcile func(acceptance) error
+	reconcile func() error
 	report    func(error)
 }
 
@@ -66,7 +60,7 @@ func newObserverLifecycle(label string, report func(error)) (*observerLifecycle,
 	}, nil
 }
 
-func (o *observerLifecycle) start(reconcile func(acceptance) error) {
+func (o *observerLifecycle) start(reconcile func() error) {
 	o.reconcile = reconcile
 	go o.run()
 }
@@ -117,32 +111,11 @@ func (o *observerLifecycle) run() {
 }
 
 func (o *observerLifecycle) reconcileQuiet(failing bool) bool {
-	err := o.reconcile(acceptance{})
+	err := o.reconcile()
 	if err != nil && !failing {
 		o.report(err)
 	}
 	return err != nil
-}
-
-func (o *observerLifecycle) Accept(keys, identities []string) error {
-	accepted := acceptance{
-		keys:       make(map[string]bool, len(keys)),
-		identities: make(map[string]bool, len(identities)),
-	}
-	for _, key := range keys {
-		if key != "" {
-			accepted.keys[key] = true
-		}
-	}
-	for _, identity := range identities {
-		if filepath.IsAbs(identity) {
-			accepted.identities[filepath.Clean(identity)] = true
-		}
-	}
-	if len(accepted.keys) == 0 || len(accepted.identities) == 0 {
-		return nil
-	}
-	return o.reconcile(accepted)
 }
 
 func (o *observerLifecycle) replacePaths(next map[string]struct{}) error {

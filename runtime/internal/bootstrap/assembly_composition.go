@@ -94,7 +94,7 @@ func buildWorkspaceComposition(
 	if err != nil {
 		return workspaceComposition{}, fmt.Errorf("runtime: build authored resource watcher: %w", err)
 	}
-	authoredWatch, err := workspace.NewAuthoredWatch(scope, workspaceadapter.Resolver{}, authoredWatcher)
+	authoredWatch, err := workspace.NewAuthoredWatch(scope, workspaceadapter.Resolver{}, authoredWatcher, publish)
 	if err != nil {
 		return workspaceComposition{}, fmt.Errorf("runtime: build authored resource observation: %w", err)
 	}
@@ -102,7 +102,7 @@ func buildWorkspaceComposition(
 	if err != nil {
 		return workspaceComposition{}, fmt.Errorf("runtime: build user skill store: %w", err)
 	}
-	skillMaintenance, err := workspace.NewSkillMaintenance(skillStore, authoredWatch, publish)
+	skillMaintenance, err := workspace.NewSkillMaintenance(skillStore, authoredWatch)
 	if err != nil {
 		return workspaceComposition{}, fmt.Errorf("runtime: build skill maintenance: %w", err)
 	}

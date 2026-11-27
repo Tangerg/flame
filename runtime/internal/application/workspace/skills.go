@@ -14,7 +14,6 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/skill"
 
-	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
@@ -42,15 +41,14 @@ type SkillProposals interface {
 }
 
 type Skills struct {
-	scope         *Scope
-	catalog       SkillCatalog
-	curator       SkillCurator
-	proposals     SkillProposals
-	observations  *AuthoredWatch
-	invalidations invalidation.Publish
+	scope        *Scope
+	catalog      SkillCatalog
+	curator      SkillCurator
+	proposals    SkillProposals
+	observations *AuthoredWatch
 }
 
-func NewSkills(scope *Scope, catalog SkillCatalog, curator SkillCurator, proposals SkillProposals, observations *AuthoredWatch, invalidations invalidation.Publish) (*Skills, error) {
+func NewSkills(scope *Scope, catalog SkillCatalog, curator SkillCurator, proposals SkillProposals, observations *AuthoredWatch) (*Skills, error) {
 	for _, required := range []struct {
 		name  string
 		value any
@@ -60,7 +58,6 @@ func NewSkills(scope *Scope, catalog SkillCatalog, curator SkillCurator, proposa
 		{name: "curator", value: curator},
 		{name: "proposal store", value: proposals},
 		{name: "authored observation", value: observations},
-		{name: "invalidations", value: invalidations},
 	} {
 		if lo.IsNil(required.value) {
 			return nil, fmt.Errorf("workspace: skills %s is required", required.name)
@@ -68,7 +65,7 @@ func NewSkills(scope *Scope, catalog SkillCatalog, curator SkillCurator, proposa
 	}
 	return &Skills{
 		scope: scope, catalog: catalog, curator: curator, proposals: proposals,
-		observations: observations, invalidations: invalidations,
+		observations: observations,
 	}, nil
 }
 
@@ -144,13 +141,13 @@ func (s *Skills) Managed(ctx context.Context) ([]skills.Entry, error) {
 
 func (s *Skills) Move(ctx context.Context, name string, destination skills.Lifecycle, receipt operation.ReplayClaim) error {
 	identities, err := s.curator.Move(ctx, name, destination, receipt)
-	s.publishSkillMutation(identities)
+	s.observations.PublishSkillChanges(identities)
 	return err
 }
 
 func (s *Skills) RecoverMove(ctx context.Context) error {
 	identities, err := s.curator.RecoverMove(ctx)
-	s.publishSkillMutation(identities)
+	s.observations.PublishSkillChanges(identities)
 	return err
 }
 
@@ -229,18 +226,10 @@ func (s *Skills) ResolveReviewTarget(cwd string, ref skills.ProposalRef) (SkillR
 
 func (s *Skills) ApproveProposal(ctx context.Context, review SkillReviewTarget) error {
 	identities, err := s.proposals.ApproveProposal(ctx, review.Root, review.Proposal)
-	s.publishSkillMutation(identities)
+	s.observations.PublishSkillChanges(identities)
 	return err
 }
 
 func (s *Skills) RejectProposal(ctx context.Context, review SkillReviewTarget) error {
 	return s.proposals.RejectProposal(ctx, review.Root, review.Proposal)
-}
-
-func (s *Skills) publishSkillMutation(identities []string) {
-	if len(identities) == 0 {
-		return
-	}
-	s.observations.Accept(AuthoredChange{Resource: AuthoredSkills, Identities: identities})
-	s.invalidations.Notify(invalidation.Notice{Resource: invalidation.Skills})
 }
