@@ -47,7 +47,7 @@ type toolEnvironment struct {
 }
 
 type toolEnvironmentDependencies struct {
-	framework    frameworkComposition
+	framework    *frameworkComposition
 	callbacks    *pluginmcp.Callbacks
 	conversation interface {
 		Read(context.Context, identity.SessionID) ([]chat.Message, error)
@@ -148,15 +148,8 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 	if err != nil {
 		return toolEnvironment{}, fmt.Errorf("runtime: open MCP connections: %w", err)
 	}
-	environment := toolEnvironment{
-		mcp: mcpPool,
-		// The SDK consumes each ClientSession transport closer even when Close returns a
-		// diagnostic, so the action must outlive the caller deadline until the pool
-		// generation settles.
-		closers: []*teardownStep{terminalStep(func(ctx context.Context) error {
-			return mcpPool.Shutdown(context.WithoutCancel(ctx))
-		})},
-	}
+	deps.framework.pool = mcpPool
+	environment := toolEnvironment{mcp: mcpPool}
 	environment.admission = admission
 	environment.validatePluginSources = func(ctx context.Context, bindings []plugin.Activation, resources []plugin.Dependency) error {
 		return plugins.ValidateExecutionSourcesUnder(ctx, deps.framework.host, mcpPool.ValidateCapturedBindingUnder, bindings, resources)

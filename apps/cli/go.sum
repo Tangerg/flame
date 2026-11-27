@@ -8,8 +8,8 @@ github.com/Tangerg/flame/packages/go-sdk v0.1.92-dev.20261127.t400fd1e61cc2 h1:w
 github.com/Tangerg/flame/packages/go-sdk v0.1.92-dev.20261127.t400fd1e61cc2/go.mod h1:ac/7XqIV7/hoHSUsgCZ6a87CEGwHhIMJ15JRwqDK7cw=
 github.com/Tangerg/flame/packages/local-runtime v0.1.14-dev.20261123.tca9fa5e1c260 h1:cZf86C76xIr0cwocGSAcmpWpKxN04f33xvwIjdqEmPw=
 github.com/Tangerg/flame/packages/local-runtime v0.1.14-dev.20261123.tca9fa5e1c260/go.mod h1:k7GImwPntRgT/FNYEO+2Bx351W/ULxJUH2cU0y3zKRg=
-github.com/Tangerg/flame/runtime v0.1.192-dev.20261127.t5bc20bce9cff h1:6EJ3wnW+gaj/cIf7yujAFzhwoTrUc/NU5JZYdu3utDU=
-github.com/Tangerg/flame/runtime v0.1.192-dev.20261127.t5bc20bce9cff/go.mod h1:+qiJfLkezAcdHIT6Of1TMoEav/jY/oPfkuWbmAq0ew8=
+github.com/Tangerg/flame/runtime v0.1.193-dev.20261127.t8780df48369e h1:AyVtfm5NQxLTNydpWQEk1nx4eLZccY6QJR4sNyAiE7s=
+github.com/Tangerg/flame/runtime v0.1.193-dev.20261127.t8780df48369e/go.mod h1:+qiJfLkezAcdHIT6Of1TMoEav/jY/oPfkuWbmAq0ew8=
 github.com/Tangerg/frame v0.5.0 h1:x3uYmasJFadXT8q04awNt1Vd5Mfxq0jH91UyzYkul4w=
 github.com/Tangerg/frame v0.5.0/go.mod h1:4DlxVue90iin6SHiaHrMGiako9t9mNrHG7Ed3+YdMdg=
 github.com/Tangerg/go-sdk v1.9.0-scope.1 h1:2cV13pDEdGqNGfunLoeFxHw9Fb2IFk5x9d4EwxSmVjs=
@@ -22,8 +22,8 @@ github.com/Tangerg/oolong/extensions/markdown v0.30.0 h1:iy5/VJA0k/0Rbiox8GnqSsR
 github.com/Tangerg/oolong/extensions/markdown v0.30.0/go.mod h1:1RyDAA+x/tt2uHcHRchn7Oc13CexS01ZNOHiZMHV1/U=
 github.com/Tangerg/oolong/extensions/mermaid v0.29.0 h1:lDFwsXoU2eapEC3Q7fsFXjLci8NeaNTzmQjQgozKFdQ=
 github.com/Tangerg/oolong/extensions/mermaid v0.29.0/go.mod h1:5dGuynEBiXw+d3sNInI1t8eb2+C3Ri3t+UzB/O1w4Kk=
-github.com/Tangerg/oolong/ui v0.30.0 h1:IsYOdNn6c4DfWzGEDynw7KdEuWLESIOn1apAkRQtVOk=
-github.com/Tangerg/oolong/ui v0.30.0/go.mod h1:FJu71l8ji9ykCrdMqVrsYGZXvN+0VffoN7W2K/+BdVY=
+github.com/Tangerg/oolong/ui v0.30.1 h1:fXcv79Z0CM6qOJ07gKQyHwYWEBccLlxiY3fPdCUjbcI=
+github.com/Tangerg/oolong/ui v0.30.1/go.mod h1:FJu71l8ji9ykCrdMqVrsYGZXvN+0VffoN7W2K/+BdVY=
 github.com/Tangerg/scope/agent v0.64.0 h1:dLOkfzhKg+aCgWp5k3NbrPcBsFPKemrWlo+HPKb9OG4=
 github.com/Tangerg/scope/agent v0.64.0/go.mod h1:8IUVIqRxHp1O3q7BjHzPpRGrTRkb18CE9BmYjr77Sz0=
 github.com/Tangerg/scope/core v0.64.0 h1:iyXNOMqXn7YVVq2J7r94rvqJpk7Lk2uf0BxdlBHZj6A=

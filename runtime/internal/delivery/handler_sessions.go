@@ -15,6 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	projectdomain "github.com/Tangerg/flame/runtime/internal/domain/project"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
@@ -34,6 +35,10 @@ func wireSessionErr(err error) error {
 	}
 	if errors.Is(err, session.ErrRevisionConflict) {
 		return protocol.NewFailure(protocol.ErrRevisionConflict, "the session changed after it was read", err)
+	}
+	// An unavailable provider can also carry an unsupported selection cause.
+	if errors.Is(err, plugin.ErrUnavailable) {
+		return wirePluginError(err)
 	}
 	if flamemodel.IsInvalid(err) {
 		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)

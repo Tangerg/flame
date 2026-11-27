@@ -87,7 +87,16 @@ func (c *connections) shutdown(ctx context.Context) error {
 	if ctx == nil {
 		return errors.New("mcp: shutdown context is required")
 	}
+	attempt := c.beginShutdown()
+	if err := completion.Wait(ctx, attempt.done); err != nil {
+		return err
+	}
+	return attempt.err
+}
+
+func (c *connections) beginShutdown() *shutdownAttempt {
 	c.mu.Lock()
+	defer c.mu.Unlock()
 	if !c.closed {
 		c.closed = true
 		for _, configuredServer := range c.servers {
@@ -105,12 +114,7 @@ func (c *connections) shutdown(ctx context.Context) error {
 		c.shutdownState = attempt
 		go c.closeAll(attempt)
 	}
-	c.mu.Unlock()
-
-	if err := completion.Wait(ctx, attempt.done); err != nil {
-		return err
-	}
-	return attempt.err
+	return attempt
 }
 
 func (c *connections) closeAll(attempt *shutdownAttempt) {

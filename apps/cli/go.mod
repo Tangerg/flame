@@ -6,13 +6,13 @@ require (
 	github.com/Tangerg/acp v0.4.0
 	github.com/Tangerg/flame/packages/go-sdk v0.1.92-dev.20261127.t400fd1e61cc2
 	github.com/Tangerg/flame/packages/local-runtime v0.1.14-dev.20261123.tca9fa5e1c260
-	github.com/Tangerg/flame/runtime v0.1.192-dev.20261127.t5bc20bce9cff
+	github.com/Tangerg/flame/runtime v0.1.193-dev.20261127.t8780df48369e
 	github.com/Tangerg/frame v0.5.0
 	github.com/Tangerg/oolong/extensions/highlight v0.27.2
 	github.com/Tangerg/oolong/extensions/latex v0.30.0
 	github.com/Tangerg/oolong/extensions/markdown v0.30.0
 	github.com/Tangerg/oolong/extensions/mermaid v0.29.0
-	github.com/Tangerg/oolong/ui v0.30.0
+	github.com/Tangerg/oolong/ui v0.30.1
 	github.com/Tangerg/scope/tools v0.64.0
 	github.com/mattn/go-shellwords v1.0.16
 	github.com/muesli/cancelreader v0.2.2

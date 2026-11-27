@@ -177,6 +177,10 @@ func (p *Pool) SetToolSink(sink func([]toolcontract.Tool, []mcpserver.ID), prepa
 	return nil
 }
 
+func (p *Pool) BeginShutdown() {
+	p.inner.beginShutdown()
+}
+
 func (p *Pool) Shutdown(ctx context.Context) error {
 	return p.inner.shutdown(ctx)
 }
