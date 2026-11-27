@@ -34,8 +34,14 @@ func OpenRawSQL(dataDirectory string) (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	address := &url.URL{Scheme: "file", Path: layout.DatabasePath()}
+	return OpenExistingSQL(layout.DatabasePath())
+}
+
+// Process-owned stores can still hold a writer while a fixture injects a fault.
+func OpenExistingSQL(path string) (*sql.DB, error) {
+	address := &url.URL{Scheme: "file", Path: path}
 	query := address.Query()
+	query.Set("mode", "rw")
 	query.Add("_pragma", "foreign_keys(1)")
 	query.Add("_pragma", "busy_timeout(5000)")
 	address.RawQuery = query.Encode()
