@@ -1,4 +1,5 @@
 import {
+  CommandActivity,
   defineComponent,
   type PluginComponentProps,
 } from "@flame/component-sdk";
@@ -23,7 +24,7 @@ import {
   SchedulePager,
 } from "./catalog";
 import { ScheduleEditor } from "./editor";
-import { ScheduleCommandObservation } from "./scheduleCommands";
+import type { Command } from "./types";
 
 function ScheduleReadStatus({
   read,
@@ -76,7 +77,7 @@ function CatalogSummary({
 }
 
 export const Schedules = defineComponent((source) => {
-  const observation = new ScheduleCommandObservation(source.signal);
+  const observation = new CommandActivity<Command>(source.signal);
   return (props) => <SchedulesPanel {...props} observation={observation} />;
 });
 
@@ -84,7 +85,7 @@ function SchedulesPanel({
   context,
   locale,
   observation,
-}: PluginComponentProps & { observation: ScheduleCommandObservation }) {
+}: PluginComponentProps & { observation: CommandActivity<Command> }) {
   const schedules = useSchedules(context, locale, observation);
   const {
     t,

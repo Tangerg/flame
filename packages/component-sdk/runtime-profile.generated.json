@@ -1,5 +1,5 @@
 {
-  "profile": "io.github.tangerg.flame/component-runtime@3",
+  "profile": "io.github.tangerg.flame/component-runtime@4",
   "browserTargets": [
     "chrome137",
     "safari26"

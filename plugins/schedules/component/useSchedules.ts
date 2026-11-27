@@ -8,7 +8,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import {
-  bindOperations,
+  type CommandActivity,
   mutationSettlementIsUnknown,
   OperationFailure,
   scrollPositions,
@@ -19,7 +19,6 @@ import {
 } from "@flame/component-sdk";
 import { type Model } from "@flame/runtime-client/wire";
 import {
-  CAPABILITY_JSON,
   type MethodInputs,
   type MethodOutputs,
 } from "../package/io.github.tangerg.flame/contracts/methods.generated";
@@ -42,12 +41,9 @@ import {
   type ModelRead,
 } from "./types";
 import { isConcealed } from "@flame/ui";
-import { AUTHORING_LABELS, METHODS, type AuthoringMethod } from "./methods";
+import { AUTHORING_LABELS, METHODS, isAuthoringMethod, type AuthoringMethod } from "./methods";
 import { ScheduleCatalog } from "./scheduleCatalog";
-import {
-  bindScheduleCommands,
-  type ScheduleCommandObservation,
-} from "./scheduleCommands";
+import { bindScheduleOperations } from "./scheduleCommands";
 export const enabled = (item: Schedule) => item.nextRunAt !== undefined;
 export const modelKey = (provider: string, model: string) =>
   JSON.stringify([provider, model]);
@@ -70,7 +66,7 @@ export type ScheduleFilter = (typeof SCHEDULE_FILTERS)[number];
 export function useSchedules(
   context: ComponentContext,
   locale: string,
-  observation: ScheduleCommandObservation,
+  observation: CommandActivity<Command>,
 ) {
   const t = useTranslator(CATALOGS, locale);
   const dateTime = useMemo(
@@ -81,15 +77,7 @@ export function useSchedules(
       }),
     [locale],
   );
-  const operations = useMemo(() => {
-    const { target, ...commands } = bindScheduleCommands(context);
-    const { query } = bindOperations<MethodInputs, MethodOutputs>(
-      context,
-      CAPABILITY_JSON,
-      target,
-    );
-    return { ...commands, query };
-  }, [context]);
+  const operations = useMemo(() => bindScheduleOperations(context), [context]);
   const catalog = useMemo(
     () => new ScheduleCatalog(
       (cursor, signal) => operations.query(METHODS.list, { cursor }, signal),
@@ -228,7 +216,7 @@ export function useSchedules(
   }, [modelSource, modelRefresh]);
   function observe(
     command: Command,
-    execute: () => Promise<MethodOutputs[AuthoringMethod]> | undefined,
+    execute: () => Promise<MethodOutputs[keyof MethodOutputs]> | undefined,
   ) {
     if (context.signal.aborted) return;
     void observation.run(command, async () => {
@@ -273,6 +261,7 @@ export function useSchedules(
     const original = operations.pendingCommand();
     if (original?.idempotencyKey !== key) return;
     const { method } = original;
+    if (!isAuthoringMethod(method)) return;
     observe({ method, label: t(AUTHORING_LABELS[method]) }, () => {
       const feedback = feedbackElement.current;
       if (

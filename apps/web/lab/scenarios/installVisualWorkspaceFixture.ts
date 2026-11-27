@@ -541,6 +541,11 @@ function workspaceDataPlugin(
         VISUAL_MEMORY_BINDING,
       );
       const memoryView = publishedComponent(memoryDeclaration, "memory");
+      const MemoryView = Memory.create({
+        runtimeIdentity: memorySources.runtime,
+        component: memorySources.component,
+        signal: memoryLifetime.lifetime.signal,
+      });
       memoryLifetime.add(WORKSPACE_VIEW, {
         id: "package:visual:memory",
         title: { text: memoryView.title },
@@ -550,7 +555,7 @@ function workspaceDataPlugin(
           createElement(InstalledComponent, {
             ...memorySources,
             scope: "client",
-            entry: Memory,
+            entry: MemoryView,
           }),
       });
 

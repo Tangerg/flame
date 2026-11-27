@@ -43,7 +43,7 @@ Ordinary stateless exports remain React components.
 The Host passes `locale` as a React prop while the captured `context` and its
 signal stay stable for the same target. `useContextState(context)` associates
 reads and notices with that signal and ignores updates from a retired capture.
-Component runtime profile 2 requires rebuilding the graphical Host and packages
+Component runtime profile 4 requires rebuilding the graphical Host and packages
 together. The compiled module graph declares the target runtime profile even for
 components with zero shared imports. Pass `locale` to `useTranslator` and
 locale-sensitive formatters.
@@ -323,6 +323,11 @@ Runtime handle's `matchesIntent(originalIntent)` through
 `context.runtime.plugins.pendingCommands()`. A shared binding does not establish
 the originating document or action. The predicate reads the existing salted
 journal fingerprint without introducing another intent registry.
+For a panel that admits one authored command at a time, `bindOperations(...).authoring(name)`
+binds one named intent per installation. `submit` returns no attempt while the original
+is available for recovery, and the Runtime client serializes active claims for that intent.
+On a recreated panel, use `pendingCommand()` to recover the SDK's original handle.
+`CommandActivity` holds foreground feedback for a component source lifetime.
 Its recovery handle reads `plugins.getCommand` from Runtime's saved route before
 querying the original backend receipt under the same key. It does not reconstruct
 input from the current draft, prepare another provider or persist business output.

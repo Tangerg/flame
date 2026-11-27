@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "runtimeProfile": "io.github.tangerg.flame/component-runtime@3",
+  "runtimeProfile": "io.github.tangerg.flame/component-runtime@4",
   "entry": "component.js",
   "modules": [
     {
@@ -8,7 +8,6 @@
       "imports": [
         "@flame/component-sdk",
         "@flame/ui",
-        "@frame/sdk/json",
         "react",
         "react/jsx-runtime"
       ],
@@ -21,7 +20,6 @@
   "sharedSpecifiers": [
     "@flame/component-sdk",
     "@flame/ui",
-    "@frame/sdk/json",
     "react",
     "react/jsx-runtime"
   ]

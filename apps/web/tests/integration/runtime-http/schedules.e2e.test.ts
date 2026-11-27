@@ -10,7 +10,7 @@ import {
   type CallPluginResponse,
 } from "@flame/runtime-client/wire";
 import { METHODS } from "../../../../../plugins/schedules/component/methods";
-import { bindScheduleCommands } from "../../../../../plugins/schedules/component/scheduleCommands";
+import { bindScheduleOperations } from "../../../../../plugins/schedules/component/scheduleCommands";
 import { type RunReference } from "../../../../../plugins/schedules/package/io.github.tangerg.flame/contracts/methods.generated";
 import { useRuntimeFixture } from "./fixture";
 import { within } from "./observation";
@@ -59,7 +59,7 @@ describe("Schedules commands over Runtime HTTP", () => {
       throw new TypeError("injected loss of the original Schedule response");
     });
     const openView = (signal: AbortSignal) =>
-      bindScheduleCommands({
+      bindScheduleOperations({
         binding,
         runtime: client,
         signal,
