@@ -18,6 +18,9 @@ Call options use the SDK's compiled protocol version when
 `RequestMeta.ProtocolVersion` is nil. A supplied pointer carries that exact
 version claim to Runtime, where an empty or unsupported version is refused.
 
+A plugin command requires a caller-retained `PluginCallOptions.IdempotencyKey`
+for receipt recovery. Plugin queries omit the command identity.
+
 Typed plugin bindings capture the admitted contract by value. Replacing the
 caller's Capability cannot retarget a bound method or its delayed stream.
 Point resolution retains that same captured schema across the remote call,

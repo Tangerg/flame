@@ -43,7 +43,8 @@ func TestReviewExecutableCLIIdentityConflictPreservesOriginalReceipt(t *testing.
 	var initial struct {
 		Reviews []map[string]jsontext.Value `json:"reviews"`
 	}
-	if err := json.Unmarshal(read().Bytes(), &initial, json.RejectUnknownMembers(true)); err != nil || len(initial.Reviews) != 1 {
+	initialState := read()
+	if err := json.Unmarshal(initialState.Bytes(), &initial, json.RejectUnknownMembers(true)); err != nil || len(initial.Reviews) != 1 {
 		t.Fatalf("read the owned review: %+v, %v", initial, err)
 	}
 	encode := func(value any) framevalue.JSON {
@@ -96,6 +97,15 @@ func TestReviewExecutableCLIIdentityConflictPreservesOriginalReceipt(t *testing.
 		first = `{"id":"example-review","expectedRevision":1,"status":"resolved"}`
 		next  = `{"id":"example-review","expectedRevision":2,"status":"open"}`
 	)
+	request.Input = first
+	keyless := runtime.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, protocol.CallMetadata{})
+	if current := read(); current != initialState {
+		t.Fatalf("keyless command changed the private review: %s", current.Bytes())
+	}
+	if keyless.Value != nil || !errors.Is(keyless.Failure, protocol.ErrInvalidParams) {
+		t.Fatalf("plugin command without its caller identity: %+v", keyless)
+	}
+
 	success(key, first, original)
 	for range 2 {
 		output, stderr, err := call(key, next)

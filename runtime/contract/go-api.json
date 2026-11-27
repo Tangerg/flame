@@ -10712,7 +10712,7 @@
         {
           "name": "Version",
           "type": "untyped string",
-          "value": "\"2026-11-27.4\""
+          "value": "\"2026-11-27.5\""
         },
         {
           "name": "WorkspaceAvailable",

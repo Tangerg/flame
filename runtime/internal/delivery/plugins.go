@@ -5,6 +5,8 @@ import (
 	"iter"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+
+	"github.com/Tangerg/frame"
 )
 
 const (
@@ -71,9 +73,9 @@ func registerPlugins(r *Registry) {
 	}, ctx context.Context, in protocol.PluginCommandRequest) error {
 		return s.RetirePluginCommand(ctx, in)
 	})
-	r.streamExtension(MethodMeta{Name: PluginsStream, GoName: "StreamPlugin", CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, pluginCallOperation, func(s interface {
-		PreparePluginStream(context.Context, protocol.CallPluginRequest) (OperationKind, func(context.Context) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error), error)
-	}, ctx context.Context, in protocol.CallPluginRequest) (OperationKind, func(context.Context) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error), error) {
+	r.streamExtension(MethodMeta{Name: PluginsStream, GoName: "StreamPlugin", CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
+		PreparePluginStream(context.Context, protocol.CallPluginRequest) (frame.MethodKind, func(context.Context) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error), error)
+	}, ctx context.Context, in protocol.CallPluginRequest) (frame.MethodKind, func(context.Context) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error), error) {
 		return s.PreparePluginStream(ctx, in)
 	})
 	r.notice(MethodMeta{
@@ -105,9 +107,9 @@ func registerPlugins(r *Registry) {
 	}, ctx context.Context, in protocol.ResolvePluginRequirementsRequest) (*protocol.Page[protocol.PluginCollaborator], error) {
 		return s.ResolvePluginRequirements(ctx, in)
 	})
-	r.extension(MethodMeta{Name: PluginsCall, GoName: "CallPlugin", CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, pluginCallOperation, func(s interface {
-		PreparePluginCall(context.Context, protocol.CallPluginRequest) (OperationKind, func(context.Context) (*protocol.CallPluginResponse, error), error)
-	}, ctx context.Context, in protocol.CallPluginRequest) (OperationKind, func(context.Context) (*protocol.CallPluginResponse, error), error) {
+	r.extension(MethodMeta{Name: PluginsCall, GoName: "CallPlugin", CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
+		PreparePluginCall(context.Context, protocol.CallPluginRequest) (frame.MethodKind, func(context.Context) (*protocol.CallPluginResponse, error), error)
+	}, ctx context.Context, in protocol.CallPluginRequest) (frame.MethodKind, func(context.Context) (*protocol.CallPluginResponse, error), error) {
 		return s.PreparePluginCall(ctx, in)
 	})
 	r.query(MethodMeta{Name: PluginsListProviders, GoName: "ListPluginProviders", CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {

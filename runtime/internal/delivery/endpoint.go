@@ -121,7 +121,7 @@ func (e *Endpoint) invoke(ctx context.Context, name Name, options protocol.CallM
 	if version := options.RequestMeta.ProtocolVersion; version != nil && *version != protocol.Version {
 		return failed(protocol.NewFailure(protocol.ErrInvalidProtocolVersion, fmt.Sprintf("protocolVersion %q is unsupported; expected %q", *version, protocol.Version)))
 	}
-	if failure := validateOptions(method.Meta, options); failure != nil {
+	if failure := validateCallerIdentity(options); failure != nil {
 		return failed(failure)
 	}
 	if options.IdempotencyKey != "" && options.IdempotencyNamespace != "" &&
@@ -140,10 +140,10 @@ func (e *Endpoint) invoke(ctx context.Context, name Name, options protocol.CallM
 		if err != nil {
 			return failed(projectError(err))
 		}
-		if failure := validateOptions(prepared.Meta, options); failure != nil {
-			return failed(failure)
-		}
 		method = prepared
+	}
+	if failure := validateMethodOptions(method.Meta, options); failure != nil {
+		return failed(failure)
 	}
 	ctx, options, err := e.bind(ctx, method, parameters.value, options)
 	if err != nil {
@@ -254,22 +254,11 @@ func allowsEvent(ctx context.Context, event any) bool {
 	return true
 }
 
-func validateOptions(method MethodMeta, options protocol.CallMetadata) *protocol.Failure {
-	if failure := validateIdempotencyOptions(method, options); failure != nil {
-		return failure
-	}
-	return validateReplayCursor(method, options)
-}
-
-func validateIdempotencyOptions(method MethodMeta, options protocol.CallMetadata) *protocol.Failure {
+func validateCallerIdentity(options protocol.CallMetadata) *protocol.Failure {
 	key := options.IdempotencyKey
 	switch {
 	case runs.ReservedCommandKey(key):
 		return protocol.NewFailure(protocol.ErrInvalidParams, "idempotency key belongs to a Runtime workflow")
-	case key != "" && !method.Idempotency.Replays():
-		return protocol.NewFailure(protocol.ErrInvalidParams, "this operation does not accept an idempotency key")
-	case key == "" && method.Idempotency == IdempotencyOwnerRun:
-		return protocol.NewFailure(protocol.ErrInvalidParams, "a Run command requires an idempotency key retained by its caller")
 	case !utf8.ValidString(key):
 		return protocol.NewFailure(protocol.ErrInvalidParams, "idempotency key must be valid UTF-8")
 	case len(key) > maxIdempotencyKeyBytes:
@@ -285,14 +274,22 @@ func validateIdempotencyOptions(method MethodMeta, options protocol.CallMetadata
 	return nil
 }
 
+func validateMethodOptions(method MethodMeta, options protocol.CallMetadata) *protocol.Failure {
+	switch {
+	case options.IdempotencyKey != "" && !method.Idempotency.Replays():
+		return protocol.NewFailure(protocol.ErrInvalidParams, "this operation does not accept an idempotency key")
+	case options.IdempotencyKey == "" && method.Idempotency.requiresCallerKey():
+		return protocol.NewFailure(protocol.ErrInvalidParams, "this command requires an idempotency key retained by its caller")
+	}
+	return validateReplayCursor(method, options)
+}
+
 func validateReplayCursor(method MethodMeta, options protocol.CallMetadata) *protocol.Failure {
 	switch {
 	case options.AfterEventID == "":
 		return nil
 	case method.ReplayCursor != ReplayCursorRun:
 		return protocol.NewFailure(protocol.ErrInvalidParams, "this operation does not accept a run replay cursor")
-	case method.Operation == OperationCommand && options.IdempotencyKey == "":
-		return protocol.NewFailure(protocol.ErrInvalidParams, "a run command replay cursor requires an idempotency key")
 	}
 	if err := flameidentity.ValidateEventIdentity(options.AfterEventID); err != nil {
 		return protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("run replay cursor: %v", err))

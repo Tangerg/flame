@@ -106,18 +106,7 @@ func (s *Handler) ResolvePluginRequirements(ctx context.Context, in protocol.Res
 	return protocol.NewPage(values), nil
 }
 
-func pluginCallOperation(in protocol.CallPluginRequest) (OperationKind, error) {
-	kind, err := plugincontract.MethodKindFor([]byte(in.Contract), in.Method)
-	if err != nil {
-		return "", protocol.InvalidParameters(err)
-	}
-	if kind == frame.Command {
-		return OperationCommand, nil
-	}
-	return OperationQuery, nil
-}
-
-func (s *Handler) PreparePluginCall(ctx context.Context, in protocol.CallPluginRequest) (OperationKind, func(context.Context) (*protocol.CallPluginResponse, error), error) {
+func (s *Handler) PreparePluginCall(ctx context.Context, in protocol.CallPluginRequest) (frame.MethodKind, func(context.Context) (*protocol.CallPluginResponse, error), error) {
 	request, err := parsePluginCall(in)
 	if err != nil {
 		return "", nil, err
@@ -126,11 +115,7 @@ func (s *Handler) PreparePluginCall(ctx context.Context, in protocol.CallPluginR
 	if err != nil {
 		return "", nil, wirePluginError(err)
 	}
-	kind := OperationQuery
-	if call.Kind() == frame.Command {
-		kind = OperationCommand
-	}
-	return kind, func(ctx context.Context) (*protocol.CallPluginResponse, error) {
+	return call.Kind(), func(ctx context.Context) (*protocol.CallPluginResponse, error) {
 		output, err := call.Invoke(ctx)
 		if failure, known := errors.AsType[*framecall.Refusal](err); known && !errors.Is(err, plugin.ErrCommandUnconfirmed) {
 			return &protocol.CallPluginResponse{Failure: &protocol.PluginCallFailure{Code: failure.Code, Message: failure.Message}}, nil
@@ -162,7 +147,7 @@ func parsePluginCall(in protocol.CallPluginRequest) (plugins.CallRequest, error)
 	return plugins.CallRequest{Installation: id, Digest: digest, Contribution: contribution, Contract: contract, Method: in.Method, Input: input, Target: in.Target}, nil
 }
 
-func (s *Handler) PreparePluginStream(ctx context.Context, in protocol.CallPluginRequest) (OperationKind, func(context.Context) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error), error) {
+func (s *Handler) PreparePluginStream(ctx context.Context, in protocol.CallPluginRequest) (frame.MethodKind, func(context.Context) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error), error) {
 	request, err := parsePluginCall(in)
 	if err != nil {
 		return "", nil, err
@@ -171,12 +156,9 @@ func (s *Handler) PreparePluginStream(ctx context.Context, in protocol.CallPlugi
 	if err != nil {
 		return "", nil, wirePluginError(err)
 	}
-	kind := OperationQuery
-	if call.Kind() == frame.Command {
-		kind = OperationCommand
-	}
+	kind := call.Kind()
 	unconfirmed := errors.New("plugin stream final outcome is unconfirmed")
-	if call.Kind() == frame.Command {
+	if kind == frame.Command {
 		unconfirmed = errors.Join(plugin.ErrCommandUnconfirmed, unconfirmed)
 	}
 	return kind, func(ctx context.Context) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error) {

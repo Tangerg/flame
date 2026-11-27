@@ -76,21 +76,25 @@ const (
 
 	idempotencyOwnerResponse IdempotencyPolicy = "ownerResponse"
 
+	idempotencyOwnerPlugin IdempotencyPolicy = "ownerPlugin"
+
 	IdempotencyOwnerRun IdempotencyPolicy = "ownerRun"
 )
 
 func (i IdempotencyPolicy) Valid() bool {
-	return i == idempotencyNone || i == idempotencyReplayResponse ||
-		i == idempotencyOwnerResponse || i == IdempotencyOwnerRun
+	return i == idempotencyNone || i.Replays()
 }
 
 func (i IdempotencyPolicy) Replays() bool {
-	return i == idempotencyReplayResponse ||
-		i == idempotencyOwnerResponse || i == IdempotencyOwnerRun
+	return i == idempotencyReplayResponse || i.OwnsOutcome()
 }
 
 func (i IdempotencyPolicy) OwnsOutcome() bool {
-	return i == idempotencyOwnerResponse || i == IdempotencyOwnerRun
+	return i == idempotencyOwnerResponse || i.requiresCallerKey()
+}
+
+func (i IdempotencyPolicy) requiresCallerKey() bool {
+	return i == idempotencyOwnerPlugin || i == IdempotencyOwnerRun
 }
 
 type ReplayCursorPolicy string
@@ -235,19 +239,8 @@ func (m MethodMeta) validateIdentity() error {
 	if !m.Operation.Valid() {
 		return fmt.Errorf("%s: invalid operation kind %q", m.Name, string(m.Operation))
 	}
-	switch m.Idempotency {
-	case idempotencyNone, idempotencyReplayResponse,
-		idempotencyOwnerResponse, IdempotencyOwnerRun:
-	default:
-		return fmt.Errorf(
-			"%s: invalid idempotency policy %s; expected %s, %s, %s or %s",
-			m.Name,
-			m.Idempotency,
-			idempotencyNone,
-			idempotencyReplayResponse,
-			idempotencyOwnerResponse,
-			IdempotencyOwnerRun,
-		)
+	if !m.Idempotency.Valid() {
+		return fmt.Errorf("%s: invalid idempotency policy %q", m.Name, m.Idempotency)
 	}
 	switch m.ReplayCursor {
 	case replayCursorNone, ReplayCursorRun:
@@ -308,8 +301,8 @@ func (m MethodMeta) validateMaterializes() error {
 func (m MethodMeta) validateIdempotency() error {
 	switch m.Operation {
 	case OperationExtension:
-		if m.Idempotency != idempotencyOwnerResponse {
-			return fmt.Errorf("%s: an extension must resolve an owner operation", m.Name)
+		if m.Idempotency != idempotencyOwnerPlugin {
+			return fmt.Errorf("%s: an extension must resolve plugin command ownership", m.Name)
 		}
 	case OperationQuery:
 		if m.Idempotency != idempotencyNone {

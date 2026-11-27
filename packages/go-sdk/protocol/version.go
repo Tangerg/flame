@@ -1,3 +1,3 @@
 package protocol
 
-const Version = "2026-11-27.4"
+const Version = "2026-11-27.5"

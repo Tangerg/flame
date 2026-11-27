@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-11-27.4",
+  "protocolVersion": "2026-11-27.5",
   "features": [
     "reasoning",
     "multimodal",
@@ -1021,7 +1021,7 @@
       "name": "plugins.stream",
       "kind": "stream",
       "operation": "extension",
-      "idempotency": "ownerResponse",
+      "idempotency": "ownerPlugin",
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
@@ -1142,7 +1142,7 @@
       "name": "plugins.call",
       "kind": "unary",
       "operation": "extension",
-      "idempotency": "ownerResponse",
+      "idempotency": "ownerPlugin",
       "replayCursor": "none",
       "pagination": "none",
       "errors": [

@@ -318,7 +318,9 @@ them; there is no age-based permission to redispatch.
 Core `2026-10-15.2` admits query and command streams through `plugins.stream`.
 The contribution's exact method contract owns that distinction. A query has no
 command idempotency key, route or private receipt; a command retains its original
-route and receipt-only reconciliation. Go `BindPluginStreamingMethod` supports
+route and receipt-only reconciliation. Core `2026-11-27.5` requires an
+idempotency key for an installed plugin command before dispatch. The caller
+retains that key to recover the original receipt. Go `BindPluginStreamingMethod` supports
 both with `PluginCallOptions`, as does unary `CallPlugin`. Former Go stream
 `CommandOptions` signatures are removed; typed/callback consumers migrate together.
 The shared TS client and component SDK expose `queryStream` for reads and

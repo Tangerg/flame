@@ -10,6 +10,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
+	"github.com/Tangerg/frame"
 	"github.com/samber/lo"
 )
 
@@ -145,10 +146,10 @@ func (r *Registry) command[Capability, Params, Response any](
 	return r.registerUnary(meta, call)
 }
 
-func (r *Registry) extension[Capability, Params, Response any](meta MethodMeta, classify func(Params) (OperationKind, error), prepare func(Capability, context.Context, Params) (OperationKind, func(context.Context) (Response, error), error)) {
+func (r *Registry) extension[Capability, Params, Response any](meta MethodMeta, prepare func(Capability, context.Context, Params) (frame.MethodKind, func(context.Context) (Response, error), error)) {
 	meta.Kind = kindUnary
 	meta.Result = reflect.TypeFor[Response]()
-	r.registerExtension(meta, classify, func(target Capability, ctx context.Context, request Params) (OperationKind, func(context.Context) rawResult, error) {
+	r.registerExtension(meta, func(target Capability, ctx context.Context, request Params) (frame.MethodKind, func(context.Context) rawResult, error) {
 		kind, call, err := prepare(target, ctx, request)
 		if err != nil || call == nil {
 			return kind, nil, err
@@ -160,11 +161,11 @@ func (r *Registry) extension[Capability, Params, Response any](meta MethodMeta, 
 	})
 }
 
-func (r *Registry) streamExtension[Capability, Params, Ack, Event any](meta MethodMeta, classify func(Params) (OperationKind, error), prepare func(Capability, context.Context, Params) (OperationKind, func(context.Context) (Ack, iter.Seq2[Event, error], error), error)) {
+func (r *Registry) streamExtension[Capability, Params, Ack, Event any](meta MethodMeta, prepare func(Capability, context.Context, Params) (frame.MethodKind, func(context.Context) (Ack, iter.Seq2[Event, error], error), error)) {
 	meta.Kind = KindStream
 	meta.Result = reflect.TypeFor[Ack]()
 	meta.Event = reflect.TypeFor[Event]()
-	r.registerExtension(meta, classify, func(target Capability, ctx context.Context, request Params) (OperationKind, func(context.Context) rawResult, error) {
+	r.registerExtension(meta, func(target Capability, ctx context.Context, request Params) (frame.MethodKind, func(context.Context) rawResult, error) {
 		kind, call, err := prepare(target, ctx, request)
 		if err != nil || call == nil {
 			return kind, nil, err
@@ -176,9 +177,9 @@ func (r *Registry) streamExtension[Capability, Params, Ack, Event any](meta Meth
 	})
 }
 
-func (r *Registry) registerExtension[Capability, Params any](meta MethodMeta, classify func(Params) (OperationKind, error), prepare func(Capability, context.Context, Params) (OperationKind, func(context.Context) rawResult, error)) {
+func (r *Registry) registerExtension[Capability, Params any](meta MethodMeta, prepare func(Capability, context.Context, Params) (frame.MethodKind, func(context.Context) rawResult, error)) {
 	meta.Operation = OperationExtension
-	meta.Idempotency = idempotencyOwnerResponse
+	meta.Idempotency = idempotencyOwnerPlugin
 	meta.ReplayCursor = replayCursorNone
 	meta.Pagination = paginationNone
 	meta.Params = reflect.TypeFor[Params]()
@@ -193,20 +194,13 @@ func (r *Registry) registerExtension[Capability, Params any](meta MethodMeta, cl
 		if err != nil {
 			return nil, err
 		}
-		expected, err := classify(request)
-		if err != nil {
-			return nil, err
-		}
-		if kind != expected {
-			return nil, fmt.Errorf("operation: %s resolved inconsistent semantics", meta.Name)
-		}
 		resolved := cloneMethodMeta(registered.Meta)
-		resolved.Operation = kind
 		switch kind {
-		case OperationQuery:
+		case frame.Query:
+			resolved.Operation = OperationQuery
 			resolved.Idempotency = idempotencyNone
-		case OperationCommand:
-			resolved.Idempotency = idempotencyOwnerResponse
+		case frame.Command:
+			resolved.Operation = OperationCommand
 		default:
 			return nil, fmt.Errorf("operation: %s resolved an invalid operation kind", meta.Name)
 		}
