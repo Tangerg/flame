@@ -515,7 +515,6 @@
       "errors": [
         "workspace_unavailable",
         "vcs_unavailable",
-        "session_busy",
         "capability_not_negotiated"
       ],
       "features": [
@@ -2532,7 +2531,6 @@
           "sessions.import",
           "sessions.rollback",
           "sessions.update",
-          "workspaces.tasks.create",
           "workspaces.tasks.handoff.apply",
           "workspaces.tasks.handoff.preview",
           "workspaces.tasks.release"

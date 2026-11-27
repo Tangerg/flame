@@ -23,7 +23,7 @@ func registerTaskWorktrees(registry *Registry) {
 	git := requires(protocol.FeatureGit)
 	readErrors := []string{protocol.ErrWorkspaceUnavailable.Error(), protocol.ErrSessionBusy.Error(), protocol.ErrRevisionConflict.Error()}
 	registry.command(MethodMeta{Name: TaskWorktreesCreate, GoName: "CreateTaskWorktree", CapabilityRules: git,
-		Errors: []string{protocol.ErrWorkspaceUnavailable.Error(), protocol.ErrVcsUnavailable.Error(), protocol.ErrSessionBusy.Error()}},
+		Errors: []string{protocol.ErrWorkspaceUnavailable.Error(), protocol.ErrVcsUnavailable.Error()}},
 		func(service interface {
 			CreateTaskWorktree(context.Context, protocol.CreateTaskWorktreeRequest) (*protocol.TaskWorktree, error)
 		}, ctx context.Context, in protocol.CreateTaskWorktreeRequest) (*protocol.TaskWorktree, error) {

@@ -15,7 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
 
-func TestTaskWorktreeSetupDoesNotBlockTheCatalog(t *testing.T) {
+func TestTaskWorktreeSetupKeepsOtherTasksAvailable(t *testing.T) {
 	if !sandbox.Available() {
 		t.Skip("workspace setup requires the native sandbox")
 	}
@@ -85,6 +85,22 @@ func TestTaskWorktreeSetupDoesNotBlockTheCatalog(t *testing.T) {
 	case <-listCtx.Done():
 		t.Fatal("one checkout's unfinished setup blocked the task catalog")
 	}
+
+	parallelRequest := request
+	parallelRequest.Setup = ""
+	parallel := r.endpoint.Invoke(ctx, delivery.TaskWorktreesCreate, parallelRequest, protocol.CallMetadata{IdempotencyKey: "parallel-task"})
+	if parallel.Failure != nil {
+		t.Fatalf("the same repository could not create another task while setup was running: %v", parallel.Failure)
+	}
+	parallelTask := parallel.Value.(*protocol.TaskWorktree)
+	if !parallelTask.Available || parallelTask.Workspace.Path == existing.Workspace.Path ||
+		parallelTask.Workspace.Path == filepath.Dir(releasePath) || parallelTask.Base != existing.Base {
+		t.Fatalf("parallel creation did not produce an independent checkout at the chosen commit: %+v", parallelTask)
+	}
+	if status := git("status", "--porcelain"); status != "" {
+		t.Fatalf("task preparation changed the source checkout: %q", status)
+	}
+
 	if err := os.WriteFile(releasePath, nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +113,7 @@ func TestTaskWorktreeSetupDoesNotBlockTheCatalog(t *testing.T) {
 		t.Fatalf("the finished checkout was not published with its setup outcome: %+v", finished)
 	}
 	list := r.must(delivery.TaskWorktreesList, struct{}{}, "").(*protocol.Page[protocol.TaskWorktree])
-	if len(list.Data) != 2 || !slices.ContainsFunc(list.Data, func(task protocol.TaskWorktree) bool {
+	if len(list.Data) != 3 || !slices.ContainsFunc(list.Data, func(task protocol.TaskWorktree) bool {
 		return task.ID == finished.ID && task.Available && task.Setup != nil && task.Setup.ExitCode != nil && *task.Setup.ExitCode == 0
 	}) {
 		t.Fatalf("the finished checkout was missing from the catalog: %+v", list.Data)

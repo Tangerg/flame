@@ -2739,10 +2739,6 @@
           "message": "vcs_unavailable"
         },
         {
-          "code": -32018,
-          "message": "session_busy"
-        },
-        {
           "code": -32006,
           "message": "capability_not_negotiated"
         }

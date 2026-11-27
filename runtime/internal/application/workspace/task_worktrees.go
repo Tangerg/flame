@@ -75,11 +75,6 @@ func (w *TaskWorktrees) Create(ctx context.Context, source, base, setup string) 
 	if err != nil {
 		return TaskWorktree{}, err
 	}
-	release, err := w.claim(path)
-	if err != nil {
-		return TaskWorktree{}, err
-	}
-	defer release()
 	return w.backend.Create(ctx, path, base, setup)
 }
 

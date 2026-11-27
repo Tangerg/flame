@@ -43,7 +43,7 @@ Protocol `2026-11-27.13` · 115 methods
 | `interrupts.list` | query | unary | none | none | cursor | — | — | `run_not_root`, `capability_not_negotiated` |
 | `plan.get` | query | unary | none | none | none | — | `plan` | `session_not_found`, `capability_not_negotiated` |
 | `items.list` | query | unary | none | none | cursor | — | `childRuns` | `session_not_found`, `run_not_found`, `capability_not_negotiated` |
-| `workspaces.tasks.create` | command | unary | replayResponse | none | none | — | `git` | `workspace_unavailable`, `vcs_unavailable`, `session_busy`, `capability_not_negotiated` |
+| `workspaces.tasks.create` | command | unary | replayResponse | none | none | — | `git` | `workspace_unavailable`, `vcs_unavailable`, `capability_not_negotiated` |
 | `workspaces.tasks.list` | query | unary | none | none | none | — | `git` | `capability_not_negotiated` |
 | `workspaces.tasks.handoff.preview` | query | unary | none | none | none | — | `git` | `workspace_unavailable`, `session_busy`, `revision_conflict`, `capability_not_negotiated` |
 | `workspaces.tasks.handoff.apply` | command | unary | replayResponse | none | none | — | `git` | `workspace_unavailable`, `session_busy`, `revision_conflict`, `capability_not_negotiated` |
