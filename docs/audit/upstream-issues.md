@@ -69,9 +69,10 @@ use the Scope response as the control acknowledgement.
 ## A2UI schema dependency (A2UI v0.16.1)
 
 `npm audit` reported one high-severity Zod advisory through four packages on
-2026-11-27. Flame's lockfile resolves Zod 4.6.7 for its own schemas and Zod
-3.25.76 for A2UI. The published `@a2ui/react` and `@a2ui/web_core` 0.16.1
-packages require `^3.25.76`, and the advisory includes that entire range.
+2026-11-27. Flame uses Zod 4.6.7 for the GenUI document and Zod 3.25.76 for the
+custom Dialog schema registered with A2UI. The published `@a2ui/react` and
+`@a2ui/web_core` 0.16.1 packages require `^3.25.76`, and the advisory includes
+that entire range.
 [Zod advisory](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5)
 [A2UI React dependencies](https://registry.npmjs.org/@a2ui%2freact/0.16.1)
 [A2UI web core dependencies](https://registry.npmjs.org/@a2ui%2fweb_core/0.16.1)

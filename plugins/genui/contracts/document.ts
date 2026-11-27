@@ -1,6 +1,5 @@
 import {
   STRICT_VALIDATION,
-  SpecVersion,
   MessageProcessor,
   type ActionPayload,
 } from "@a2ui/web_core";
@@ -17,7 +16,12 @@ import {
 } from "@frame/sdk/json";
 import type { PluginCallRoute } from "@flame/runtime-client/wire";
 import { z } from "zod/mini";
-import { CATALOG_ID, catalog, functions } from "./catalog";
+import {
+  A2UI_VERSION,
+  CATALOG_ID,
+  catalog,
+  trustedComponentApis,
+} from "./catalog";
 
 export class InvalidPresentation extends Error {
   constructor(message: string, cause?: unknown) {
@@ -73,7 +77,7 @@ export type CapturedContribution = z.infer<
 // Keep A2UI's protocol discoverable through ui_catalog so each tool listing
 // can carry the small envelope while the official parser owns message shape.
 const messageSchema = z.pipe(
-  z.looseObject({ version: z.literal(SpecVersion.V1_0) }),
+  z.looseObject({ version: z.literal(A2UI_VERSION) }),
   z.transform((message, context) => {
     const parsed = AgentToRendererMessageSchema.safeParse(message);
     if (!parsed.success) {
@@ -170,10 +174,9 @@ function admit(document: UiDocument): void {
   ]);
   if (document.operations.some(({ id }) => builtinActionNames.has(id)))
     throw new InvalidPresentation("reserved action name");
-  const knownFunctions = new Set(functions.map(({ name }) => name));
   function admitNode(record: Record<string, unknown>) {
     const call = record["@call"] ?? record.call;
-    if (typeof call === "string" && !knownFunctions.has(call))
+    if (typeof call === "string" && !catalog.rendererFunctions.has(call))
       throw new InvalidPresentation(
         "renderer function is not admitted: " + call,
       );
@@ -187,7 +190,10 @@ function admit(document: UiDocument): void {
       !names.has(String(event.name))
     )
       throw new InvalidPresentation("action is not declared");
-    if (record.component === "TextField" || record.component === "CheckBox")
+    if (
+      record.component === trustedComponentApis.textField.name ||
+      record.component === trustedComponentApis.checkbox.name
+    )
       assertDraftBinding(record.value);
   }
   function walk(value: unknown) {
@@ -228,7 +234,7 @@ function admit(document: UiDocument): void {
       walk(message.updateComponents.components);
   }
   const processor = new MessageProcessor([catalog], undefined, {
-    version: SpecVersion.V1_0,
+    version: A2UI_VERSION,
     validationConfig: STRICT_VALIDATION,
   });
   try {
@@ -249,7 +255,7 @@ export class PresentationRequest {
     const parsed = requestSchema.safeParse(bounded(value));
     if (!parsed.success)
       throw new InvalidPresentation(
-        "expected an A2UI 1.0 interface; older interface formats must be exported as raw history",
+        `expected an A2UI ${A2UI_VERSION} interface; older interface formats must be exported as raw history`,
         parsed.error,
       );
     admit(parsed.data);
@@ -358,7 +364,7 @@ export class Presentation {
   text(): string {
     return (
       this.#document.title +
-      "\nInteractive A2UI 1.0 interface. The accepted protocol messages and captured operation bindings are retained in the structured tool result."
+      `\nInteractive A2UI ${A2UI_VERSION} interface. The accepted protocol messages and captured operation bindings are retained in the structured tool result.`
     );
   }
 }

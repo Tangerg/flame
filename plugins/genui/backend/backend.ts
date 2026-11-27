@@ -9,7 +9,7 @@ import {
 } from "../contracts/document";
 import manifest from "../package/plugin.json";
 import { OperationCatalog } from "./operationCatalog";
-import { catalog as trustedCatalog } from "../contracts/catalog";
+import { A2UI_VERSION, catalog as trustedCatalog } from "../contracts/catalog";
 import { Schemas } from "@a2ui/web_core/v1_0";
 import { z } from "zod/mini";
 
@@ -27,7 +27,7 @@ export function createBackend(): Backend {
       name: PRESENT_TOOL,
       title: "Present an interactive interface",
       description:
-        "Present a bounded official A2UI 1.0 interface. Discover the Flame trusted catalog and protocol with ui_catalog. " +
+        `Present a bounded official A2UI ${A2UI_VERSION} interface. Discover the Flame trusted catalog and protocol with ui_catalog. ` +
         "The initial createSurface must use the Flame catalog and sendDataModel:false. Editable controls bind below /draft; " +
         "subsequent data updates write only below /data. Events call declared captured operations with explicit context. " +
         "Business commands require user review; followup sends only {message,payload} to the original conversation. " +
@@ -77,7 +77,7 @@ export function createBackend(): Backend {
       name: CATALOG_TOOL,
       title: "Discover interface functions and operations",
       description:
-        "kind=catalog returns the official A2UI 1.0 protocol and complete Flame trusted catalog. kind=operations lists available " +
+        `kind=catalog returns the official A2UI ${A2UI_VERSION} protocol and complete Flame trusted catalog. kind=operations lists available ` +
         "method identities and routing metadata; optionally filter by installationId and contribution. " +
         "Set installationId, contribution and method to read that exact methodJSON with its " +
         "input/output schemas. Index pages contain at most 20 entries; continue using nextOffset. " +
