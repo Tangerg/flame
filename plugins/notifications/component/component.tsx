@@ -7,7 +7,7 @@ import {
 } from "react";
 import {
   failureText,
-  type ComponentContext,
+  type PluginComponentProps,
   useTranslator,
 } from "@flame/component-sdk";
 import {
@@ -27,14 +27,13 @@ import {
 
 export function CompletionNotifications({
   context,
-}: {
-  context: ComponentContext;
-}) {
+  locale,
+}: PluginComponentProps) {
   const announce = useEffectEvent(
     (
       settlement: Parameters<typeof announceSettlement>[1],
       signal: AbortSignal,
-    ) => announceSettlement(context, settlement, signal),
+    ) => announceSettlement(context, settlement, locale, signal),
   );
   const subscribe = context.subscribeRootRunSettlements;
   useEffect(() => subscribe(announce), [subscribe]);
@@ -43,10 +42,9 @@ export function CompletionNotifications({
 
 export function NotificationSettings({
   context,
-}: {
-  context: ComponentContext;
-}) {
-  const t = useTranslator(catalogs, context.locale);
+  locale,
+}: PluginComponentProps) {
+  const t = useTranslator(catalogs, locale);
   const channel = context.notifications;
   const authorization = useSyncExternalStore(
     channel.subscribe,

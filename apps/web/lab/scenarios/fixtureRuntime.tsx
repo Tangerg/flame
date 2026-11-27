@@ -336,7 +336,7 @@ function startFixture(messages: NotificationFeed, render: (node: ReactNode) => v
       }
       if (fixture === "computer") {
         const { createComputerConsoleFixture } = await import("./computerConsoleFixture");
-        const computer = await createComputerConsoleFixture(requestedLocale, requestedState);
+        const computer = await createComputerConsoleFixture(requestedState);
         currentRuntimeClient = computer.client;
         await loadPluginsForTest(
           definePlugin({

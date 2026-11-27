@@ -65,15 +65,15 @@ export const UNFILTERED = "all";
 export const SCHEDULE_FILTERS = [UNFILTERED, "enabled", "disabled"] as const;
 export type ScheduleFilter = (typeof SCHEDULE_FILTERS)[number];
 
-export function useSchedules(context: ComponentContext) {
-  const t = useTranslator(CATALOGS, context.locale);
+export function useSchedules(context: ComponentContext, locale: string) {
+  const t = useTranslator(CATALOGS, locale);
   const dateTime = useMemo(
     () =>
-      new Intl.DateTimeFormat(context.locale, {
+      new Intl.DateTimeFormat(locale, {
         dateStyle: "medium",
         timeStyle: "short",
       }),
-    [context.locale],
+    [locale],
   );
   const operations = useMemo(() => {
     if (!context.binding)

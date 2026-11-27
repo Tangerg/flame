@@ -1,5 +1,5 @@
 import { type ReactNode } from "react";
-import { type ComponentContext } from "@flame/component-sdk";
+import { type PluginComponentProps } from "@flame/component-sdk";
 import { Refresh, Plus } from "@flame/icons/react";
 import {
   Button,
@@ -107,9 +107,9 @@ function MemoryEditPane({
   );
 }
 
-export function Memory({ context }: { context: ComponentContext }) {
+export function Memory({ context, locale }: PluginComponentProps) {
   const filters = useMemoryFilters();
-  const memory = useMemory(context, filters);
+  const memory = useMemory(context, locale, filters);
   const {
     t,
     edit,

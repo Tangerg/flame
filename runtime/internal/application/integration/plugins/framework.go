@@ -9,7 +9,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
@@ -99,52 +98,6 @@ func ComponentUnit(id plugin.ContributionID) framehost.UnitID {
 
 func ComponentContract() (framehost.Contract[any], error) {
 	return framehost.NewContract[any]("io.github.tangerg.flame/component", "1")
-}
-
-type ComponentConfiguration struct {
-	Export        string            `json:"export"`
-	Component     ComponentMetadata `json:"component"`
-	ModuleProfile string            `json:"moduleProfile,omitempty"`
-	SharedModules []string          `json:"sharedModules"`
-}
-
-type ComponentMetadata struct {
-	ToolCategory builtin.ToolCategory `json:"toolCategory,omitzero"`
-	TargetView   string               `json:"targetView,omitzero"`
-
-	ID              string                       `json:"id"`
-	Title           string                       `json:"title"`
-	LocalizedTitles map[string]string            `json:"localizedTitles,omitzero"`
-	Scope           extension.ComponentScope     `json:"scope"`
-	Placement       extension.ComponentPlacement `json:"placement"`
-	Contribution    string                       `json:"contribution,omitempty"`
-	Material        string                       `json:"material,omitempty"`
-	SettingsIntent  string                       `json:"settingsIntent,omitempty"`
-	InlineResult    bool                         `json:"inlineResult,omitzero"`
-	Selector        *ComponentSelector           `json:"selector,omitempty"`
-}
-
-type ComponentSelector struct {
-	Kind extension.RendererSelectorKind `json:"kind"`
-	Name string                         `json:"name"`
-}
-
-func PublicComponentConfiguration(release plugin.Release, id plugin.ContributionID) ([]byte, error) {
-	for _, component := range release.Declaration().Components {
-		if component.ID != id {
-			continue
-		}
-		metadata := ComponentMetadata{ID: id.String(), Title: component.Title, LocalizedTitles: component.LocalizedTitles, ToolCategory: component.ToolCategory, TargetView: component.TargetView, Scope: component.Scope, Placement: component.Placement, Contribution: component.Contribution.String(), Material: component.Material, SettingsIntent: component.SettingsIntent, InlineResult: component.InlineResult}
-		if component.Selector != nil {
-			metadata.Selector = &ComponentSelector{Kind: component.Selector.Kind, Name: component.Selector.Name}
-		}
-		value, err := framevalue.EncodeJSON(ComponentConfiguration{Export: component.Export, Component: metadata, SharedModules: []string{}})
-		if err != nil {
-			return nil, err
-		}
-		return value.Bytes(), nil
-	}
-	return nil, plugin.ErrNotFound
 }
 
 func capabilityContract(contract *plugincontract.Capability) (framehost.Contract[any], error) {

@@ -2,16 +2,13 @@ package pluginbrowser
 
 import (
 	"context"
-	json "encoding/json/v2"
 	"errors"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
-	"github.com/Tangerg/frame"
 	framebrowser "github.com/Tangerg/frame/browser"
-	"github.com/Tangerg/frame/distribution"
 	framehost "github.com/Tangerg/frame/host"
 	framevalue "github.com/Tangerg/frame/value"
 	"github.com/samber/lo"
@@ -19,7 +16,7 @@ import (
 
 type resources interface {
 	ReadResource(context.Context, plugin.Installation, string) ([]byte, error)
-	ComponentModules(context.Context, plugin.Release, plugin.ContributionID) (*distribution.Module, error)
+	ComponentModuleImports(context.Context, plugin.Release, plugin.ClientComponent) (string, []string, error)
 }
 
 type Source struct {
@@ -77,6 +74,13 @@ func (s *Source) Module(ctx context.Context, binding framehost.UnitBinding) (fra
 	return framebrowser.Artifact{Path: component.Entry, Digest: framevalue.Hash(content)}, nil
 }
 
+type componentConfiguration struct {
+	ComponentID   string   `json:"componentId"`
+	Export        string   `json:"export"`
+	ModuleProfile string   `json:"moduleProfile"`
+	SharedModules []string `json:"sharedModules"`
+}
+
 func (s *Source) Configuration(ctx context.Context, setup framehost.Setup) ([]byte, error) {
 	if !setup.Valid() {
 		return nil, plugin.ErrInvalid
@@ -85,33 +89,14 @@ func (s *Source) Configuration(ctx context.Context, setup framehost.Setup) ([]by
 	if err != nil {
 		return nil, err
 	}
-	projection, err := plugins.PublicComponentConfiguration(snapshot.Selected, component.ID)
+	profile, shared, err := s.resources.ComponentModuleImports(ctx, snapshot.Selected, component)
 	if err != nil {
 		return nil, err
 	}
-	var value plugins.ComponentConfiguration
-	if err := json.Unmarshal(projection, &value); err != nil {
-		return nil, err
-	}
-	module, err := s.resources.ComponentModules(ctx, snapshot.Selected, component.ID)
-	if err != nil {
-		return nil, err
-	}
-	if module == nil || module.Entry != component.Entry {
-		return nil, frame.ErrContractMismatch
-	}
-	value.SharedModules = []string{}
-	for _, imported := range module.Imports {
-		if imported.Shared == nil {
-			continue
-		}
-		if value.ModuleProfile != "" && value.ModuleProfile != imported.Shared.Profile {
-			return nil, frame.ErrContractMismatch
-		}
-		value.ModuleProfile = imported.Shared.Profile
-		value.SharedModules = append(value.SharedModules, imported.Specifier)
-	}
-	encoded, err := framevalue.EncodeJSON(value)
+	encoded, err := framevalue.EncodeJSON(componentConfiguration{
+		ComponentID: component.ID.String(), Export: component.Export,
+		ModuleProfile: profile, SharedModules: shared,
+	})
 	if err != nil {
 		return nil, err
 	}

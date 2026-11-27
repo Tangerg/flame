@@ -63,9 +63,10 @@ function activeFeedback(state: CommandState): Feedback | undefined {
 }
 export function useMemory(
   context: ComponentContext,
+  locale: string,
   filters: MemoryFilterState,
 ) {
-  const t = useTranslator(CATALOGS, context.locale);
+  const t = useTranslator(CATALOGS, locale);
   const operations = useMemo(() => {
     if (!context.binding)
       throw new Error("Memory requires its declared callable contribution");

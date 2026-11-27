@@ -1,6 +1,6 @@
 import * as token from "@flame/ui/tokens.stylex";
 import { useMemo } from "react";
-import { type ComponentContext, useTranslator } from "@flame/component-sdk";
+import { type PluginComponentProps, useTranslator } from "@flame/component-sdk";
 import { Metadata, RecordMeta } from "@flame/ui";
 import { RecordedOutput } from "./recorded-output";
 import { RecordedRows } from "./recorded-rows";
@@ -23,8 +23,8 @@ const CHANGE_VERB = {
   deleted: "change.deleted",
 } as const;
 
-export function RecordedResult({ context }: { context: ComponentContext }) {
-  const t = useTranslator(CATALOGS, context.locale);
+export function RecordedResult({ context, locale }: PluginComponentProps) {
+  const t = useTranslator(CATALOGS, locale);
   const tool = context.toolResult;
   const content = useMemo(() => {
     if (!tool || tool.status === "running" || typeof tool.result !== "string")

@@ -9,6 +9,7 @@ import {
 import {
   failureText,
   type ComponentContext,
+  type PluginComponentProps,
   useTranslator,
 } from "@flame/component-sdk";
 import {
@@ -44,14 +45,7 @@ import type { DraftUpdate } from "./live-draft";
 
 export { DeliverableResult } from "./tool-result";
 
-function Workspace({
-  context: initialContext,
-  locale,
-}: {
-  context: ComponentContext;
-  locale: string;
-}) {
-  const [context] = useState(initialContext);
+function Workspace({ context, locale }: PluginComponentProps) {
   const t = useTranslator(catalogs, locale);
   const dateTime = useMemo(
     () =>
@@ -338,12 +332,7 @@ function useDocumentDraft<Format extends DraftFormat>(
   };
 }
 
-export function Deliverables({ context }: { context: ComponentContext }) {
-  // Display wrappers do not retire the captured I/O or authored drafts.
-  const { runtime, component, binding, track, signal, saveFile } = context;
-  const instance = useMemo(
-    () => crypto.randomUUID(),
-    [runtime, component, binding, track, signal, saveFile],
-  );
-  return <Workspace key={instance} context={context} locale={context.locale} />;
+export function Deliverables({ context, locale }: PluginComponentProps) {
+  const instance = useMemo(() => crypto.randomUUID(), [context.signal]);
+  return <Workspace key={instance} context={context} locale={locale} />;
 }

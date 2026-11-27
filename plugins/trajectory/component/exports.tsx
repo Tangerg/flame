@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { type ComponentContext, useTranslator } from "@flame/component-sdk";
+import { type ComponentContext, type PluginComponentProps, useTranslator } from "@flame/component-sdk";
 import { asSessionId } from "@flame/runtime-client";
 import { stringifyJSON } from "@frame/sdk/json";
 import { catalogs } from "./catalogs";
@@ -46,8 +46,8 @@ async function saveSessionExport(
   });
 }
 
-export function SessionExports({ context }: { context: ComponentContext }) {
-  const t = useTranslator(catalogs, context.locale);
+export function SessionExports({ context, locale }: PluginComponentProps) {
+  const t = useTranslator(catalogs, locale);
   useEffect(() => {
     const commands = [
       { id: "markdown", label: t("export.markdown"), format: "md" },

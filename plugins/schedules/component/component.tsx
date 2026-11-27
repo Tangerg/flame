@@ -1,4 +1,4 @@
-import { type ComponentContext } from "@flame/component-sdk";
+import { type PluginComponentProps } from "@flame/component-sdk";
 import {
   Panel,
   PanelHeader,
@@ -71,9 +71,9 @@ function CatalogSummary({
   );
 }
 
-export function Schedules({ context }: { context: ComponentContext }) {
+export function Schedules({ context, locale }: PluginComponentProps) {
   const openSession = context.openSession;
-  const schedules = useSchedules(context);
+  const schedules = useSchedules(context, locale);
   const {
     t,
     notice,

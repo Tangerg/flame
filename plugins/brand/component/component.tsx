@@ -3,7 +3,7 @@ import { useRef, useState } from "react";
 import { companion, FLAME_ORANGE, mark, plush } from "@flame/brand-assets";
 import {
   failureText,
-  type ComponentContext,
+  type PluginComponentProps,
   useTranslator,
 } from "@flame/component-sdk";
 import { Copy, Download } from "@flame/icons/react";
@@ -46,8 +46,8 @@ function pngBytes(source: string): Uint8Array {
   );
 }
 
-export function Brand({ context }: { context: ComponentContext }) {
-  const t = useTranslator(CATALOGS, context.locale);
+export function Brand({ context, locale }: PluginComponentProps) {
+  const t = useTranslator(CATALOGS, locale);
   const copy = useCopy(hex, t("copyHex"));
   const saving = useRef(false);
   const [savingID, setSavingID] = useState<string>();

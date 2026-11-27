@@ -9,7 +9,7 @@ import {
 import {
   defineComponent,
   useTranslator,
-  type ComponentContext,
+  type ComponentContext, type PluginComponentProps,
   type Translate,
 } from "@flame/component-sdk";
 import { DocumentBody, RecordGroup, RecordTitle } from "@flame/ui";
@@ -94,8 +94,8 @@ export const GenUIResult = defineComponent((source) => {
     },
     { once: true },
   );
-  return function GenUIResult({ context }: { context: ComponentContext }) {
-    const t = useTranslator(CATALOGS, context.locale);
+  return function GenUIResult({ context, locale }: PluginComponentProps) {
+    const t = useTranslator(CATALOGS, locale);
     const tool = context.toolResult;
     if (
       source.signal.aborted ||

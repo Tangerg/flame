@@ -8,7 +8,7 @@ import {
 } from "react";
 import {
   failureText,
-  type ComponentContext,
+  type PluginComponentProps,
   type Translate,
   useTranslator,
 } from "@flame/component-sdk";
@@ -314,12 +314,12 @@ type Read = {
   error?: { cause: unknown };
 };
 
-export function Usage({ context }: { context: ComponentContext }) {
+export function Usage({ context, locale }: PluginComponentProps) {
   const { runtime, track, signal: componentSignal } = context;
-  const t = useTranslator(CATALOGS, context.locale);
+  const t = useTranslator(CATALOGS, locale);
   const fmt = useMemo(
-    () => makeFormatters(context.locale, t),
-    [context.locale, t],
+    () => makeFormatters(locale, t),
+    [locale, t],
   );
   const [group, setGroup] = useState("byProvider");
   const [filter, setFilter] = useState("");

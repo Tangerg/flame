@@ -40,11 +40,13 @@ Ordinary stateless exports remain React components.
 
 `context.signal` belongs to the mounted component. New I/O still enters that component's
 `context.track` boundary; source construction grants no additional execution path.
-The Host can replace the captured context of a component that stays mounted, for
-example on a locale or binding change. State derived from one context is kept with
-`useContextState(context)`, which reads as absent under a replacement context
-instead of presenting the replaced context's reads or notices as current.
-Rebuild components and their graphical Host together when changing this SDK.
+The Host passes `locale` as a React prop while the captured `context` and its
+signal stay stable for the same target. `useContextState(context)` associates
+reads and notices with that signal and ignores updates from a retired capture.
+Component runtime profile 2 requires rebuilding the graphical Host and packages
+together. The compiled module graph declares the target runtime profile even for
+components with zero shared imports. Pass `locale` to `useTranslator` and
+locale-sensitive formatters.
 
 `clientEffect` placement requires client scope and has no navigation material or
 renderer selector. The Host mounts it for the admitted release independently of

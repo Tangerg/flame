@@ -1,5 +1,5 @@
 {
-  "profile": "io.github.tangerg.flame/component-runtime@1",
+  "profile": "io.github.tangerg.flame/component-runtime@2",
   "browserTargets": ["chrome137", "safari26"],
   "modules": [
     "react",
@@ -18,6 +18,6 @@
   "componentExport": "component",
   "moduleGraph": {
     "filename": "modules.generated.json",
-    "schemaVersion": 1
+    "schemaVersion": 2
   }
 }

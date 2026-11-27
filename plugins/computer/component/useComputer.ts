@@ -6,7 +6,6 @@ import {
   isErrorType,
   mutationSettlementIsUnknown,
   OperationFailure,
-  useContextState,
   type ComponentContext,
 } from "@flame/component-sdk";
 import {
@@ -94,17 +93,13 @@ export function useComputer(context: ComponentContext) {
       { scope: "installation", reference: context.binding.installationId },
     );
   }, [context]);
-  const owner = useMemo(() => new AbortController(), [context]);
-  const signal = useMemo(
-    () => AbortSignal.any([context.signal, owner.signal]),
-    [context.signal, owner],
-  );
-  const [read, setInspection] = useContextState<Read<Snapshot>>(context);
-  const [surface, setSurfaceRead] = useContextState<Read<Surface>>(context);
-  const [history, setHistoryRead] = useContextState<Read<HistoryPage>>(context);
-  const [result, setResultRead] = useContextState<
+  const { signal } = context;
+  const [read, setInspection] = useState<Read<Snapshot>>();
+  const [surface, setSurfaceRead] = useState<Read<Surface>>();
+  const [history, setHistoryRead] = useState<Read<HistoryPage>>();
+  const [result, setResultRead] = useState<
     Read<OperationRecord> & { id: string }
-  >(context);
+  >();
   const [watchError, setWatchError] = useState<
     { kind: "ended" } | { kind: "failed"; message: string }
   >();
@@ -209,8 +204,6 @@ export function useComputer(context: ComponentContext) {
     resultRequest.current?.abort();
     setResultRead(undefined);
   }, []);
-
-  useEffect(() => () => owner.abort(), [owner]);
 
   useEffect(() => {
     const request = new AbortController();

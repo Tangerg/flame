@@ -257,8 +257,6 @@ export interface ComponentContext {
   // Accepted saves are joined by this captured lifetime. They do not change any
   // plugin delivery, revision or approval fact; the host only owns file transfer.
   saveFile(request: SaveFileRequest): Promise<FileSaveResult>;
-  // The host owns the active locale; a component projects it, never selects it.
-  readonly locale: string;
   readonly signal: AbortSignal;
   // Reserve work before starting it; preserve the original command promise and
   // its retry identity. The factory is invoked synchronously after admission.
@@ -296,12 +294,17 @@ export interface ComponentValue<Props = unknown> {
   readonly props?: Props;
 }
 
-export type PluginComponent<Input = unknown, Props = unknown> = ComponentType<{
+export interface PluginComponentProps<Input = unknown, Props = unknown> {
   context: ComponentContext;
+  locale: string;
   input?: Input;
   contribution?: Props;
   children?: ReactNode;
-}>;
+}
+
+export type PluginComponent<Input = unknown, Props = unknown> = ComponentType<
+  PluginComponentProps<Input, Props>
+>;
 
 export interface ComponentSource {
   readonly runtimeIdentity: object;
@@ -387,31 +390,31 @@ export function useTranslator(
   return useMemo(() => createTranslator(catalogs, locale), [catalogs, locale]);
 }
 
-// The Host can replace a mounted component's captured context; state produced
-// under the replaced context reads as absent instead of as the current context's.
+// A retired callback must not overwrite state already produced by the next capture.
 export function useContextState<T>(
   context: ComponentContext,
 ): readonly [T | undefined, (next: SetStateAction<T | undefined>) => void] {
-  const [state, setState] = useState<{
-    context: ComponentContext;
-    value: T | undefined;
-  }>();
+  const { signal } = context;
+  const [state, setState] = useState({ signal, value: undefined as T | undefined });
   const set = useCallback(
     (next: SetStateAction<T | undefined>) =>
       setState((previous) => {
-        const current =
-          previous?.context === context ? previous.value : undefined;
+        if (previous.signal !== signal || signal.aborted) return previous;
         return {
-          context,
+          signal,
           value:
             typeof next === "function"
-              ? (next as (current: T | undefined) => T | undefined)(current)
+              ? (next as (current: T | undefined) => T | undefined)(previous.value)
               : next,
         };
       }),
-    [context],
+    [signal],
   );
-  return [state?.context === context ? state.value : undefined, set];
+  if (state.signal !== signal) {
+    setState({ signal, value: undefined });
+    return [undefined, set];
+  }
+  return [state.value, set];
 }
 
 function output<R>(reply: CallPluginResponse): R {

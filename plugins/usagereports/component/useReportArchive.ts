@@ -44,8 +44,7 @@ const CATALOGS = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
 
 // One archive owns its reads, commands and the focus each transition returns to;
 // command outcomes decide against the committed view, not the one they started in.
-export function useReportArchive(context: BoundContext) {
-  const locale = context.locale;
+export function useReportArchive(context: BoundContext, locale: string) {
   const t = useTranslator(CATALOGS, locale);
   const fmt = useMemo(() => makeFormatters(locale, t), [locale, t]);
   const operations = useMemo(
