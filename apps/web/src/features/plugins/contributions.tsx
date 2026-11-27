@@ -12,7 +12,7 @@ import { type ContributionScope } from "@/extensions/definePlugin";
 import { DATA_PROVIDER } from "@/extensions/dataProvider";
 import { ComponentCompositions } from "@/features/plugins/ui/ComponentCompositions";
 import { type ComponentContext } from "@flame/component-sdk";
-import { queryClient } from "@/lib/queryClient";
+import { replaceCachedRead } from "@/lib/queryClient";
 import { failureMessage } from "@/lib/diagnostics";
 import { retainThemeSelection } from "@/features/theme/public/appearance";
 import { trackContributionIO } from "@/extensions/contributionIO";
@@ -209,19 +209,13 @@ export function registerPackageContributions(
         const rows = await fetcher(undefined, signal);
         if (signal.aborted) return;
         await reconcile(rows);
-        if (!signal.aborted) {
-          queryClient.setQueryData([PACKAGES_KEY], rows);
-          try {
-            const choices = await fetchProviders(undefined, signal);
-            if (signal.aborted) return;
-            packages.workflows.publish(workflowAuthors(rows), choices);
-            queryClient.setQueryData([PROVIDERS_KEY], choices);
-          } catch {
-            if (!signal.aborted) {
-              packages.workflows.publish(workflowAuthors(rows), []);
-              await queryClient.invalidateQueries({ queryKey: [PROVIDERS_KEY] });
-            }
-          }
+        if (signal.aborted) return;
+        const authors = workflowAuthors(rows);
+        try {
+          const choices = await fetchProviders(undefined, signal);
+          if (!signal.aborted) packages.workflows.publish(authors, choices);
+        } catch {
+          if (!signal.aborted) packages.workflows.publish(authors, []);
         }
       };
       try {
@@ -236,7 +230,12 @@ export function registerPackageContributions(
         }
         const closeEvents = contributions.lifetime.defer(() => events.return?.());
         await refresh();
-        while (!(await events.next()).done) await refresh();
+        while (!(await events.next()).done) {
+          void replaceCachedRead({
+            predicate: ({ queryKey: [key] }) => key === PACKAGES_KEY || key === PROVIDERS_KEY,
+          });
+          await refresh();
+        }
         await closeEvents[asyncDisposeSymbol]();
       } catch (error) {
         const reasons = [error];
