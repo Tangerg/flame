@@ -1,6 +1,6 @@
 import { type RuntimeAccess } from "@/features/connection/public/runtime";
-import { type FlameClient, type RuntimeTopic } from "@flame/runtime-client";
-import { RUNTIME_SUBSCRIBE_METHOD } from "@flame/runtime-client";
+import { RUNTIME_SUBSCRIBE_METHOD, type FlameClient } from "@flame/runtime-client";
+import { WIRE_ENUMS } from "@flame/runtime-client/wire";
 import {
   runtimeCapability,
   runtimeSupportsStreamingMethod,
@@ -8,26 +8,9 @@ import {
 } from "@/features/connection/public/capabilities";
 import { type WorkspaceWatchTarget } from "@/features/workspace/application/workspaceEventLoop";
 import {
-  type WorkspaceEventLike,
+  type WorkspaceInvalidationEvent,
   type WorkspaceWatchScope,
 } from "@/features/workspace/domain/eventInvalidation";
-const SUBSCRIBED_TOPICS: readonly RuntimeTopic[] = [
-  "files.changed",
-  "skills.changed",
-  "plugins.changed",
-  "mcp.changed",
-  "plugins.dataChanged",
-  "sessions.changed",
-  "runs.changed",
-  "interrupts.changed",
-  "goals.changed",
-  "plan.changed",
-  "hooks.changed",
-  "models.changed",
-  "approvals.changed",
-  "projects.changed",
-];
-
 export function canSubscribeWorkspaceEvents(runtimeAccess: RuntimeAccess): boolean {
   return runtimeSupportsStreamingMethod(runtimeAccess, RUNTIME_SUBSCRIBE_METHOD);
 }
@@ -37,7 +20,7 @@ export async function subscribeRuntimeWorkspaceEvents(
   runtimeClient: () => FlameClient,
   target: WorkspaceWatchTarget,
   signal: AbortSignal,
-): Promise<AsyncIterable<WorkspaceEventLike>> {
+): Promise<AsyncIterable<WorkspaceInvalidationEvent>> {
   const client = runtimeClient();
   const requested = new Map<
     string | undefined,
@@ -81,7 +64,7 @@ export async function subscribeRuntimeWorkspaceEvents(
     }),
   );
   const watches = resolved.filter((watch) => watch !== undefined);
-  const topics = SUBSCRIBED_TOPICS.filter(runtimeSupportsTopic.bind(null, runtimeAccess));
+  const topics = WIRE_ENUMS.RuntimeTopic.filter(runtimeSupportsTopic.bind(null, runtimeAccess));
   const { events } = await client.runtimeEvents.subscribe(
     { topics, ...(watches.length ? { watches } : {}) },
     signal,

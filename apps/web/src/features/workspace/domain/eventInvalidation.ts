@@ -1,3 +1,5 @@
+import type { RuntimeEventType, RuntimeTopic } from "@flame/runtime-client/wire";
+
 export type WorkspaceInvalidationTarget =
   | "all"
   | "agentSessionProjection"
@@ -12,30 +14,10 @@ export type WorkspaceInvalidationTarget =
   | "sessionUsage"
   | "sessions";
 
-type WorkspaceEventType =
-  | "files.changed"
-  | "skills.changed"
-  | "plugins.changed"
-  | "mcp.changed"
-  | "plugins.dataChanged"
-  | "sessions.changed"
-  | "runs.changed"
-  | "plan.changed"
-  | "goals.changed"
-  | "interrupts.changed"
-  | "hooks.changed"
-  | "models.changed"
-  | "approvals.changed"
-  | "projects.changed"
-  | "resync";
-
-type WorkspaceTopic = Exclude<WorkspaceEventType, "resync">;
-
-export interface WorkspaceEventLike {
-  type: WorkspaceEventType;
-  sequence: number;
+export interface WorkspaceInvalidationEvent {
+  type: RuntimeEventType;
   sessionIds?: string[];
-  topics?: WorkspaceTopic[];
+  topics?: RuntimeTopic[];
   workspace?: { path: string };
   paths?: string[];
   watchId?: string;
@@ -59,7 +41,7 @@ const FILE_TARGETS = new Set<WorkspaceInvalidationTarget>(["filesChanged", "file
 export function workspaceQueryAffected(
   target: WorkspaceInvalidationTarget,
   params: WorkspaceQueryScope | undefined,
-  event: WorkspaceEventLike,
+  event: WorkspaceInvalidationEvent,
 ): boolean {
   if (!FILE_TARGETS.has(target)) return true;
   if (event.type !== "files.changed" && event.type !== "resync") return true;
@@ -73,7 +55,7 @@ export function workspaceQueryAffected(
 function workspaceInScope(
   roots: readonly string[],
   cwd: string | undefined,
-  event: WorkspaceEventLike,
+  event: WorkspaceInvalidationEvent,
 ): boolean {
   if (cwd === undefined) {
     const defaultWorkspace = event.watchScopes?.find((scope) => scope.cwd === undefined);
@@ -90,7 +72,7 @@ function workspaceInScope(
 function pathInScope(
   target: "fileRead" | "fileList",
   queryPath: string | undefined,
-  event: WorkspaceEventLike,
+  event: WorkspaceInvalidationEvent,
 ): boolean {
   if (!event.paths?.length) return true;
   const query = relativePath(queryPath ?? ".", event.workspace?.path);
@@ -103,7 +85,7 @@ function pathInScope(
   );
 }
 
-function affectedWorkspaces(event: WorkspaceEventLike): string[] | undefined {
+function affectedWorkspaces(event: WorkspaceInvalidationEvent): string[] | undefined {
   if (event.workspace) return [event.workspace.path];
   const ids = event.watchId ? [event.watchId] : event.watchIds;
   if (!ids?.length) return undefined;
@@ -147,16 +129,16 @@ const TOPIC_INVALIDATIONS = {
   "plugins.dataChanged": [],
   "projects.changed": ["projects"],
 } as const satisfies Record<
-  WorkspaceTopic,
+  RuntimeTopic,
   readonly WorkspaceInvalidationTarget[]
 >;
 
-export function workspaceInvalidations(ev: WorkspaceEventLike): WorkspaceInvalidationTarget[] {
+export function workspaceInvalidations(ev: WorkspaceInvalidationEvent): WorkspaceInvalidationTarget[] {
   if (ev.type !== "resync") return [...TOPIC_INVALIDATIONS[ev.type]];
   if (!ev.topics?.length) return ["all"];
   const targets = new Set<WorkspaceInvalidationTarget>();
   for (const topic of ev.topics) {
-    for (const target of workspaceInvalidations({ type: topic, sequence: ev.sequence })) {
+    for (const target of TOPIC_INVALIDATIONS[topic]) {
       targets.add(target);
     }
   }

@@ -4,7 +4,7 @@ import {
   drainUntilAbort,
   settleBeforeAbort,
 } from "@/lib/asyncOwnership";
-import { type WorkspaceEventLike } from "@/features/workspace/domain/eventInvalidation";
+import { type WorkspaceInvalidationEvent } from "@/features/workspace/domain/eventInvalidation";
 import { type RuntimeConnectionGeneration } from "@/features/connection/public/services";
 const EVENT_OPENING_TIMEOUT_MS = 10_000;
 
@@ -22,8 +22,8 @@ interface WorkspaceEventLoopDeps {
   subscribe(input: {
     target: WorkspaceWatchTarget;
     signal: AbortSignal;
-  }): Promise<AsyncIterable<WorkspaceEventLike>>;
-  handleEvent(ev: WorkspaceEventLike): void;
+  }): Promise<AsyncIterable<WorkspaceInvalidationEvent>>;
+  handleEvent(ev: WorkspaceInvalidationEvent): void;
   invalidateAll(): void;
   reportDisconnect(connectionGeneration: RuntimeConnectionGeneration, error?: unknown): void;
   openingTimeoutMs?: number;
@@ -89,18 +89,13 @@ export function createWorkspaceEventLoop(deps: WorkspaceEventLoopDeps): Workspac
   };
 }
 
-// Delivers events in sequence order; a gap invalidates every query once.
 async function consumeEvents(
   deps: WorkspaceEventLoopDeps,
-  events: AsyncIterable<WorkspaceEventLike>,
+  events: AsyncIterable<WorkspaceInvalidationEvent>,
   signal: AbortSignal,
 ): Promise<void> {
   deps.invalidateAll();
-  let lastSequence = 0;
   await drainUntilAbort(events, signal, (ev) => {
-    if (ev.sequence <= lastSequence) return true;
-    if (ev.sequence > lastSequence + 1) deps.invalidateAll();
-    lastSequence = ev.sequence;
     deps.handleEvent(ev);
     return true;
   });

@@ -13,7 +13,7 @@ import {
 import {
   workspaceInvalidations,
   workspaceQueryAffected,
-  type WorkspaceEventLike,
+  type WorkspaceInvalidationEvent,
   type WorkspaceInvalidationTarget,
 } from "@/features/workspace/domain/eventInvalidation";
 const QUERY_KEYS: Record<
@@ -34,7 +34,7 @@ const QUERY_KEYS: Record<
 function invalidateWorkspaceTargets(
   agentAccess: AgentAccess,
   targets: WorkspaceInvalidationTarget[],
-  event: WorkspaceEventLike,
+  event: WorkspaceInvalidationEvent,
 ): void {
   if (targets.includes("all")) {
     replaceWorkspaceReadModels(agentAccess);
@@ -65,7 +65,7 @@ function invalidateWorkspaceTargets(
   }
 }
 
-export function invalidateWorkspaceEvent(agentAccess: AgentAccess, ev: WorkspaceEventLike): void {
+export function invalidateWorkspaceEvent(agentAccess: AgentAccess, ev: WorkspaceInvalidationEvent): void {
   invalidateWorkspaceTargets(agentAccess, workspaceInvalidations(ev), ev);
 }
 

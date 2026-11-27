@@ -221,11 +221,23 @@ export function streamRuntimeEvents(signal?: AbortSignal) {
     capacity: MAXIMUM_BUFFERED_RUNTIME_EVENTS,
   });
   const stream = eventStream(channel, signal);
+  let nextSequence = 1;
   return {
     ...stream,
     observe: () =>
       observeNotifications(NOTIFICATIONS_RUNTIME_EVENT, {
-        next({ event }) {
+        next({ event }, metadata) {
+          if (event.sequence !== nextSequence) {
+            stream.fail(
+              new RpcProtocolError(
+                "Runtime event",
+                [{ path: "$.event.sequence", detail: `expected ${nextSequence}, got ${event.sequence}` }],
+                metadata?.requestId,
+              ),
+            );
+            return;
+          }
+          nextSequence++;
           if (!channel.tryPush(event)) {
             stream.fail(
               new RpcConnectionError("runtime event consumer exceeded its bounded inbox"),

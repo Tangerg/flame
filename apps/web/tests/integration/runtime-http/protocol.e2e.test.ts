@@ -15,6 +15,7 @@ import {
 import {
   HTTP_HEADERS,
   MAXIMUM_IDEMPOTENCY_KEY_CHARACTERS,
+  NOTIFICATIONS_RUNTIME_EVENT,
   PROTOCOL_VERSION,
   RPC_HTTP,
   type RequestMeta,
@@ -298,6 +299,48 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
       await events.return?.();
     } finally {
       await client.close();
+    }
+  });
+
+  it("ends a shared observation when an original Runtime event goes missing", async () => {
+    const upstream = createHttpTransport({ baseUrl: fixture.baseUrl });
+    const dropped = Promise.withResolvers<void>();
+    let discarded = false;
+    const client = createFlameClient(
+      {
+        ...upstream,
+        async *recv() {
+          for await (const event of upstream.recv()) {
+            if (
+              !discarded &&
+              event.type === "message" &&
+              "method" in event.message &&
+              event.message.method === NOTIFICATIONS_RUNTIME_EVENT
+            ) {
+              discarded = true;
+              event.consumed?.(Promise.resolve());
+              dropped.resolve();
+              continue;
+            }
+            yield event;
+          }
+        },
+      },
+      { capabilities: () => fixture.negotiated },
+    );
+    const createdIds: string[] = [];
+    try {
+      const subscription = await client.runtimeEvents.subscribe({ topics: ["sessions.changed"] });
+      const events = subscription.events[Symbol.asyncIterator]();
+      createdIds.push((await fixture.client.sessions.create({ title: "Dropped invalidation" })).id);
+      await within(dropped.promise, "the dropped Runtime frame");
+      createdIds.push((await fixture.client.sessions.create({ title: "Following invalidation" })).id);
+      await expect(within(events.next(), "the sequence gap")).rejects.toBeInstanceOf(
+        RpcProtocolError,
+      );
+    } finally {
+      await client.close();
+      for (const id of createdIds) await fixture.client.sessions.delete(asSessionId(id));
     }
   });
 

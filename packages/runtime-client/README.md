@@ -48,7 +48,10 @@ the connection. A subscriber's abort settles its own call while the
 shared stream is still awaiting acknowledgement. Canceling a subscription or
 returning its iterator discards that subscriber's unread events. The last
 subscriber to leave closes the shared connection. File watch subscriptions use
-dedicated connections. A Run stream completes when its acknowledged root Run
+dedicated connections. The SDK checks the source sequence before filtering
+events and ends the observation on a discontinuity. Shared subscribers retain
+the Runtime's sequence numbers, including gaps between their selected topics.
+A Run stream completes when its acknowledged root Run
 and Segment publish `segment.finished`. An event matching just one of those
 identities fails the observation before delivery. The active observer can drain
 unread events through the terminal event.

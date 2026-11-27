@@ -22,7 +22,6 @@ class Subscriber {
     capacity: MAXIMUM_BUFFERED_RUNTIME_EVENTS,
   });
   readonly #cancellation: PromiseWithResolvers<never> | undefined;
-  #sequence = 0;
 
   constructor(
     private readonly topics: ReadonlySet<RuntimeTopic>,
@@ -69,11 +68,9 @@ class Subscriber {
     this.leave(this);
   };
 
-  // A dedicated subscription numbers only the frames it receives, so a shared
-  // stream renumbers each subscriber's subset to keep gaps meaning loss.
   deliver(event: RuntimeEvent): boolean {
     const routed = this.#route(event);
-    return routed === undefined || this.#channel.tryPush({ ...routed, sequence: ++this.#sequence });
+    return routed === undefined || this.#channel.tryPush({ ...routed });
   }
 
   #route(event: RuntimeEvent): RuntimeEvent | undefined {
