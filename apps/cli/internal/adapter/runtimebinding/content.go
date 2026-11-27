@@ -159,16 +159,6 @@ func referenceText(block protocol.ContentBlock) string {
 	return "Reference: " + block.Label + "\n" + block.Text
 }
 
-func projectContent(itemID string, content []protocol.ContentBlock) (string, []authoring.Attachment, error) {
-	projected, err := projectContentValue(itemID, content)
-	return projected.text, projected.attachments, err
-}
-
-func projectAssistantContent(itemID string, content []protocol.ContentBlock) (string, []conversation.InlineImage, error) {
-	projected, err := projectContentValue(itemID, content)
-	return projected.text, projected.images, err
-}
-
 type contentProjection struct {
 	text        string
 	attachments []authoring.Attachment

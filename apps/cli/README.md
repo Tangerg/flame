@@ -17,6 +17,35 @@ packaging. An HTTP-only client does not initialize a local Runtime.
 
 Running without a subcommand opens the Oolong terminal interface. Runtime owns durable product state and execution; CLI owns process behavior, terminal interaction, rendering, and local authoring state.
 
+## Agent Client Protocol
+
+Configure an ACP v1 editor to launch the installed `flame` executable with
+`["acp"]` as its arguments. The editor exchanges ACP messages over stdin and
+stdout. Diagnostics go to stderr.
+
+The command uses the same Runtime and model settings as other CLI commands. It
+attaches to the configured Runtime by default. Pass
+`["acp", "--runtime-mode", "embedded"]` to start an embedded Runtime with the
+companion distribution beside `flame`.
+
+Flame uses the session's ACP `cwd` as a workspace path on the Runtime host.
+Editors can create and list sessions, load their saved transcript, or resume a
+session without replay. Prompts accept text and resource links. Links travel to
+Runtime as references in the prompt and use ordinary tool permissions for any
+subsequent access. The editor receives assistant output, tool calls, plans and
+one-time tool approval requests. Use Flame to answer a parked interactive
+question.
+
+When the editor cancels a turn, Flame requests cancellation of that Run. A
+provider call with an unconfirmed result can leave a durable `lost` outcome.
+
+Supply an empty `mcpServers` array on session setup. Flame's installed MCP
+connector configures available servers and controls their launch grants.
+
+The wire implementation uses [`github.com/Tangerg/acp`](https://github.com/Tangerg/acp).
+
+## Terminal interaction
+
 Workbench prompt history is shared across Sessions. Consecutive identical
 prompts occupy one recall entry. Switching Sessions ends history navigation and
 loads the destination Session's draft.
@@ -29,6 +58,7 @@ MCP forms preserve command and directory bytes. Arguments are JSON arrays of
 strings, and environment and header replacements are JSON objects with string
 values. Empty strings and whitespace remain explicit process material. Runtime
 owns final admission.
+
 Busy operation admission keeps the original form and step. An admitted form is
 read-only until settlement. A definite refusal restores editing; an uncertain
 acknowledgement retains the original request, target, command identity and replay

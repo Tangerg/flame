@@ -28,10 +28,6 @@ type OpeningSource interface {
 	ResumeRun(context.Context, conversation.ResumeRun) (conversation.SegmentStream, error)
 }
 
-func openStart(ctx context.Context, source OpeningSource, command authoring.StartRun, guard authoring.ReplayGuard, policy mutation.ReplayPolicy) (Opening, error) {
-	return openStartCommand(ctx, source, command, guard, policy, func(ctx context.Context) (conversation.SegmentStream, error) { return source.StartRun(ctx, command) })
-}
-
 func OpenPendingStart(ctx context.Context, source OpeningSource, store *workbench.Store, pending workbench.PendingRun, policy mutation.ReplayPolicy) (Opening, error) {
 	if store == nil {
 		return Opening{}, workbench.ErrUnavailable
@@ -64,10 +60,6 @@ func openStartCommand(ctx context.Context, source OpeningSource, command authori
 		}
 		return nil
 	}, dispatch, conversation.SegmentStream.ValidateStart)
-}
-
-func openResume(ctx context.Context, source OpeningSource, command conversation.ResumeRun, guard authoring.ReplayGuard, policy mutation.ReplayPolicy) (Opening, error) {
-	return openResumeCommand(ctx, source, command, guard, policy, func(ctx context.Context) (conversation.SegmentStream, error) { return source.ResumeRun(ctx, command) })
 }
 
 func OpenPendingResume(ctx context.Context, source OpeningSource, store *workbench.Store, pending workbench.PendingResume, policy mutation.ReplayPolicy) (Opening, error) {
