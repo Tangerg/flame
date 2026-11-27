@@ -2,11 +2,7 @@ package terminal
 
 import (
 	"context"
-	"fmt"
-	"net/http"
-	"net/http/httptest"
 	"slices"
-	"sync"
 	"testing"
 	"time"
 
@@ -17,22 +13,8 @@ import (
 )
 
 func TestAcceptedSteerSettlesEvenWhenTheFollowingDraftCannotBeSaved(t *testing.T) {
-	entered := make(chan struct{})
-	var first sync.Once
-	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/event-stream")
-		const chunk = `{"id":"chatcmpl_steer_terminal","object":"chat.completion.chunk","created":1,"model":"deepseek-chat","choices":[{"index":0,"delta":{"role":"assistant","content":"holding the first model call"},"finish_reason":null}]}`
-		if _, err := fmt.Fprintf(w, "data: %s\n\n", chunk); err != nil {
-			return
-		}
-		if err := http.NewResponseController(w).Flush(); err != nil {
-			return
-		}
-		first.Do(func() { close(entered) })
-		<-r.Context().Done()
-	}))
-	t.Cleanup(provider.Close)
-	connection, source := openTerminalIntegrationRuntime(t, provider.URL)
+	provider, entered, _ := openSteeringModel(t)
+	connection, source := openTerminalIntegrationRuntime(t, provider)
 	ctx, cancel := context.WithTimeout(t.Context(), 25*time.Second)
 	defer cancel()
 	observed := make(chan protocol.SteerRunResponse, 1)
@@ -82,19 +64,10 @@ func TestAcceptedSteerSettlesEvenWhenTheFollowingDraftCannotBeSaved(t *testing.T
 	host.Shows(t, draft)
 	host.Shows(t, "workbench: commit workbench state")
 	close(release)
-	const receiptProbeInterval = 20 * time.Millisecond
-	probe := time.NewTicker(receiptProbeInterval)
-	defer probe.Stop()
-	for {
-		if _, pending := currentStore().PendingSteer(source.ID); !pending {
-			break
-		}
-		select {
-		case <-probe.C:
-		case <-ctx.Done():
-			t.Fatal("the accepted steer receipt is still in the Workbench journal", context.Cause(ctx))
-		}
-	}
+	waitForSteeringState(t, ctx, "the accepted steer to leave the Workbench journal", func() (bool, error) {
+		_, pending := currentStore().PendingSteer(source.ID)
+		return !pending, nil
+	})
 	host.Shows(t, draft)
 	if _, err := database.ExecContext(ctx, "DROP TRIGGER refuse_following_draft"); err != nil {
 		t.Fatal(err)

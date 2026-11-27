@@ -215,7 +215,6 @@ func (s *Store) RejectPendingSteer(
 	if err := protocol.ValidateSessionID(sessionID); err != nil {
 		return authoring.Message{}, err
 	}
-	currentDraft = currentDraft.Clone()
 	if !currentDraft.IsEmpty() {
 		if err := currentDraft.Validate(); err != nil {
 			return authoring.Message{}, fmt.Errorf("current session draft: %w", err)
@@ -228,21 +227,16 @@ func (s *Store) RejectPendingSteer(
 	if err != nil {
 		return authoring.Message{}, err
 	}
-	if current, present := s.drafts[sessionID]; present != !currentDraft.IsEmpty() ||
-		(present && !current.Equal(currentDraft)) {
-		return authoring.Message{}, errors.New("session draft changed before steer rejection settlement")
-	}
-	recovered := MergeSteerAttachments(currentDraft, pending.command.Message.Attachments)
-	if err := s.saveSessionStateRecord(
-		sessionID, recovered, s.queue.bySession[sessionID],
-		s.pendingResumePointer(sessionID), s.pendingRollbackPointer(sessionID), nil,
-	); err != nil {
+	update := s.sessionUpdate(sessionID)
+	update.draft = mergeSteerAttachments(currentDraft, pending.command.Message.Attachments)
+	update.steer = nil
+	if err := s.commitSessions([]sessionUpdate{update}); err != nil {
 		return authoring.Message{}, err
 	}
-	return recovered, nil
+	return update.draft, nil
 }
 
-func MergeSteerAttachments(current authoring.Message, rejected []authoring.Attachment) authoring.Message {
+func mergeSteerAttachments(current authoring.Message, rejected []authoring.Attachment) authoring.Message {
 	current = current.Clone()
 	seenIDs := make(map[string]struct{}, len(current.Attachments)+len(rejected))
 	seenPaths := make(map[string]struct{}, len(current.Attachments)+len(rejected))

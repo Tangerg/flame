@@ -22,6 +22,8 @@ prompts occupy one recall entry. Switching Sessions ends history navigation and
 loads the destination Session's draft.
 Clearing a draft moves its visible content to history in the same transaction.
 Stashing a draft moves its visible content directly to a saved stash.
+When a steer is refused, the Workbench restores its attachments to the current
+draft and retires the original command in one commit.
 
 MCP forms preserve command and directory bytes, and encode arguments as JSON
 arrays and environment/header replacements as JSON objects. Empty and whitespace
