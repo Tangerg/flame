@@ -2011,7 +2011,8 @@ entries; the resolved configuration consumes the same values that were validated
 An unset utility role uses the Runtime composition's default model selection. It does not follow each Run's explicit main-model override. Changing the utility role does not replace the main-model deployment of a live or waiting Run. Saving configuration is not a universal live-reload guarantee. Restart recovery validates the retained model and tool deployment; it does not silently reinterpret an existing execution using arbitrary current settings.
 
 Keyed utility and embedding role changes save their original receipts with the
-durable selection. Live model resolvers and change notices follow the commit.
+durable selection. Settings queries and new model resolutions read that same
+committed selection. Change notices follow the commit.
 Repository hook trust and MCP tool exposure use the same receipt boundary for
 their local policy writes.
 Provider endpoint constraints apply to the configuration about to be saved.

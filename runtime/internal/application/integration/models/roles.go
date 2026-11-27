@@ -9,14 +9,18 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
 
-func (c *Coordinator) UtilityRole() modelref.Role { return c.utilityRole.Role() }
+type roleStore interface {
+	Load(context.Context) (modelref.Role, bool, error)
+	Save(context.Context, modelref.Role) error
+}
+
+func (c *Coordinator) UtilityRole(ctx context.Context) (modelref.Role, error) {
+	role, _, err := c.utilityRole.Load(ctx)
+	return role, err
+}
 
 func (c *Coordinator) SetUtilityRole(ctx context.Context, role modelref.Role, complete operation.Reply[modelref.Role]) error {
-	if err := c.utilityRole.set(ctx, role, c.validateUtilityRole, complete); err != nil {
-		return err
-	}
-	c.invalidations.Notify(invalidation.Notice{Resource: invalidation.Models})
-	return nil
+	return c.setRole(ctx, c.utilityRole, role, c.validateUtilityRole, complete)
 }
 
 func (c *Coordinator) validateUtilityRole(ctx context.Context, role modelref.Role) error {
@@ -29,10 +33,30 @@ func (c *Coordinator) validateUtilityRole(ctx context.Context, role modelref.Rol
 	return nil
 }
 
-func (c *Coordinator) EmbeddingRole() modelref.Role { return c.embeddingRole.Role() }
+func (c *Coordinator) EmbeddingRole(ctx context.Context) (modelref.Role, error) {
+	role, _, err := c.embeddingRole.Load(ctx)
+	return role, err
+}
 
 func (c *Coordinator) SetEmbeddingRole(ctx context.Context, role modelref.Role, complete operation.Reply[modelref.Role]) error {
-	if err := c.embeddingRole.set(ctx, role, c.validateEmbeddingRole, complete); err != nil {
+	return c.setRole(ctx, c.embeddingRole, role, c.validateEmbeddingRole, complete)
+}
+
+func (c *Coordinator) setRole(
+	ctx context.Context,
+	store roleStore,
+	role modelref.Role,
+	validate func(context.Context, modelref.Role) error,
+	complete operation.Reply[modelref.Role],
+) error {
+	if role.Configured() {
+		if err := validate(ctx, role); err != nil {
+			return err
+		}
+	}
+	if err := complete(ctx, func(tx context.Context) (modelref.Role, error) {
+		return role, store.Save(tx, role)
+	}); err != nil {
 		return err
 	}
 	c.invalidations.Notify(invalidation.Notice{Resource: invalidation.Models})

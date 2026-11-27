@@ -267,9 +267,9 @@ func assembleModels(cfg assemblyConfig, policy policyComposition, execution exec
 		Catalog:            modelCapabilities,
 		Prober:             modelCapabilities,
 		Lister:             modelCapabilities,
-		UtilityRole:        execution.models.utilityRole,
+		UtilityRole:        cfg.stores.UtilityRole,
 		UtilityValidator:   execution.models.chatResolver,
-		EmbeddingRole:      execution.models.embeddingRole,
+		EmbeddingRole:      cfg.stores.EmbeddingRole,
 		EmbeddingValidator: execution.models.embeddingResolver,
 		Invalidations:      policy.invalidations.publish,
 	})

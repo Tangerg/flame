@@ -38,6 +38,25 @@ func (s atomicReceiptCommitCrashStore) Transact(ctx context.Context, write func(
 	return nil
 }
 
+type pausedReceiptCommit struct {
+	operation.ReplayStore
+	committed chan<- struct{}
+	release   <-chan struct{}
+}
+
+func (s pausedReceiptCommit) Transact(ctx context.Context, write func(context.Context) error) error {
+	if err := s.ReplayStore.Transact(ctx, write); err != nil {
+		return err
+	}
+	close(s.committed)
+	select {
+	case <-s.release:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
 type commandCrashStore struct {
 	operation.ReplayStore
 
@@ -191,6 +210,58 @@ func TestUtilityRolePublishesOnlyCommittedChanges(t *testing.T) {
 		t.Fatalf("replayed clear command = %+v, %v", result, err)
 	}
 	expectRole(original)
+}
+
+func TestEmbeddingRoleReadObservesCommittedSelection(t *testing.T) {
+	home := testsupport.TempDirectory(t)
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = stores.Close() })
+	original, err := modelref.NewRole(originalEmbeddingRole.Provider, originalEmbeddingRole.Model)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := stores.EmbeddingRole.Save(t.Context(), original); err != nil {
+		t.Fatal(err)
+	}
+	host := assembleTestRuntime(t, protocolRuntimeConfig(t, stores, newReplyStub("unused")))
+	t.Cleanup(func() {
+		if err := host.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	api, err := protocolHandler(host, home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	committed, release := make(chan struct{}), make(chan struct{})
+	if err := startTestRuntimeWithReplayStore(t, host, api, stores, pausedReceiptCommit{stores.Idempotency, committed, release}); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), lifecycleWaitBudget(t))
+	defer cancel()
+	written := make(chan error, 1)
+	go func() {
+		_, err := clearEmbeddingRole(ctx, host.Endpoint())
+		written <- err
+	}()
+	select {
+	case <-committed:
+	case err := <-written:
+		t.Fatalf("clear role ended without reaching its commit: %v", err)
+	case <-ctx.Done():
+		t.Fatal("clear role did not commit")
+	}
+	current, err := host.Endpoint().Call[struct{}, *protocol.EmbeddingRole](ctx, "models.getEmbeddingRole", struct{}{}, protocol.CallMetadata{})
+	close(release)
+	if writeErr := <-written; writeErr != nil {
+		t.Fatalf("clear embedding role: %v", writeErr)
+	}
+	if err != nil || current == nil || *current != (protocol.EmbeddingRole{}) {
+		t.Fatalf("embedding role after commit = %+v, %v, want unconfigured", current, err)
+	}
 }
 
 func refuseCommandReceipt(t *testing.T, home string) func() {

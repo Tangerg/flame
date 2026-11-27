@@ -14,7 +14,7 @@ import (
 )
 
 type roleSource interface {
-	Role() modelref.Role
+	Load(context.Context) (modelref.Role, bool, error)
 }
 
 type ChatModelResolver interface {
@@ -25,7 +25,7 @@ type ChatModelResolver interface {
 func LiveUtilityModel(
 	resolver ChatModelResolver,
 	defaultSelection flamemodel.Selection,
-	roles roleSource,
+	utilityRole roleSource,
 	selector modelapp.Selector,
 ) (AuxiliaryResolver, error) {
 	if lo.IsNil(resolver) {
@@ -34,7 +34,7 @@ func LiveUtilityModel(
 	if err := defaultSelection.ValidateExact(); err != nil {
 		return nil, fmt.Errorf("model: utility default selection: %w", err)
 	}
-	if lo.IsNil(roles) {
+	if lo.IsNil(utilityRole) {
 		return nil, errors.New("model: utility role source is required")
 	}
 	if selector != nil && lo.IsNil(selector) {
@@ -44,8 +44,12 @@ func LiveUtilityModel(
 		if err := budget.Validate(); err != nil {
 			return SelectedChat{}, nil, err
 		}
+		role, _, err := utilityRole.Load(ctx)
+		if err != nil {
+			return SelectedChat{}, nil, fmt.Errorf("auxiliary model: read utility role: %w", err)
+		}
 		selection := defaultSelection
-		if role := roles.Role(); role.Configured() {
+		if role.Configured() {
 			selection = role.Selection()
 		}
 		if selector != nil {
@@ -86,21 +90,24 @@ func LiveUtilityModel(
 
 type RoleEmbedder struct {
 	resolver *EmbeddingResolver
-	roles    roleSource
+	role     roleSource
 }
 
-func NewRoleEmbedder(resolver *EmbeddingResolver, roles roleSource) (*RoleEmbedder, error) {
+func NewRoleEmbedder(resolver *EmbeddingResolver, role roleSource) (*RoleEmbedder, error) {
 	if resolver == nil {
 		return nil, errors.New("model: embedding resolver is required")
 	}
-	if lo.IsNil(roles) {
+	if lo.IsNil(role) {
 		return nil, errors.New("model: embedding role source is required")
 	}
-	return &RoleEmbedder{resolver: resolver, roles: roles}, nil
+	return &RoleEmbedder{resolver: resolver, role: role}, nil
 }
 
 func (r *RoleEmbedder) Resolve(ctx context.Context) (*Embedder, bool, error) {
-	role := r.roles.Role()
+	role, _, err := r.role.Load(ctx)
+	if err != nil {
+		return nil, false, fmt.Errorf("model: read embedding role: %w", err)
+	}
 	if !role.Configured() {
 		return nil, false, nil
 	}

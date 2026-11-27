@@ -29,8 +29,12 @@ func (s *Handler) ListModels(ctx context.Context, in protocol.ListModelsRequest)
 	return protocol.NewPage(out), nil
 }
 
-func (s *Handler) GetUtilityRole(_ context.Context) (*protocol.UtilityRole, error) {
-	return presentUtilityRole(s.models.UtilityRole()), nil
+func (s *Handler) GetUtilityRole(ctx context.Context) (*protocol.UtilityRole, error) {
+	role, err := s.models.UtilityRole(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return presentUtilityRole(role), nil
 }
 
 func (s *Handler) SetUtilityRole(ctx context.Context, in protocol.UtilityRole) (*protocol.UtilityRole, error) {
@@ -60,8 +64,12 @@ func presentUtilityRole(role modelref.Role) *protocol.UtilityRole {
 	return &protocol.UtilityRole{Provider: role.Provider(), Model: role.Model()}
 }
 
-func (s *Handler) GetEmbeddingRole(_ context.Context) (*protocol.EmbeddingRole, error) {
-	return presentEmbeddingRole(s.models.EmbeddingRole()), nil
+func (s *Handler) GetEmbeddingRole(ctx context.Context) (*protocol.EmbeddingRole, error) {
+	role, err := s.models.EmbeddingRole(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return presentEmbeddingRole(role), nil
 }
 
 func (s *Handler) SetEmbeddingRole(ctx context.Context, in protocol.EmbeddingRole) (*protocol.EmbeddingRole, error) {
