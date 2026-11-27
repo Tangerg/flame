@@ -2256,8 +2256,26 @@ caches are removed.
 
 At 18 px and a narrow sidebar, the Search sessions trigger
 fades the end of its label while the keyboard hint stays
-visible. The next review checks the full translated action
-name at that width.
+visible. The [milestone pause](#milestone-pause-after-workspace-aware-session-search)
+records the next native check.
+
+### Milestone pause after workspace-aware Session Search
+
+Desktop UI polishing pauses at the maintainer's request.
+The published code through `71e127d34` includes the
+[retained sidebar state in Settings](#settings-preserves-sidebar-folds-and-scroll)
+and [workspace paths for identical session titles](#session-search-distinguishes-identical-titles-by-workspace).
+Their sections record the signed Wails verification and
+the 84 passing Web contracts.
+
+The sidebar Search trigger review reached source inspection
+and a strictly signed baseline build. The desktop and Runtime
+launches await resumption. Start by checking the full French
+or German label at the minimum sidebar width and 18 px, then
+compare the fitting width and the keyboard, pointer and
+focus-return paths. The loopback provider, baseline app
+bundle, private fixture and generated checkout outputs were
+removed before the pause.
 
 ## Error notes leave retrying to their buttons (2026-11-26)
 
