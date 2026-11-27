@@ -31,13 +31,13 @@ func (s *segmentPump) finish() {
 		}
 		delete(s.childStarts, memberID)
 	}
-	if !s.routes.root.boundary.finished() {
+	if !s.routes.root.boundary.closed() {
 		s.synthesizeUnfinished()
 	}
 }
 
 func (s *segmentPump) releaseExecutorTree() {
-	if !s.routes.root.boundary.parked() {
+	if s.routes.root.boundary != boundaryParked {
 		s.tearDownExecutor()
 	}
 }
@@ -57,19 +57,20 @@ func (s *segmentPump) synthesizeUnfinished() {
 			childrenClosed = s.synthesizeRoute(ctx, route) && childrenClosed
 		}
 	}
-	if childrenClosed && !s.routes.root.boundary.finished() {
+	if childrenClosed && !s.routes.root.boundary.closed() {
 		s.synthesizeRoute(ctx, s.routes.root)
 	}
 }
 
 func (s *segmentPump) synthesizeRoute(ctx context.Context, route *executorRoute) bool {
+	next := route.reducer.clone()
 	var reductions reductionBatch
 	var cancellation CancellationID
 	var err error
 	if route == s.routes.root && s.deferredRootTerminal != nil {
 		fact, id := s.owner.projectCancellation(s.deferredRootTerminal, route.lineage)
 		cancellation = id
-		reductions, err = route.reducer.reduce(fact)
+		reductions, err = next.reduce(fact)
 	} else {
 		var reason string
 		if route == s.routes.root {
@@ -77,27 +78,16 @@ func (s *segmentPump) synthesizeRoute(ctx context.Context, route *executorRoute)
 				cancellation, reason = intent.id, intent.reason
 			}
 		}
-		reductions, err = route.reducer.synthesizeTerminal(reason)
+		reductions, err = next.synthesizeTerminal(reason)
 	}
 	if err != nil {
 		s.fail(err)
 		return false
 	}
-	publication, err := s.publisher.publishTerminalAtomically(ctx, route, reductions, abortOnFailure, cancellation)
-	if err != nil {
+	if err := s.publisher.publishTerminalAtomically(ctx, route, next, reductions, abortOnFailure, cancellation); err != nil {
 		s.fail(err)
 		return false
 	}
-	if !publication.finished() || publication.parked() {
-		s.fail(fmt.Errorf(
-			"runs: synthesized terminal for run %q produced finished=%t parked=%t",
-			route.runID,
-			publication.finished(),
-			publication.parked(),
-		))
-		return false
-	}
-	route.boundary = boundaryFinished
 	return true
 }
 
@@ -132,10 +122,10 @@ func (s *segmentPump) settleMaintenanceFence() {
 	}
 	boundary := s.routes.root.boundary
 	entry, tracked := s.segments.registry.Get(s.spec.RunID)
-	if tracked && !boundary.parked() {
+	if tracked && boundary != boundaryParked {
 		entry.owner.stop()
 	}
-	if !boundary.finished() {
+	if !boundary.closed() {
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(s.ownerCtx), runCleanupTimeout)
@@ -143,7 +133,7 @@ func (s *segmentPump) settleMaintenanceFence() {
 	finish := Finish{
 		SessionID: s.spec.SessionID, RunID: s.spec.RunID, WorkspaceCWD: s.spec.WorkspaceCWD,
 	}
-	if !boundary.parked() {
+	if boundary != boundaryParked {
 		terminal, _ := s.owner.committedRunTerminal(s.spec.RunID)
 		ending, recorded := terminal.run.Ending()
 		if !recorded {

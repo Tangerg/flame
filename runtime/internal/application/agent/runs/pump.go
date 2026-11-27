@@ -91,7 +91,7 @@ func (s *segmentPump) commitAuthoritative(member ExecutorMember, commit Executio
 	fact := commit.Fact()
 	err := s.handleAuthoritativeFact(member, fact)
 	commit.Complete(err)
-	if err == nil && s.routes.root.boundary.finished() {
+	if err == nil && s.routes.root.boundary.closed() {
 		// Scope still has to acknowledge its Exit append and close the
 		// stream before the Run owner can release that writer.
 		_, settlingTree := fact.(ExecutionTreeSettled)
@@ -103,7 +103,7 @@ func (s *segmentPump) commitAuthoritative(member ExecutorMember, commit Executio
 func (s *segmentPump) processEvent(event ExecutorEvent) bool {
 	s.owner.observation.Lock()
 	defer s.owner.observation.Unlock()
-	if s.routes.root.boundary.finished() {
+	if s.routes.root.boundary.closed() {
 		refuseAfterFinish(event.Payload)
 		return true
 	}
@@ -242,12 +242,8 @@ func (s *segmentPump) handleAuthoritativeFact(member ExecutorMember, fact Execut
 			return err
 		}
 	}
-	publication, err := s.publisher.publishAuthoritativeAtomically(s.ownerCtx, route, batch)
-	if err != nil {
+	if err := s.publisher.publishAuthoritativeAtomically(s.ownerCtx, route, batch); err != nil {
 		return err
-	}
-	if publication.finished() {
-		return errors.New("runs: authoritative model/tool fact crossed a segment boundary")
 	}
 	route.reducer = speculative
 	return nil
@@ -279,17 +275,11 @@ func (s *segmentPump) handleTreeBarrier(event ExecutorEvent, barrier TreeInterru
 		s.fail(errors.New("runs: tree interrupt must be emitted by the root executor member"))
 		return false
 	}
-	published, err := s.publisher.publishTreeBarrier(
-		s.ownerCtx,
-		s.routes,
-		barrier,
-		s.segments.publications.nowUTC(),
-	)
-	if err != nil {
+	if err := s.publisher.publishTreeBarrier(s.ownerCtx, s.routes, barrier, s.segments.publications.nowUTC()); err != nil {
 		s.fail(err)
 		return false
 	}
-	return !published.parked()
+	return root.boundary != boundaryParked
 }
 
 func (s *segmentPump) handleExecutionFact(member ExecutorMember, executionFact ExecutionFact) (bool, error) {
@@ -331,26 +321,18 @@ func (s *segmentPump) projectFact(route *executorRoute, executionFact ExecutionF
 	if err != nil {
 		return false, err
 	}
-	var publication reductionPublication
 	if terminalFact {
-		publication, err = s.publisher.publishTerminalAtomically(s.ownerCtx, route, reductions, endingDurability(executionFact), cancellation)
+		err = s.publisher.publishTerminalAtomically(s.ownerCtx, route, projecting, reductions, endingDurability(executionFact), cancellation)
 	} else {
-		publication, err = s.publisher.publish(s.ownerCtx, route, reductions)
+		err = s.publisher.publishIncremental(s.ownerCtx, route, reductions)
 	}
 	if err != nil {
 		return false, err
 	}
-	if terminalFact {
-		route.reducer = projecting
-	}
-	if !publication.published {
-		return false, nil
-	}
-	route.boundary = publication.boundary
 	if route != s.routes.root {
 		return s.resumeDeferredRootTerminal()
 	}
-	return !s.routes.root.boundary.finished(), nil
+	return !s.routes.root.boundary.closed(), nil
 }
 
 // A non-authoritative executor may report the root boundary before its children;
@@ -425,7 +407,7 @@ func engineEventEndsSegment(event ExecutionFact) bool {
 func (s *segmentPump) activeChildReservations(parentID string) int {
 	count := 0
 	for _, route := range s.routes.byMember {
-		if route.member.ParentID == parentID && !route.boundary.finished() {
+		if route.member.ParentID == parentID && !route.boundary.closed() {
 			count++
 		}
 	}

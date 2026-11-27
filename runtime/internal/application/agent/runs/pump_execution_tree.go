@@ -210,7 +210,7 @@ func (s *segmentPump) publishTreeProjection(projected routedTreeProjection) erro
 	projected.route.reducer = projected.reducer
 	for _, reduced := range projected.batch.events {
 		if reduced.Commit != nil && reduced.Commit.State == StateTerminalize {
-			projected.route.boundary = boundaryFinished
+			projected.route.boundary = boundaryTerminal
 			s.owner.recordTerminalRun(*reduced.Commit.Run, projected.cancellation)
 			s.segments.publications.publishRunMoved(s.spec.SessionID, projected.route.runID)
 			if reduced.Commit.ChargesGoal() {
