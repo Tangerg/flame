@@ -174,8 +174,8 @@ func TestMemoryComponentUsesInstalledPublicOperationsAndPreservesPrivateFacts(t 
 		t.Fatalf("memory resource differs from admitted bytes: %v", err)
 	}
 	r.poMCPTools(&protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "memory"}, memoryToolsReady)
-	for _, content := range []string{"first fact", "second fact"} {
-		r.must(delivery.PluginsCall, memoryAddRequest(r, memorycontract.AddInput{Scope: memorycontract.AddInputScopeUser, Content: content}), content)
+	for index, content := range []string{"first fact", "second fact"} {
+		r.must(delivery.PluginsCall, memoryAddRequest(r, memorycontract.AddInput{Scope: memorycontract.AddInputScopeUser, Content: content}), fmt.Sprintf("add-memory-%d", index))
 	}
 	contracts, err := plugincontract.ParseCapability([]byte(memorycontract.CapabilityJSON))
 	if err != nil {

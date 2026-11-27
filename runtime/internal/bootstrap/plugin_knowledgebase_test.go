@@ -100,10 +100,10 @@ func TestKnowledgeBaseInstalledEntriesShareRetrievalAndLeaveConversationWithCore
 		t.Fatal(err)
 	}
 	r.must(delivery.PluginsSetComposition, protocol.SetPluginCompositionRequest{Contract: contextContract.Identity().String(), Members: []protocol.PluginCompositionMember{{InstallationID: installed.ID, Contribution: "knowledgebase-context"}}}, "select-knowledge-context")
-	runTask := func(project, task string) *protocol.Session {
+	runTask := func(project, task, key string) *protocol.Session {
 		t.Helper()
-		session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: task, ProjectID: project}, "session-"+task).(*protocol.Session)
-		run := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: task}}}, protocol.CallMetadata{IdempotencyKey: "run-" + task, RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)}})
+		session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: task, ProjectID: project}, "session-"+key).(*protocol.Session)
+		run := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: task}}}, protocol.CallMetadata{IdempotencyKey: "run-" + key, RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)}})
 		if run.Failure != nil {
 			t.Fatal(run.Failure)
 		}
@@ -119,7 +119,7 @@ func TestKnowledgeBaseInstalledEntriesShareRetrievalAndLeaveConversationWithCore
 		}
 		return session
 	}
-	session := runTask("", "Find the apple guide.")
+	session := runTask("", "Find the apple guide.", "apple-guide")
 	toolJSON, err := framevalue.ParseJSON([]byte(kb.toolOutput.Load().(string)))
 	if err != nil || toolJSON.String() != typed.Output || !kb.sawContext.Load() || !kb.embeddedUserInput.Load() {
 		t.Fatalf("installed typed/Tool/context entrances diverged: typed=%s tool=%s context=%v error=%v", typed.Output, toolJSON.String(), kb.sawContext.Load(), err)
@@ -148,8 +148,8 @@ func TestKnowledgeBaseInstalledEntriesShareRetrievalAndLeaveConversationWithCore
 	scoped.Content.Id, scoped.Content.Title = "ledger", "Orchard ledger"
 	scoped.Content.Source, scoped.Content.Text = "docs/ledger.md", "apple ledger"
 	call(testsupport.KnowledgebaseImportV1Method, scoped, "knowledge-import-ledger")
-	runTask("", "Find the shared apple notes.")
-	runTask(orchard.ID, "Find the orchard apple notes.")
+	runTask("", "Find the shared apple notes.", "shared-apple-notes")
+	runTask(orchard.ID, "Find the orchard apple notes.", "orchard-apple-notes")
 	kb.mu.Lock()
 	defer kb.mu.Unlock()
 	for task, wantLedger := range map[string]bool{"Find the shared apple notes.": false, "Find the orchard apple notes.": true} {
