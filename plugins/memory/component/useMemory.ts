@@ -10,6 +10,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
+import type { PluginCommandChange } from "@flame/runtime-client";
 import {
   failureText,
   mutationSettlementIsUnknown,
@@ -43,6 +44,8 @@ import { de } from "./locales/de";
 import { METHODS } from "./methods";
 import { bindMemoryOperations } from "./memoryOperations";
 const CATALOGS = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
+
+type Attempt = { kind: "submit"; editor?: Edit } | { kind: "check" };
 
 export function useMemory(
   context: ComponentContext,
@@ -107,7 +110,7 @@ export function useMemory(
   function closeEditor() {
     const form = editorElement.current;
     if (form && canRestoreFocus()) handoffFocus(form, resolveOpener());
-    setEdit(undefined);
+    setEdit((current) => current === edit ? undefined : current);
   }
   const activeCommand = useSyncExternalStore(
     activity.subscribe,
@@ -126,6 +129,7 @@ export function useMemory(
     key: string;
     presentation: CommandPresentation;
     failure: Failure;
+    editor?: Edit;
   }>();
   const [outcomes, setOutcomes] = useState<{
     [source in CommandSource]?: Outcome;
@@ -137,7 +141,7 @@ export function useMemory(
       ? recoveryDetail
       : undefined;
   const recoverySource =
-    edit && detail?.presentation.source === "editor" ? "editor" : "record";
+    detail?.editor && detail.editor === edit ? "editor" : "record";
   function feedbackFor(source: CommandSource): Feedback | undefined {
     if (source === activeCommand?.source)
       return { intent: activeCommand.intent, state: "submitting" };
@@ -282,14 +286,40 @@ export function useMemory(
     if (!owner || owner.signal.aborted || context.signal.aborted) return;
     return AbortSignal.any([context.signal, owner.signal]);
   }
+
+  const resolveOriginal = useEffectEvent((change: PluginCommandChange) => {
+    if (change.type !== "resolved" || recoveryDetail?.key !== change.idempotencyKey)
+      return;
+    const owner = observerSignal();
+    if (!owner) return;
+    const { editor, presentation } = recoveryDetail;
+    const { resolution } = change;
+    setRecoveryDetail(undefined);
+    if (resolution.type === "retired") return;
+    if (resolution.type === "confirmed" && editor && editor === edit) closeEditor();
+    if (activity.snapshot()) return;
+    if (resolution.type === "confirmed") {
+      settle("record", { intent: presentation.intent, state: "confirmed" });
+      void load(owner);
+    } else {
+      settle(presentation.source, {
+        intent: presentation.intent,
+        state: "refused",
+        failure: { cause: undefined, fallback: "refused" },
+      });
+    }
+  });
+  useEffect(() => operations.subscribeCommands(resolveOriginal), [operations]);
+
   function observe(
     presentation: CommandPresentation,
     execute: () => Promise<unknown> | undefined,
-    checking = false,
+    observation: Attempt,
   ) {
     const owner = observerSignal();
     if (!owner) return;
     const { source, intent } = presentation;
+    const checking = observation.kind === "check";
     void activity.run(presentation, async () => {
       let fallback: Failure["fallback"] = checking ? "check" : "submit";
       try {
@@ -299,8 +329,10 @@ export function useMemory(
         if (!checking) fallback = "refused";
         await attempt;
         if (owner.aborted) return;
-        setRecoveryDetail(undefined);
-        if (source === "editor") closeEditor();
+        if (observation.kind === "submit") {
+          setRecoveryDetail(undefined);
+          if (observation.editor && observation.editor === edit) closeEditor();
+        }
         settle("record", { intent, state: "confirmed" });
         void load(owner);
       } catch (error) {
@@ -313,6 +345,12 @@ export function useMemory(
               key: retained.idempotencyKey,
               presentation,
               failure,
+              editor:
+                observation.kind === "submit"
+                  ? observation.editor
+                  : detail?.key === retained.idempotencyKey
+                    ? detail.editor
+                    : undefined,
             });
             return;
           }
@@ -329,7 +367,10 @@ export function useMemory(
     source: CommandSource = "record",
   ) {
     if (locked || target === undefined) return;
-    observe({ source, intent }, () => operations.submit(method, input));
+    observe({ source, intent }, () => operations.submit(method, input), {
+      kind: "submit",
+      editor: source === "editor" ? edit : undefined,
+    });
   }
   function saveEdit() {
     if (!edit || edit.type === "delete") return;
@@ -371,7 +412,7 @@ export function useMemory(
     observe(
       { source: recoverySource, intent: detail?.presentation.intent },
       retained.recover,
-      true,
+      { kind: "check" },
     );
   }
   return {
