@@ -44,9 +44,10 @@ the business owner. The package declares its generic installed contribution and 
 The ordinary board is compiled from `component/board.tsx` through the public SDK.
 The same Go-owned analyzer point also generates `component/board.generated.ts`
 as an exact JSON string; TypeScript does not copy its applicability predicate.
-On refresh, the board resolves point metadata against its accepted review status
-and publishes that read model with the review. Analyze appears only when that
-projection contains an applicable contributor. Constructing controls or opening
+The board re-reads the installed backend when Runtime announces a data change.
+It resolves point metadata against the committed review status and shows
+findings only for the matching review revision. Analyze appears only when the
+read model contains an applicable contributor. Constructing controls or opening
 the status menu performs no remote work; explicit Analyze invokes the backend.
 This action relevance is an accepted snapshot, not an execution grant. Draft
 status changes do not advance the accepted context. Metadata failure keeps

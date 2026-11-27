@@ -20,6 +20,7 @@ import {
 import {
   bindOperations,
   useContextState,
+  watchRuntimeTopics,
   type ComponentContext,
 } from "@flame/component-sdk";
 import {
@@ -83,6 +84,15 @@ function ReviewsBoard({ context }: { context: BoundContext }) {
   const analyzers = current?.analyzers;
   const loading = current === undefined || current.pending;
   const [analysis, setAnalysis] = useState<Analysis>();
+  const matchingAnalysis =
+    analysis &&
+    reviews.some(
+      (review) =>
+        review.id === analysis.review.id &&
+        String(review.revision) === String(analysis.review.revision),
+    )
+      ? analysis
+      : undefined;
   const [analyzing, setAnalyzing] = useState(false);
   const [message, setMessage] = useState<string>();
   const [recoveryError, setRecoveryError] = useState<{ key: string; text: string }>();
@@ -166,9 +176,22 @@ function ReviewsBoard({ context }: { context: BoundContext }) {
     const owner = new AbortController();
     lifetime.current = owner;
     const signal = AbortSignal.any([context.signal, owner.signal]);
-    void refresh(signal);
+    void context
+      .track(() =>
+        watchRuntimeTopics(
+          context.runtime,
+          { topics: ["plugins.dataChanged"] },
+          signal,
+          () => void refresh(signal),
+        ),
+      )
+      .catch((error: unknown) => {
+        if (signal.aborted) return;
+        setMessage(`Live review updates ended. ${failureMessage(error)}`);
+        void refresh(signal);
+      });
     return () => owner.abort();
-  }, [refresh, context.signal]);
+  }, [context, refresh]);
 
   async function observe(
     key: string,
@@ -188,7 +211,7 @@ function ReviewsBoard({ context }: { context: BoundContext }) {
             ? "The review changed after you read it. Inspect the current revision before submitting another change."
             : `The change was refused: ${result.type}.`,
       );
-      await reload(owner);
+      if (result.type !== "updated") await reload(owner);
     } catch (error) {
       if (owner.aborted) return;
       const text = failureMessage(error);
@@ -335,12 +358,14 @@ function ReviewsBoard({ context }: { context: BoundContext }) {
           </section>
         ))}
       </RecordGroup>
-      {analysis && (
+      {matchingAnalysis && (
         <section aria-label="Analyzer findings">
-          <h2>Findings for revision {String(analysis.review.revision)}</h2>
-          {!analysis.findings.length && <p>No applicable findings.</p>}
+          <h2>
+            Findings for revision {String(matchingAnalysis.review.revision)}
+          </h2>
+          {!matchingAnalysis.findings.length && <p>No applicable findings.</p>}
           <ul>
-            {analysis.findings.map((finding, index) => (
+            {matchingAnalysis.findings.map((finding, index) => (
               <li key={`${finding.code}/${index}`}>
                 <RecordBody>{finding.message}</RecordBody>
                 <Metadata>
