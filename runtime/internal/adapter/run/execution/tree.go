@@ -293,16 +293,12 @@ func externallyAddressedWait(inspection scoperun.TreeInspection) bool {
 	return false
 }
 
-func (i *interactionSession) pendingInputs(history scoperun.Log) ([]interaction.PendingToolInput, error) {
-	inspection, err := history.Inspect()
-	if err != nil {
-		return nil, err
-	}
+func (i *interactionSession) pendingInputs(inspection scoperun.TreeInspection) []interaction.PendingToolInput {
 	var inputs []interaction.PendingToolInput
 	for _, program := range i.state.deployments.interactions {
 		inputs = append(inputs, interaction.PendingToolInputs(program.program, inspection)...)
 	}
-	return inputs, nil
+	return inputs
 }
 
 // A WaitKey is process-local, so sibling Interactions at the same step could
@@ -319,13 +315,11 @@ func inputRequestID(process scoperun.ProcessID, wait scoperun.WaitKey) string {
 func (i *interactionSession) pendingInterruptions(
 	tree scoperun.Log,
 ) ([]runs.MemberInterruption, error) {
-	if err := tree.Validate(); err != nil {
-		return nil, errors.New("execution: inspect pending inputs from invalid Interaction tree")
-	}
-	pendingInputs, err := i.pendingInputs(tree)
+	inspection, err := tree.Inspect()
 	if err != nil {
-		return nil, fmt.Errorf("inspect Interaction tree inputs: %w", err)
+		return nil, fmt.Errorf("execution: inspect pending Interaction inputs: %w", err)
 	}
+	pendingInputs := i.pendingInputs(inspection)
 	interruptions := make([]runs.MemberInterruption, 0, len(pendingInputs))
 	for _, pending := range pendingInputs {
 		processID := pending.ProcessID()

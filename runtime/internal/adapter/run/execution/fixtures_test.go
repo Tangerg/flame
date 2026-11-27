@@ -71,11 +71,11 @@ func captureAcceptedTestBarrier(t *testing.T, executor *InteractionExecutor, ref
 		if root != nil {
 			head, err := session.committedTree(ctx, root.ID())
 			if err == nil {
-				inputs, err := session.pendingInputs(head)
+				inspection, err := head.Inspect()
 				if err != nil {
 					t.Fatal(err)
 				}
-				if len(inputs) == count {
+				if len(session.pendingInputs(inspection)) == count {
 					break
 				}
 			}
