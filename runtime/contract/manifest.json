@@ -546,7 +546,6 @@
       "pagination": "none",
       "errors": [
         "workspace_unavailable",
-        "session_busy",
         "revision_conflict",
         "capability_not_negotiated"
       ],
@@ -2532,7 +2531,6 @@
           "sessions.rollback",
           "sessions.update",
           "workspaces.tasks.handoff.apply",
-          "workspaces.tasks.handoff.preview",
           "workspaces.tasks.release"
         ]
       },

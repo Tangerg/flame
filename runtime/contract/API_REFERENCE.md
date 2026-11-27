@@ -45,7 +45,7 @@ Protocol `2026-11-27.13` · 115 methods
 | `items.list` | query | unary | none | none | cursor | — | `childRuns` | `session_not_found`, `run_not_found`, `capability_not_negotiated` |
 | `workspaces.tasks.create` | command | unary | replayResponse | none | none | — | `git` | `workspace_unavailable`, `vcs_unavailable`, `capability_not_negotiated` |
 | `workspaces.tasks.list` | query | unary | none | none | none | — | `git` | `capability_not_negotiated` |
-| `workspaces.tasks.handoff.preview` | query | unary | none | none | none | — | `git` | `workspace_unavailable`, `session_busy`, `revision_conflict`, `capability_not_negotiated` |
+| `workspaces.tasks.handoff.preview` | query | unary | none | none | none | — | `git` | `workspace_unavailable`, `revision_conflict`, `capability_not_negotiated` |
 | `workspaces.tasks.handoff.apply` | command | unary | replayResponse | none | none | — | `git` | `workspace_unavailable`, `session_busy`, `revision_conflict`, `capability_not_negotiated` |
 | `workspaces.tasks.release` | command | unary | replayResponse | none | none | — | `git` | `workspace_unavailable`, `session_busy`, `revision_conflict`, `capability_not_negotiated` |
 | `workspaces.resolve` | query | unary | none | none | none | — | — | `workspace_unavailable` |

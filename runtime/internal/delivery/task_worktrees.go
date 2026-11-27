@@ -21,7 +21,9 @@ const (
 
 func registerTaskWorktrees(registry *Registry) {
 	git := requires(protocol.FeatureGit)
-	readErrors := []string{protocol.ErrWorkspaceUnavailable.Error(), protocol.ErrSessionBusy.Error(), protocol.ErrRevisionConflict.Error()}
+	unavailable, conflict := protocol.ErrWorkspaceUnavailable.Error(), protocol.ErrRevisionConflict.Error()
+	readErrors := []string{unavailable, conflict}
+	writeErrors := []string{unavailable, protocol.ErrSessionBusy.Error(), conflict}
 	registry.command(MethodMeta{Name: TaskWorktreesCreate, GoName: "CreateTaskWorktree", CapabilityRules: git,
 		Errors: []string{protocol.ErrWorkspaceUnavailable.Error(), protocol.ErrVcsUnavailable.Error()}},
 		func(service interface {
@@ -41,13 +43,13 @@ func registerTaskWorktrees(registry *Registry) {
 		}, ctx context.Context, in protocol.TaskWorktreeRequest) (*protocol.WorktreeHandoff, error) {
 			return service.PreviewWorktreeHandoff(ctx, in)
 		})
-	registry.command(MethodMeta{Name: TaskWorktreesApply, GoName: "ApplyWorktreeHandoff", CapabilityRules: git, Errors: readErrors},
+	registry.command(MethodMeta{Name: TaskWorktreesApply, GoName: "ApplyWorktreeHandoff", CapabilityRules: git, Errors: writeErrors},
 		func(service interface {
 			ApplyWorktreeHandoff(context.Context, protocol.ApplyWorktreeHandoffRequest) (*protocol.WorktreeHandoff, error)
 		}, ctx context.Context, in protocol.ApplyWorktreeHandoffRequest) (*protocol.WorktreeHandoff, error) {
 			return service.ApplyWorktreeHandoff(ctx, in)
 		}).withOwnedReplay(worktreeReplay((*Handler).ApplyWorktreeHandoff))
-	registry.commandAck(MethodMeta{Name: TaskWorktreesRelease, GoName: "ReleaseTaskWorktree", CapabilityRules: git, Errors: readErrors},
+	registry.commandAck(MethodMeta{Name: TaskWorktreesRelease, GoName: "ReleaseTaskWorktree", CapabilityRules: git, Errors: writeErrors},
 		func(service interface {
 			ReleaseTaskWorktree(context.Context, protocol.TaskWorktreeRequest) error
 		}, ctx context.Context, in protocol.TaskWorktreeRequest) error {
@@ -114,7 +116,7 @@ func (s *Handler) PreviewWorktreeHandoff(ctx context.Context, in protocol.TaskWo
 }
 
 func (s *Handler) ApplyWorktreeHandoff(ctx context.Context, in protocol.ApplyWorktreeHandoffRequest) (*protocol.WorktreeHandoff, error) {
-	preview, err := s.taskWorktrees.Handoff(ctx, in.ID, in.Digest)
+	preview, err := s.taskWorktrees.ApplyHandoff(ctx, in.ID, in.Digest)
 	return presentWorktreeHandoff(preview, err)
 }
 

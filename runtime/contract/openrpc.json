@@ -2859,10 +2859,6 @@
           "message": "workspace_unavailable"
         },
         {
-          "code": -32018,
-          "message": "session_busy"
-        },
-        {
           "code": -32019,
           "message": "revision_conflict"
         },

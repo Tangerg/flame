@@ -285,3 +285,58 @@ func TestTaskWorktreesKeepListingWhenAMovedCheckoutPathIsReused(t *testing.T) {
 		t.Fatalf("moved worktree lost its Git checkout: %v", err)
 	}
 }
+
+func TestTaskWorktreePreviewDoesNotNeedMutationAdmission(t *testing.T) {
+	source, git := taskWorktreeTestRepository(t)
+	const name = "handoff.txt"
+	if err := os.WriteFile(filepath.Join(source, name), []byte("original\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	git("add", name)
+	git("commit", "--quiet", "-m", "initial checkout")
+	cfg := poMCPConfig(t)
+	cfg.defaultWorkspacePath = source
+	r := poMCPOpen(t, cfg)
+	task := r.must(delivery.TaskWorktreesCreate, protocol.CreateTaskWorktreeRequest{
+		Source: protocol.WorkspaceRef{Path: source}, Base: "target",
+	}, "create-preview-task").(*protocol.TaskWorktree)
+	if err := os.WriteFile(filepath.Join(task.Workspace.Path, name), []byte("handoff\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	query := protocol.TaskWorktreeRequest{ID: task.ID}
+	expected := r.must(delivery.TaskWorktreesPreview, query, "").(*protocol.WorktreeHandoff)
+	apply := protocol.ApplyWorktreeHandoffRequest{ID: task.ID, Digest: expected.Digest}
+
+	for _, target := range []struct{ name, path string }{
+		{"source", task.Source.Path}, {"task", task.Workspace.Path},
+	} {
+		t.Run(target.name, func(t *testing.T) {
+			release, acquired, err := r.host.application.admissions.AcquireWorkingTreeMutation(target.path)
+			if err != nil || !acquired {
+				t.Fatalf("reserve working tree %q: acquired=%t, %v", target.path, acquired, err)
+			}
+			defer release()
+			meta := protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)}}
+			observed := r.endpoint.Invoke(t.Context(), delivery.TaskWorktreesPreview, query, meta)
+			if observed.Failure != nil {
+				t.Fatalf("read handoff while %s is reserved: %v", target.name, observed.Failure)
+			}
+			got := observed.Value.(*protocol.WorktreeHandoff)
+			if got.Digest != expected.Digest || got.Patch != expected.Patch {
+				t.Fatalf("reservation changed the handoff preview: %+v", got)
+			}
+			meta.IdempotencyKey = "apply-with-reserved-" + target.name
+			blocked := r.endpoint.Invoke(t.Context(), delivery.TaskWorktreesApply, apply, meta)
+			if !errors.Is(blocked.Failure, protocol.ErrSessionBusy) {
+				t.Fatalf("handoff could write while %s is reserved: %v", target.name, blocked.Failure)
+			}
+			if got := git("diff", "--cached", "--", name); got != "" {
+				t.Fatalf("preview or refused handoff modified the index: %q", got)
+			}
+		})
+	}
+	r.must(delivery.TaskWorktreesApply, apply, "apply-without-reservation")
+	if got := git("show", ":"+name); got != "handoff" {
+		t.Fatalf("confirmed handoff staged %q, want handoff", got)
+	}
+}
