@@ -203,7 +203,7 @@ func (l *sessionLifecycle) install(s sessionInstallation) {
 	l.runs.switchProjection(s.projection.conversation)
 	l.composer.attachments = s.attachments
 	previousTranscript := l.root.presentTranscript(s.projection.transcript)
-	l.composer.restoreComposer(s.authoring.Draft)
+	l.composer.replaceDraft(s.authoring.Draft)
 	l.activity.Reset()
 	l.status.Reset()
 	l.root.enterSessionHealth()

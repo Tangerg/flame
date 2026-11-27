@@ -30,7 +30,7 @@ func (c *promptComposer) stashPrompt() error {
 	if err != nil {
 		return fmt.Errorf("stash session draft: %w", err)
 	}
-	c.restoreComposer(authoring.Message{})
+	c.replaceDraft(authoring.Message{})
 	c.notify("stashed prompt · " + stash.ID)
 	return nil
 }

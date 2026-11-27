@@ -90,17 +90,24 @@ func TestAttachmentSnapshotFollowsPendingRun(t *testing.T) {
 		}
 	}
 	assertRecovered(session)
-	if _, retired, err := queue.SettleDispatch(session, commandID); err != nil || !retired {
+	if retired, err := queue.SettleDispatch(session, commandID); err != nil || !retired {
 		t.Fatalf("settlement = %t, %v", retired, err)
 	}
 	assertSnapshots(1)
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	queue = open().Queue()
+	store = open()
+	queue = store.Queue()
 	assertRecovered(otherSession)
-	if _, retired, err := queue.SettleDispatch(otherSession, otherCommandID); err != nil || !retired {
+	if retired, err := queue.SettleDispatch(otherSession, otherCommandID); err != nil || !retired {
 		t.Fatalf("settlement of other command = %t, %v", retired, err)
 	}
 	assertSnapshots(0)
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if history := open().History(); len(history) != 1 || !history[0].Equal(message) {
+		t.Fatalf("reopened history = %+v, want one recall entry for the repeated prompt", history)
+	}
 }

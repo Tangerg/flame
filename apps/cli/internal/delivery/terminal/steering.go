@@ -66,7 +66,7 @@ func (s *steerDesk) steerRun(instruction string) error {
 		return fmt.Errorf("steer blocked: save command draft: %w", err)
 	}
 	s.report(workbenchDraft, nil)
-	s.composer.restoreComposer(sourceDraft)
+	s.composer.replaceDraft(sourceDraft)
 	for _, slot := range []operationSlot{inputPreparationOperation, steerRunOperation} {
 		if s.tasks.operations.Active(slot) {
 			return slot.busy()
@@ -113,7 +113,7 @@ func (s *steerDesk) deliverPreparedSteer(request authoring.SteerRun, sourceDraft
 		return err
 	}
 	s.report(workbenchSteerOutbox, nil)
-	s.composer.restoreComposer(authoring.Message{})
+	s.composer.replaceDraft(authoring.Message{})
 	s.receipts.track(pending)
 	started := s.tasks.sessionSettlement(steerRunOperation,
 		func(ctx context.Context) (runworkflow.SteerResult, error) {
@@ -132,7 +132,7 @@ func (s *steerDesk) deliverPreparedSteer(request authoring.SteerRun, sourceDraft
 			s.restoreSteerAttachments(request.Message.Attachments)
 			return fmt.Errorf("%w; restore attachments: %w", steerRunOperation.busy(), err)
 		}
-		s.composer.restoreComposer(recovered)
+		s.composer.replaceDraft(recovered)
 		return steerRunOperation.busy()
 	}
 	return nil
@@ -155,7 +155,7 @@ func (s *steerDesk) settleSteer(result runworkflow.SteerResult, deliveryErr erro
 			s.notify("steer run failed; restored attachments were not saved: " + err.Error())
 			return
 		}
-		s.composer.restoreComposer(recovered)
+		s.composer.replaceDraft(recovered)
 		s.notify("steer run failed: " + deliveryErr.Error())
 	case mutation.Unknown:
 		s.notify("steer outcome is unknown; the original request is saved for recovery; inspect the session before issuing a new command: " + deliveryErr.Error())
@@ -175,11 +175,9 @@ func (s *steerDesk) acknowledgeSteer(pending workbench.PendingSteer) error {
 	}
 	s.report(workbenchDraft, nil)
 	if err := s.workbench.AcknowledgePendingSteer(s.session.current.ID, pending.CommandID()); err != nil {
-		s.composer.history.Load(s.workbench.History())
 		s.report(workbenchSteerOutbox, fmt.Errorf("settle accepted steer command: %w", err))
 		return fmt.Errorf("retire accepted steer command: %w", err)
 	}
-	s.composer.history.Add(pending.Message())
 	s.report(workbenchSteerOutbox, nil)
 	s.report(workbenchHistory, nil)
 	return nil
@@ -213,7 +211,7 @@ func (s *steerDesk) restoreSteerAttachments(rejected []authoring.Attachment) {
 		s.composer.scheduleDraftPersistence()
 		return
 	}
-	s.composer.restoreComposer(workbench.MergeSteerAttachments(current, rejected))
+	s.composer.replaceDraft(workbench.MergeSteerAttachments(current, rejected))
 }
 
 func (s *steerDesk) refusedSteersNotice(refused []runworkflow.SteerRefusal) string {

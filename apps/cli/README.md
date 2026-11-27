@@ -17,6 +17,10 @@ packaging. An HTTP-only client does not initialize a local Runtime.
 
 Running without a subcommand opens the Oolong terminal interface. Runtime owns durable product state and execution; CLI owns process behavior, terminal interaction, rendering, and local authoring state.
 
+Workbench prompt history is shared across Sessions. Consecutive identical
+prompts occupy one recall entry. Switching Sessions ends history navigation and
+loads the destination Session's draft.
+
 MCP forms preserve command and directory bytes, and encode arguments as JSON
 arrays and environment/header replacements as JSON objects. Empty and whitespace
 values remain explicit process material; Runtime owns their final admission.

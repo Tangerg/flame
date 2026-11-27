@@ -341,10 +341,7 @@ func (a *app) configureComposer(appearance terminalAppearance, keys *keymap.Map,
 		Glyphs: appearance.glyphs,
 		Prompt: appearance.glyphs.Marker + " ",
 	})
-	if a.workbench != nil {
-		a.composer.history.Load(a.workbench.History())
-	}
-	a.composer.restoreComposer(initial)
+	a.composer.replaceDraft(initial)
 }
 
 func (a *app) configureCompletion(appearance terminalAppearance) {
@@ -471,7 +468,7 @@ func (a *app) submit() {
 	}
 	if name, arg, command := parseSlashCommand(strings.TrimSpace(message.Text)); command {
 		a.runCommand(name, arg, func() {
-			a.composer.restoreComposer(authoring.Message{Attachments: message.Attachments})
+			a.composer.replaceDraft(authoring.Message{Attachments: message.Attachments})
 			a.operations.Cancel(completionOperation)
 			a.completion.popup.Dismiss()
 		})
@@ -506,7 +503,7 @@ func (a *app) dispatchPrompt(message authoring.Message) {
 	}
 	a.sessions.dismissCatalog()
 	a.screens.options.dismissModelPicker()
-	a.composer.resetComposer()
+	a.composer.replaceDraft(authoring.Message{})
 	a.operations.Cancel(completionOperation)
 	a.completion.popup.Dismiss()
 	if !a.runs.drainQueue() {

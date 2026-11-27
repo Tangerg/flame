@@ -181,10 +181,10 @@ func (s *Store) Remember(message authoring.Message) error {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if len(s.history) > 0 && s.history[len(s.history)-1].Equal(message) {
+	next, changed := s.historyWith(message)
+	if !changed {
 		return nil
 	}
-	next := s.historyWith(message)
 	return s.save(historyName, next, func() { s.history = next })
 }
 
@@ -332,13 +332,19 @@ func validateDistinct[T interface{ Validate() error }](noun string, records []T,
 	return nil
 }
 
-func (s *Store) historyWith(message authoring.Message) []authoring.Message {
+func (s *Store) historyWith(message authoring.Message) ([]authoring.Message, bool) {
+	if len(s.history) > 0 && s.history[len(s.history)-1].Equal(message) {
+		return nil, false
+	}
 	start := max(0, len(s.history)-s.historyCapacity+1)
-	return append(slices.Clone(s.history[start:]), message.Clone())
+	return append(slices.Clone(s.history[start:]), message.Clone()), true
 }
 
 func (s *Store) recordPromptSettlement(update sessionUpdate, message authoring.Message) error {
-	history := s.historyWith(message)
+	history, changed := s.historyWith(message)
+	if !changed {
+		return s.commitSessions([]sessionUpdate{update})
+	}
 	record, err := encodeRecord(historyName, history)
 	if err != nil {
 		return err

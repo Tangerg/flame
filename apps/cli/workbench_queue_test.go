@@ -93,10 +93,10 @@ func TestWorkbenchQueueReopensItsCommittedEntries(t *testing.T) {
 	if _, started := recovered.BeginDispatch(sessionID); started {
 		t.Fatal("another prompt bypassed the unsettled cancellation")
 	}
-	if _, _, err := recovered.SettleDispatch(sessionID, second.CommandID); !errors.Is(err, workbench.ErrDispatchCanceling) {
+	if _, err := recovered.SettleDispatch(sessionID, second.CommandID); !errors.Is(err, workbench.ErrDispatchCanceling) {
 		t.Fatalf("start acknowledgement settled a cancellation: %v", err)
 	}
-	if _, retired, err := recovered.Retire(sessionID, second.CommandID); err != nil || !retired {
+	if retired, err := recovered.Retire(sessionID, second.CommandID); err != nil || !retired {
 		t.Fatalf("cancellation retirement = %t, %v", retired, err)
 	}
 	edited := authoring.Message{Text: "edited first prompt"}

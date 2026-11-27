@@ -107,7 +107,7 @@ func countedNoun(count int, noun string) string {
 }
 
 func (r *runs) enqueueDeferredPrompt() {
-	r.composer.resetComposer()
+	r.composer.replaceDraft(authoring.Message{})
 	r.tasks.operations.Cancel(completionOperation)
 	r.link.dismissCompletion()
 	snapshot := r.syncQueue()
@@ -151,28 +151,27 @@ func (r *runs) drainQueue() bool {
 }
 
 func (r *runs) attemptQueuedDispatchSettlement(sessionID string, commandID authoring.CommandID) error {
-	entry, retired, err := r.queue.SettleDispatch(sessionID, commandID)
+	retired, err := r.queue.SettleDispatch(sessionID, commandID)
 	if err != nil {
 		return err
 	}
-	r.presentQueuedRetirement(entry, retired)
+	r.presentQueuedRetirement(retired)
 	return nil
 }
 
 func (r *runs) retireQueuedCommand(sessionID string, commandID authoring.CommandID) error {
-	entry, retired, err := r.queue.Retire(sessionID, commandID)
+	retired, err := r.queue.Retire(sessionID, commandID)
 	if err != nil {
 		return err
 	}
-	r.presentQueuedRetirement(entry, retired)
+	r.presentQueuedRetirement(retired)
 	return nil
 }
 
-func (r *runs) presentQueuedRetirement(entry authoring.QueueEntry, retired bool) {
+func (r *runs) presentQueuedRetirement(retired bool) {
 	if !retired {
 		return
 	}
-	r.composer.history.Add(entry.Message)
 	r.report(workbenchRunOutbox, nil)
 	r.syncQueue()
 }
