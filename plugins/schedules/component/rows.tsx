@@ -115,7 +115,7 @@ export function ScheduleRow({
             label={t("actions.more", { name: title })}
             disabled={disabled}
             finalFocus={
-              command?.command.method === METHODS.runNow
+              command?.method === METHODS.runNow
                 ? feedbackElement
                 : undefined
             }
@@ -188,12 +188,13 @@ export function ScheduleFeedback({
   notice,
   feedbackElement,
   command,
+  pending,
   reconcile,
   openSession,
   signal,
 }: Pick<
   ScheduleState,
-  "t" | "notice" | "feedbackElement" | "command" | "reconcile"
+  "t" | "notice" | "feedbackElement" | "command" | "pending" | "reconcile"
 > & { openSession: ComponentContext["openSession"]; signal: AbortSignal }) {
   return (
     <section
@@ -225,25 +226,19 @@ export function ScheduleFeedback({
           </>
         ))}
       {command && (
+        <p role="status">{t("command.progress", { label: command.label })}</p>
+      )}
+      {pending && (
         <>
-          <p role={command.phase === "uncertain" ? "alert" : "status"}>
-            {command.phase === "uncertain"
-              ? t("command.uncertain")
-              : t("command.progress", { label: command.command.label })}
-          </p>
-          {command.phase === "uncertain" && (
-            <>
-              <RecordBody>{command.error}</RecordBody>
-              <Metadata>
-                {t("command.original", {
-                  key: command.command.promise.idempotencyKey,
-                })}
-              </Metadata>
-              <Button variant="soft" onClick={reconcile}>
-                {t("command.reconcile")}
-              </Button>
-            </>
-          )}
+          <p role="alert">{t("command.uncertain")}</p>
+          <Metadata>{t("command.original", { key: pending.idempotencyKey })}</Metadata>
+          <Button
+            variant="soft"
+            disabled={command !== undefined}
+            onClick={() => reconcile(pending.idempotencyKey)}
+          >
+            {t("command.reconcile")}
+          </Button>
         </>
       )}
     </section>

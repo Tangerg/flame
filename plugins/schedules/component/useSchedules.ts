@@ -36,16 +36,18 @@ const CATALOGS = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
 import {
   type Schedule,
   type Draft,
-  type Mutation,
   type Command,
-  type CommandState,
   type Notice,
   type Edit,
   type ModelRead,
 } from "./types";
 import { isConcealed } from "@flame/ui";
-import { METHODS } from "./methods";
+import { AUTHORING_LABELS, METHODS, type AuthoringMethod } from "./methods";
 import { ScheduleCatalog } from "./scheduleCatalog";
+import {
+  bindScheduleCommands,
+  type ScheduleCommandObservation,
+} from "./scheduleCommands";
 export const enabled = (item: Schedule) => item.nextRunAt !== undefined;
 export const modelKey = (provider: string, model: string) =>
   JSON.stringify([provider, model]);
@@ -65,7 +67,11 @@ export const UNFILTERED = "all";
 export const SCHEDULE_FILTERS = [UNFILTERED, "enabled", "disabled"] as const;
 export type ScheduleFilter = (typeof SCHEDULE_FILTERS)[number];
 
-export function useSchedules(context: ComponentContext, locale: string) {
+export function useSchedules(
+  context: ComponentContext,
+  locale: string,
+  observation: ScheduleCommandObservation,
+) {
   const t = useTranslator(CATALOGS, locale);
   const dateTime = useMemo(
     () =>
@@ -76,13 +82,13 @@ export function useSchedules(context: ComponentContext, locale: string) {
     [locale],
   );
   const operations = useMemo(() => {
-    if (!context.binding)
-      throw new Error("Schedules requires its own callable contribution");
-    return bindOperations<MethodInputs, MethodOutputs>(
+    const { target, ...commands } = bindScheduleCommands(context);
+    const { query } = bindOperations<MethodInputs, MethodOutputs>(
       context,
       CAPABILITY_JSON,
-      { scope: "installation", reference: context.binding.installationId },
+      target,
     );
+    return { ...commands, query };
   }, [context]);
   const catalog = useMemo(
     () => new ScheduleCatalog(
@@ -123,7 +129,11 @@ export function useSchedules(context: ComponentContext, locale: string) {
         : searchElement.current,
     [],
   );
-  const [command, setCommand] = useState<CommandState>();
+  const command = useSyncExternalStore(
+    observation.subscribe,
+    observation.snapshot,
+  );
+  const pending = context.signal.aborted ? undefined : operations.pendingCommand();
   const [notice, setNotice] = useState<Notice>();
   const feedbackElement = useRef<HTMLElement>(null);
   const [liveError, setLiveError] = useState<string>();
@@ -216,75 +226,54 @@ export function useSchedules(context: ComponentContext, locale: string) {
     void modelSource.track(() => readModels());
     return () => controller.abort();
   }, [modelSource, modelRefresh]);
-  async function observe(captured: Command) {
-    try {
-      const output = await captured.promise;
-      if (!context.signal.aborted) {
+  function observe(
+    command: Command,
+    execute: () => Promise<MethodOutputs[AuthoringMethod]> | undefined,
+  ) {
+    if (context.signal.aborted) return;
+    void observation.run(command, async () => {
+      try {
+        const attempt = execute();
+        if (!attempt) return;
+        setNotice(undefined);
+        const output = await attempt;
+        if (context.signal.aborted) return;
         if (edit?.basis || deleting) taskOpener.current = searchElement.current;
-        setCommand(undefined);
         setEdit(undefined);
         setDeleting(undefined);
         setNotice(
-          captured.method === METHODS.runNow
-            ? (output as MethodOutputs[typeof METHODS.runNow])
-            : t("notice.completed", { label: captured.label }),
+          "runId" in output
+            ? output
+            : t("notice.completed", { label: command.label }),
         );
         void refresh();
-      }
-    } catch (error) {
-      if (context.signal.aborted) return;
-      if (mutationSettlementIsUnknown(error)) {
-        setCommand({
-          phase: "uncertain",
-          command: captured,
-          error: failure(error),
-        });
-      } else {
-        setCommand(undefined);
-        setNotice(
-          error instanceof OperationFailure && error.code === REVISION_CONFLICT
-            ? t("notice.revision")
-            : failure(error),
-        );
-        if (
-          error instanceof OperationFailure &&
-          error.code === REVISION_CONFLICT
-        ) {
+      } catch (error) {
+        if (context.signal.aborted) return;
+        const stale =
+          error instanceof OperationFailure && error.code === REVISION_CONFLICT;
+        setNotice(stale ? t("notice.revision") : failure(error));
+        if (stale) {
           taskOpener.current = searchElement.current;
           setEdit(undefined);
           setDeleting(undefined);
         }
-        void refresh();
+        if (!mutationSettlementIsUnknown(error)) void refresh();
       }
-    }
+    });
   }
-  function submit<K extends Mutation>(
+  function submit<K extends AuthoringMethod>(
     method: K,
     input: MethodInputs[K],
     label: string,
   ) {
-    if (command || context.signal.aborted) return;
-    try {
-      const captured = {
-        method,
-        promise: operations.command(method, input),
-        label,
-      };
-      setCommand({ phase: "submitting", command: captured });
-      setNotice(undefined);
-      void observe(captured);
-    } catch (error) {
-      if (!context.signal.aborted) setNotice(failure(error));
-    }
+    observe({ method, label }, () => operations.submit(method, input));
   }
-  function reconcile() {
-    if (command?.phase !== "uncertain" || context.signal.aborted) return;
-    const original = command.command;
-    try {
-      const retry = {
-        ...original,
-        promise: original.promise.retry({ signal: context.signal }),
-      };
+  function reconcile(key: string) {
+    if (context.signal.aborted) return;
+    const original = operations.pendingCommand();
+    if (original?.idempotencyKey !== key) return;
+    const { method } = original;
+    observe({ method, label: t(AUTHORING_LABELS[method]) }, () => {
       const feedback = feedbackElement.current;
       if (
         feedback &&
@@ -293,23 +282,15 @@ export function useSchedules(context: ComponentContext, locale: string) {
           feedback.ownerDocument.activeElement === feedback.ownerDocument.body)
       )
         feedback.focus({ preventScroll: true });
-      setCommand({ phase: "submitting", command: retry });
-      void observe(retry);
-    } catch (error) {
-      if (!context.signal.aborted)
-        setCommand({
-          phase: "uncertain",
-          command: original,
-          error: failure(error),
-        });
-    }
+      return original.recover();
+    });
   }
   // Opening a task replaces any other one and remembers where focus returns.
   function beginTask(
     opener: HTMLElement,
     task: { edit: Edit } | { deleting: Schedule },
   ) {
-    if (command) return;
+    if (busy) return;
     taskOpener.current = opener;
     setNotice(undefined);
     setEdit("edit" in task ? task.edit : undefined);
@@ -411,7 +392,7 @@ export function useSchedules(context: ComponentContext, locale: string) {
     else submit(METHODS.create, draft, t("command.create"));
   }
   function cancelTask() {
-    if (command) return;
+    if (busy) return;
     // Base UI resolves the target before sibling buttons are re-enabled.
     // Catalog reads, rather than the retiring editor, can keep them disabled.
     if ((edit?.basis || deleting) && (read.loading || read.error))
@@ -436,7 +417,7 @@ export function useSchedules(context: ComponentContext, locale: string) {
         .toLocaleLowerCase()
         .includes(search.toLocaleLowerCase()),
   );
-  const busy = Boolean(command);
+  const busy = command !== undefined || pending !== undefined;
   const canSave = Boolean(
     !busy &&
     edit?.draft.instructions.trim() &&
@@ -464,6 +445,7 @@ export function useSchedules(context: ComponentContext, locale: string) {
     notice,
     feedbackElement,
     command,
+    pending,
     reconcile,
     searchElement,
     search,

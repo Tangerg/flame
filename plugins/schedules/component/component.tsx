@@ -1,4 +1,7 @@
-import { type PluginComponentProps } from "@flame/component-sdk";
+import {
+  defineComponent,
+  type PluginComponentProps,
+} from "@flame/component-sdk";
 import {
   Panel,
   PanelHeader,
@@ -20,6 +23,7 @@ import {
   SchedulePager,
 } from "./catalog";
 import { ScheduleEditor } from "./editor";
+import { ScheduleCommandObservation } from "./scheduleCommands";
 
 function ScheduleReadStatus({
   read,
@@ -71,13 +75,23 @@ function CatalogSummary({
   );
 }
 
-export function Schedules({ context, locale }: PluginComponentProps) {
-  const schedules = useSchedules(context, locale);
+export const Schedules = defineComponent((source) => {
+  const observation = new ScheduleCommandObservation(source.signal);
+  return (props) => <SchedulesPanel {...props} observation={observation} />;
+});
+
+function SchedulesPanel({
+  context,
+  locale,
+  observation,
+}: PluginComponentProps & { observation: ScheduleCommandObservation }) {
+  const schedules = useSchedules(context, locale, observation);
   const {
     t,
     notice,
     feedbackElement,
     command,
+    pending,
     reconcile,
     searchElement,
     filterPage,
@@ -95,12 +109,13 @@ export function Schedules({ context, locale }: PluginComponentProps) {
   } = schedules;
   const cursors = read.accepted?.cursors ?? [];
   const paginated = Boolean(cursors.length) || Boolean(page?.nextCursor);
-  const feedback = (notice || command) && (
+  const feedback = (notice || command || pending) && (
     <ScheduleFeedback
       t={t}
       notice={notice}
       feedbackElement={feedbackElement}
       command={command}
+      pending={pending}
       reconcile={reconcile}
       openSession={context.openSession}
       signal={context.signal}

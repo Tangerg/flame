@@ -68,6 +68,14 @@ func ActorFrom(ctx context.Context) (Actor, bool) {
 	return actor, found
 }
 
+func DetachActor(ctx context.Context) (context.Context, *Actor) {
+	actor, found := ActorFrom(ctx)
+	if !found {
+		return ctx, nil
+	}
+	return context.WithValue(ctx, actorKey{}, nil), &actor
+}
+
 func ScopedKey(ctx context.Context, key string) string {
 	actor, found := ActorFrom(ctx)
 	if key == "" || !found {

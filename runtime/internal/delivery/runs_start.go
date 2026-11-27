@@ -64,10 +64,11 @@ func (s *Handler) StartRun(ctx context.Context, in protocol.StartRunRequest) (*p
 		}
 		command.NewSession = &runs.SessionOpening{SessionID: sessionID, RunID: runID, Title: in.NewSession.Title, CWD: s.sessionWorkspacePath(in.NewSession.Workspace), Project: project}
 	}
-	if actor, present := operation.ActorFrom(ctx); present {
-		command.Actor = &actor
-	}
-	result, err := s.runOpenings.Start(ctx, command)
+	// The opening transaction still checks the initiating grant. Host-owned
+	// preparation and its service calls must use their own authority.
+	opening, actor := operation.DetachActor(ctx)
+	command.Actor = actor
+	result, err := s.runOpenings.Start(opening, command)
 	if err != nil {
 		return nil, nil, wireRunStartErr(err)
 	}

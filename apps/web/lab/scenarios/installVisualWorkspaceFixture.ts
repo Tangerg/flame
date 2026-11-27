@@ -562,6 +562,11 @@ function workspaceDataPlugin(
         VISUAL_SCHEDULES_BINDING,
       );
       const schedulesView = publishedComponent(schedulesDeclaration, "schedules");
+      const SchedulesView = Schedules.create({
+        runtimeIdentity: schedulesSources.runtime,
+        component: schedulesSources.component,
+        signal: schedulesLifetime.lifetime.signal,
+      });
       schedulesLifetime.add(WORKSPACE_VIEW, {
         id: "package:visual:schedules",
         title: { text: schedulesView.title },
@@ -571,7 +576,7 @@ function workspaceDataPlugin(
           createElement(InstalledComponent, {
             ...schedulesSources,
             scope: "client",
-            entry: Schedules,
+            entry: SchedulesView,
           }),
       });
 
