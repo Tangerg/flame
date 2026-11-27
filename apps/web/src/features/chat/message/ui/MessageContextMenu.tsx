@@ -76,13 +76,14 @@ function AssistantItems({ msg, options }: { msg: Message; options: MenuModel["as
   const t = useT();
   const { messages } = useNotifications();
   const agentAccess = useAgent();
+  const composerAccess = useComposer();
   return (
     <>
       <Separator />
       {options.regenerate && (
         <ContextMenu.IconItem
           icon="loop"
-          onSelect={() => regenerateMessage(messages, agentAccess, msg)}
+          onSelect={() => regenerateMessage(messages, agentAccess, composerAccess, msg)}
         >
           {t("msgActions.regenerate")}
         </ContextMenu.IconItem>
@@ -90,7 +91,9 @@ function AssistantItems({ msg, options }: { msg: Message; options: MenuModel["as
       {options.regenerateRestore && (
         <ContextMenu.IconItem
           icon="history"
-          onSelect={() => regenerateMessage(messages, agentAccess, msg, { restoreFiles: true })}
+          onSelect={() =>
+            regenerateMessage(messages, agentAccess, composerAccess, msg, { restoreFiles: true })
+          }
         >
           {t("msgActions.regenerateRestore")}
         </ContextMenu.IconItem>

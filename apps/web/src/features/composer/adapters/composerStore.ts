@@ -26,7 +26,10 @@ interface ComposerState {
 export interface DraftCapture {
   current(): boolean;
   replace(input: ComposerDraftInput): boolean;
-  recover(input: ComposerDraftInput): "active" | "stored" | "retired";
+  recover(
+    input: ComposerDraftInput,
+    policy: "preserveCurrent" | "replaceCaptured",
+  ): "active" | "stored" | "retired";
 }
 
 interface ComposerActions {
@@ -39,7 +42,7 @@ interface ComposerActions {
   clear(): void;
   captureSubmission(): ComposerSubmission;
   replaceDraft(input: ComposerDraftInput): void;
-  captureDraft(): DraftCapture;
+  captureDraft(sessionId?: string): DraftCapture;
   addImages(images: readonly Omit<ComposerImage, "id">[]): void;
   addImageFiles(files: File[]): void;
   removeImage(id: string): void;
@@ -319,10 +322,10 @@ export function createComposerStore() {
         cancelReads(current, current.state.composer.activeSessionId);
         edit(() => authoredDraft(input), "replaced");
       },
-      captureDraft: () => {
+      captureDraft: (sessionId = get().composer.activeSessionId) => {
         const target = current;
         const generation = storageGeneration;
-        const { activeSessionId: sessionId, draft } = get().composer;
+        const draft = get().composer.activate(sessionId).draft;
         const isCurrent = () => {
           const composer = get().composer;
           return (
@@ -338,12 +341,12 @@ export function createComposerStore() {
             get().replaceDraft(input);
             return true;
           },
-          recover(input) {
+          recover(input, policy) {
             if (generation !== storageGeneration) return "retired";
             const recovery = target.state.composer.recoverDraft(
               sessionId,
-              draft,
               authoredDraft(input),
+              policy === "replaceCaptured" ? draft : undefined,
             );
             if (!recovery) return "retired";
             publish({ composer: recovery.composer }, { sessionId, text: "replaced" });

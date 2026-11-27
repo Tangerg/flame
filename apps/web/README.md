@@ -35,6 +35,9 @@ Edit and rerun takes the original input from the committed rollback receipt.
 The composer recovers it into the captured Session and preserves text and
 attachments authored while the rollback was pending. Session reads update the
 conversation independently after the command settles.
+When regeneration cannot start a new Run, the composer keeps its input beside
+the Session's existing draft. An unresolved Run opening retains its original
+command identity.
 
 From the repository root:
 

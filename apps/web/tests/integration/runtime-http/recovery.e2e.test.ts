@@ -4,7 +4,7 @@ import { describe, expect, it, onTestFinished } from "vitest";
 import { asRunId, asSessionId, type FlameClient } from "@flame/runtime-client";
 import { HTTP_HEADERS } from "@flame/runtime-client/wire";
 import { composeAgent } from "@/features/agent/adapters/agent";
-import { editAndRerunMessage } from "@/features/chat/message-actions/public/messageActions";
+import { editAndRerunMessage, regenerateMessage } from "@/features/chat/message-actions/public/messageActions";
 import { createComposer } from "@/features/composer/adapters/composerStatePorts";
 import { DraftContent } from "@/features/composer/domain/draft";
 import { createRuntimeConnectionProjection } from "@/features/connection/adapters/runtimeConnectionProjection";
@@ -68,6 +68,28 @@ function openWebSession(client: FlameClient, endpoint: string, sessionId: string
       connection.dispose();
     },
   };
+}
+
+function openWebComposer(
+  { agent, connection }: ReturnType<typeof openWebSession>,
+  endpoint: string,
+  sessionId: string,
+) {
+  const access = agent.access;
+  const composer = createComposer(
+    {
+      getActiveSessionId: access.getActiveSessionId,
+      getLifecycleSnapshot: access.getAgentSessionLifecycleSnapshot,
+      subscribeActiveSessionId: access.subscribeActiveSessionId,
+      subscribeLifecycle: access.subscribeAgentSessionLifecycle,
+      subscribeDeleted: access.subscribeDeletedAgentSession,
+    },
+    () => endpoint,
+    connection.scope,
+    connection.stream,
+  );
+  composer.store.getState().loadSession(sessionId);
+  return composer;
 }
 
 describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", () => {
@@ -136,25 +158,10 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
       }
       return response;
     });
-    const { agent, connection, notifications, dispose } = openWebSession(
-      client,
-      fixture.baseUrl,
-      sessionId,
-    );
+    const web = openWebSession(client, fixture.baseUrl, sessionId);
+    const { agent, notifications, dispose } = web;
     const access = agent.access;
-    const composer = createComposer(
-      {
-        getActiveSessionId: access.getActiveSessionId,
-        getLifecycleSnapshot: access.getAgentSessionLifecycleSnapshot,
-        subscribeActiveSessionId: access.subscribeActiveSessionId,
-        subscribeLifecycle: access.subscribeAgentSessionLifecycle,
-        subscribeDeleted: access.subscribeDeletedAgentSession,
-      },
-      () => fixture.baseUrl,
-      connection.scope,
-      connection.stream,
-    );
-    composer.store.getState().loadSession(sessionId);
+    const composer = openWebComposer(web, fixture.baseUrl, sessionId);
     try {
       await access.rehydrateSessionView(sessionId);
       const opening = access.activeAgentConversation()?.messages.find(
@@ -187,6 +194,51 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
       release.resolve();
       composer.dispose();
       dispose();
+      await client.close();
+      await fixture.client.sessions.delete(sessionId);
+    }
+  }, 30_000);
+
+  it("retains a regeneration prompt when the restored Session cannot accept a new Run", async () => {
+    const session = await fixture.client.sessions.create({ workspace: { path: fixture.root } });
+    const sessionId = asSessionId(session.id);
+    const original = "Preserve this prompt if it cannot be regenerated.";
+    const run = await fixture.client.runs.start({
+      sessionId,
+      input: [{ type: "text", text: original }],
+    });
+    await collectRunEvents(originalOpeningEvents(run));
+
+    let committed = false;
+    const client = fixture.createRuntimeClient(async (url, init) => {
+      const method = new Headers(init?.headers).get(HTTP_HEADERS.method);
+      if (method === "sessions.snapshot" && committed) {
+        throw new Error("Session read unavailable before regeneration could start");
+      }
+      const response = await fetch(url, init);
+      if (method === "sessions.rollback") committed = true;
+      return response;
+    });
+    const web = openWebSession(client, fixture.baseUrl, sessionId);
+    const composer = openWebComposer(web, fixture.baseUrl, sessionId);
+    const access = web.agent.access;
+    const unsent = "My separate unsent notes stay in the draft.";
+    composer.access.checkpoint(DraftContent.fromText(unsent));
+    try {
+      await access.rehydrateSessionView(sessionId);
+      const reply = access.activeAgentConversation()?.messages.find(
+        (message) => message.role === "assistant" && message.runId === run.result.runId,
+      );
+      if (!reply) throw new Error("the Web projection omitted the reply to regenerate");
+      regenerateMessage(web.notifications, access, composer.access, reply);
+
+      await expect
+        .poll(() => composer.access.captureSubmission().value)
+        .toBe(`${original}\n\n${unsent}`);
+      await expect(fixture.client.sessions.snapshot(sessionId)).resolves.toMatchObject({ runs: [] });
+    } finally {
+      composer.dispose();
+      web.dispose();
       await client.close();
       await fixture.client.sessions.delete(sessionId);
     }

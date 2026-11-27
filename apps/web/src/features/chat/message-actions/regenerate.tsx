@@ -1,5 +1,6 @@
 import { useNotifications } from "@/features/notifications/public/notifier";
 import { useAgent } from "@/features/agent/public/agent";
+import { useComposer } from "@/features/composer/public/composer";
 import { useT } from "@/lib/i18n/index";
 import { contributeLayout } from "@/extensions/contributeHelpers";
 import { definePlugin } from "@/extensions/definePlugin";
@@ -11,6 +12,7 @@ import { useActiveConversationMessages } from "@/features/agent/public/conversat
 function RegenerateButton() {
   const { messages: notifications } = useNotifications();
   const agentAccess = useAgent();
+  const composerAccess = useComposer();
 
   const t = useT();
   const msg = useCurrentMessage();
@@ -22,7 +24,7 @@ function RegenerateButton() {
       icon="loop"
       aria-label={t("msgActions.regenerate")}
       role={msg.role}
-      onClick={() => regenerateMessage(notifications, agentAccess, msg)}
+      onClick={() => regenerateMessage(notifications, agentAccess, composerAccess, msg)}
     />
   );
 }

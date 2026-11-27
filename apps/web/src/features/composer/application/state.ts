@@ -63,11 +63,13 @@ export interface ComposerStatePort {
   retryPersistence(): void;
   getRecoveryDrafts(): string;
   captureSubmission(): ComposerSubmission;
+  captureDraftRecovery(sessionId: string): ComposerDraftRecovery;
   replaceDraft(
     input: ComposerDraftInput,
     requestConfirmation: RequestDraftReplacementConfirmation,
   ): void;
   beginDraftRecovery(
+    sessionId: string,
     requestConfirmation: RequestDraftReplacementConfirmation,
     begin: (recover: ComposerDraftRecovery) => boolean,
   ): void;

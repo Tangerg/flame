@@ -3,9 +3,9 @@ import { type Message } from "@/features/agent/public/sessionView";
 import { t } from "@/lib/i18n/index";
 import { type AgentInput } from "@/features/agent/domain/input";
 import { type RestoreType } from "@/features/agent/application/runtimeGateway";
-import { submitAgentInput } from "@/features/agent/application/input/submitAgentInput";
 
 import {
+  selectCurrentRootRun,
   selectRootNarrativeMessages,
   selectRootRollbackBoundary,
 } from "@/features/agent/application/view/runTree";
@@ -17,7 +17,10 @@ type RollbackRefusal = { status: "unavailable" } | { status: "inFlight" };
 
 type SessionRollbackResult = { status: "committed"; userInput?: AgentInput } | RollbackRefusal;
 
-type SessionRegenerationResult = { status: "submitted" | "noInput" | "notReady" } | RollbackRefusal;
+type SessionRegenerationResult =
+  | { status: "submitted" | "noInput" }
+  | { status: "notReady"; userInput: AgentInput; refusal?: { error: unknown } }
+  | RollbackRefusal;
 
 interface ActiveAgentConversation {
   sessionId: string;
@@ -59,9 +62,21 @@ export function regenerateSessionRun(
     if (rollback.status !== "committed") return rollback;
     const refreshed = await refreshAfterRollback(agentAccess, owner, sessionId);
     owner.assertCurrent();
-    if (!rollback.userInput) return { status: "noInput" };
-    if (!refreshed || !submitAgentInput(agentAccess, sessionId, rollback.userInput))
-      return { status: "notReady" };
+    const { userInput } = rollback;
+    if (!userInput) return { status: "noInput" };
+    const unsent = { status: "notReady", userInput } as const;
+    const session = agentAccess.view.getSession(sessionId);
+    if (!refreshed || !session?.send) return unsent;
+    const root = selectCurrentRootRun(session.view);
+    if (root && root.status !== "finished") return unsent;
+    const opening = session.send(userInput);
+    if (!opening) return unsent;
+    try {
+      await owner.settle(opening);
+    } catch (error) {
+      owner.assertCurrent();
+      return { ...unsent, refusal: { error } };
+    }
     return { status: "submitted" };
   });
 }

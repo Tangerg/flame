@@ -33,11 +33,13 @@ interface RollbackActionOptions {
 export function regenerateMessage(
   notifications: NotificationFeed,
   agentAccess: AgentAccess,
+  composerAccess: ComposerAccess,
   msg: Message,
   opts?: RollbackActionOptions,
 ): void {
   const conversation = agentAccess.activeAgentConversation();
   if (!conversation || !canRegenerateMessage(msg, conversation.messages)) return;
+  const recoverDraft = composerAccess.captureDraftRecovery(conversation.sessionId);
   void agentAccess
     .regenerateSessionRun(
       conversation.sessionId,
@@ -45,10 +47,21 @@ export function regenerateMessage(
       opts?.restoreFiles ? "both" : "history",
     )
     .then((result) => {
-      if (result.status === "noInput" || result.status === "notReady")
-        notifications.notify("info", t(`session.regenerate.${result.status}`), {
+      if (result.status === "notReady") {
+        recoverDraft(agentInputToComposerDraft(result.userInput));
+        const copy = result.refusal && describeRpcError(result.refusal.error);
+        notifications.notify(
+          result.refusal ? "error" : "info",
+          copy ?? t("session.regenerate.notReady"),
+          {
+            source: "session",
+          },
+        );
+      } else if (result.status === "noInput") {
+        notifications.notify("info", t("session.regenerate.noInput"), {
           source: "session",
         });
+      }
     })
     .catch((error) => reportRollbackError(notifications, error));
 }
@@ -79,6 +92,7 @@ export function editAndRerunMessage(
   const { sessionId } = conversation;
   const { runId } = msg;
   composerAccess.beginDraftRecovery(
+    sessionId,
     (apply) => requestConfirmation(restoreType, apply),
     (recoverDraft) => {
       const active = agentAccess.activeAgentConversation();

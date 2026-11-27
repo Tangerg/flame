@@ -319,10 +319,10 @@ export class Composer {
     return new Composer(drafts, this.rings, sessionId, NOT_RECALLING);
   }
 
-  recoverDraft(sessionId: string, captured: ComposerDraft, recovered: ComposerDraft) {
+  recoverDraft(sessionId: string, recovered: ComposerDraft, replaceIfUnchanged?: ComposerDraft) {
     const current = this.drafts.get(sessionId);
     if (!current) return null;
-    const replaced = current === captured;
+    const replaced = current === replaceIfUnchanged;
     const draft = replaced ? recovered : current.prependRecoveredInput(recovered);
     const recall = sessionId === this.activeSessionId ? NOT_RECALLING : this.recall;
     return { composer: this.replaceDraft(draft, recall, sessionId), replaced };
