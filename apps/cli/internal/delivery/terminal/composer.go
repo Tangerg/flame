@@ -63,25 +63,6 @@ type attachmentInsertion struct {
 	count int
 }
 
-type draftObservation struct {
-	sessionID string
-	message   authoring.Message
-	ready     bool
-}
-
-func (d *draftObservation) Observe(sessionID string, message authoring.Message) bool {
-	changed := d.ready &&
-		(d.sessionID != sessionID || !d.message.Equal(message))
-	d.Reset(sessionID, message)
-	return changed
-}
-
-func (d *draftObservation) Reset(sessionID string, message authoring.Message) {
-	d.sessionID = sessionID
-	d.message = message.Clone()
-	d.ready = true
-}
-
 type promptHistory struct {
 	entries []authoring.Message
 	at      int
@@ -414,7 +395,6 @@ func (c *promptComposer) persistDraft() error {
 
 type draftAutosave struct {
 	store   *draftPersistence
-	saved   draftObservation
 	pending func()
 }
 
@@ -427,8 +407,8 @@ func (d *draftAutosave) schedule(after func(time.Duration, func()) func(), captu
 			report(err)
 			return
 		}
-		if d.saved.Observe(sessionID, message) {
-			report(d.store.Schedule(sessionID, message))
+		if err := d.store.Schedule(sessionID, message); err != nil {
+			report(err)
 		}
 	})
 }
@@ -443,15 +423,7 @@ func (d *draftAutosave) cancel() {
 
 func (d *draftAutosave) save(sessionID string, message authoring.Message) error {
 	d.cancel()
-	if err := d.store.Flush(sessionID, message); err != nil {
-		return err
-	}
-	d.saved.Reset(sessionID, message)
-	return nil
-}
-
-func (d *draftAutosave) adopt(sessionID string, message authoring.Message) {
-	d.saved.Reset(sessionID, message)
+	return d.store.Flush(sessionID, message)
 }
 
 func (c *promptComposer) scheduleDraftPersistence() {

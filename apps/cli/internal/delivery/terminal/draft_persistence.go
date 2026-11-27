@@ -93,8 +93,8 @@ func (d *draftPersistence) Schedule(sessionID string, message authoring.Message)
 	return nil
 }
 
-// Waiting for older writes prevents an older writer from winning a rename race
-// after a session transition has committed newer state.
+// Waiting for older writes prevents a queued draft from overwriting a later
+// session transition.
 func (d *draftPersistence) Flush(sessionID string, message authoring.Message) error {
 	if sessionID == "" {
 		return nil

@@ -67,7 +67,6 @@ func (s *steerDesk) steerRun(instruction string) error {
 	}
 	s.report(workbenchDraft, nil)
 	s.composer.restoreComposer(sourceDraft)
-	s.composer.drafts.adopt(s.session.current.ID, sourceDraft)
 	for _, slot := range []operationSlot{inputPreparationOperation, steerRunOperation} {
 		if s.tasks.operations.Active(slot) {
 			return slot.busy()
@@ -115,7 +114,6 @@ func (s *steerDesk) deliverPreparedSteer(request authoring.SteerRun, sourceDraft
 	}
 	s.report(workbenchSteerOutbox, nil)
 	s.composer.restoreComposer(authoring.Message{})
-	s.composer.drafts.adopt(s.session.current.ID, authoring.Message{})
 	s.receipts.track(pending)
 	started := s.tasks.sessionSettlement(steerRunOperation,
 		func(ctx context.Context) (runworkflow.SteerResult, error) {
@@ -135,7 +133,6 @@ func (s *steerDesk) deliverPreparedSteer(request authoring.SteerRun, sourceDraft
 			return fmt.Errorf("%w; restore attachments: %w", steerRunOperation.busy(), err)
 		}
 		s.composer.restoreComposer(recovered)
-		s.composer.drafts.adopt(s.session.current.ID, recovered)
 		return steerRunOperation.busy()
 	}
 	return nil
@@ -159,7 +156,6 @@ func (s *steerDesk) settleSteer(result runworkflow.SteerResult, deliveryErr erro
 			return
 		}
 		s.composer.restoreComposer(recovered)
-		s.composer.drafts.adopt(s.session.current.ID, recovered)
 		s.notify("steer run failed: " + deliveryErr.Error())
 	case mutation.Unknown:
 		s.notify("steer outcome is unknown; the original request is saved for recovery; inspect the session before issuing a new command: " + deliveryErr.Error())

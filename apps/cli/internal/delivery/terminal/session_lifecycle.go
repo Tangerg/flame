@@ -204,7 +204,6 @@ func (l *sessionLifecycle) install(s sessionInstallation) {
 	l.composer.attachments = s.attachments
 	previousTranscript := l.root.presentTranscript(s.projection.transcript)
 	l.composer.restoreComposer(s.authoring.Draft)
-	l.composer.drafts.adopt(l.state.current.ID, s.authoring.Draft)
 	l.activity.Reset()
 	l.status.Reset()
 	l.root.enterSessionHealth()
