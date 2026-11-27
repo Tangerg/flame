@@ -62,6 +62,36 @@ func seatbeltProfile(writableRoot string, readOnlyPaths, hiddenPaths []string) s
 	return profile.String()
 }
 
+func restrictedCommand(root, script string, readOnly []string) Command {
+	var profile strings.Builder
+	profile.WriteString("(version 1)\n(deny default)\n(allow process-fork process-exec)\n(allow signal (target self))\n(allow sysctl-read)\n")
+	profile.WriteString("(allow file-read-data (literal \"/\"))\n")
+	profile.WriteString("(allow file-read* (literal \"/dev/null\") (literal \"/dev/urandom\"))\n")
+	profile.WriteString("(allow file-write* (literal \"/dev/null\"))\n")
+	roots := []string{root, "/bin", "/sbin", "/usr/bin", "/usr/sbin", "/usr/lib", "/usr/libexec", "/usr/share", "/System/Library"}
+	roots = append(roots, readOnly...)
+	ancestors := make(map[string]struct{})
+	for _, path := range roots {
+		fmt.Fprintf(&profile, "(allow file-read* (subpath %s))\n", strconv.Quote(path))
+		for parent := filepath.Dir(path); ; parent = filepath.Dir(parent) {
+			if _, seen := ancestors[parent]; seen {
+				break
+			}
+			ancestors[parent] = struct{}{}
+			fmt.Fprintf(&profile, "(allow file-read-metadata (literal %s))\n", strconv.Quote(parent))
+			if parent == "/" {
+				break
+			}
+		}
+	}
+	fmt.Fprintf(&profile, "(allow file-write* (subpath %s))\n", strconv.Quote(root))
+	return Command{
+		Name: sandboxExecPath,
+		Args: []string{"-p", profile.String(), "/bin/sh", "-ec", `ulimit -c 0; ulimit -f 131072; exec /bin/sh -c "$1"`, "flame-check", script},
+		Env:  []string{"HOME=" + root, "TMPDIR=" + root, "PATH=/usr/bin:/bin:/usr/sbin:/sbin", "LC_ALL=C", "TZ=UTC"},
+	}
+}
+
 func scrubbedEnv(root string) []string {
 	return []string{
 		"HOME=" + root,
@@ -74,17 +104,21 @@ func scrubbedEnv(root string) []string {
 type seatbeltRunner struct {
 	readOnlyPaths []string
 	hiddenPaths   []string
+	restrictReads bool
 }
 
-func platformRunner(userHome string, readOnlyPaths []string) (commandRunner, error) {
+func platformRunner(config Config) (commandRunner, error) {
 	if err := checkBackend(); err != nil {
 		return nil, err
 	}
-	hidden, err := resolveHiddenHome(userHome)
+	paths, err := resolveReadOnlyPaths(config.ReadOnlyPaths)
 	if err != nil {
 		return nil, err
 	}
-	paths, err := resolveReadOnlyPaths(readOnlyPaths)
+	if config.RestrictReads {
+		return seatbeltRunner{readOnlyPaths: paths, restrictReads: true}, nil
+	}
+	hidden, err := resolveHiddenHome(config.UserHome)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +139,12 @@ func (s seatbeltRunner) Run(ctx context.Context, dir string, input toolshell.Inp
 		runCtx, cancel = context.WithTimeout(ctx, input.Timeout)
 		defer cancel()
 	}
-	confined := seatbeltCommand(realDir, input.Cmd, s.readOnlyPaths, s.hiddenPaths)
+	var confined Command
+	if s.restrictReads {
+		confined = restrictedCommand(realDir, input.Cmd, s.readOnlyPaths)
+	} else {
+		confined = seatbeltCommand(realDir, input.Cmd, s.readOnlyPaths, s.hiddenPaths)
+	}
 	cmd := exec.CommandContext(runCtx, confined.Name, confined.Args...)
 	cmd.Dir = realDir
 	cmd.Env = confined.Env

@@ -31,6 +31,13 @@ including in tests and development commands.
 | `timezone`                                                                             | The host's IANA time zone for values recorded on a person's behalf                   |
 | `capture`, `exactint`, `httpresponse`, `httporigin`, `instant`, `procgroup`, `sandbox` | Focused technical guarantees used across owners                                      |
 
+A macOS sandbox workspace with `RestrictReads` confines repository commands to
+their scratch copy, system tools, and explicitly named read-only toolchain paths.
+It uses a fixed system PATH, denies network access and writes outside scratch, and
+launches with a fresh environment. The regular workspace policy continues to
+take its configured hidden home. Workspace creation fails when the platform has
+no sandbox backend.
+
 `protocol.DecodeRequest` returns the admitted JSON members together with any
 error. Use those members to check whether a field was sent. `protocol.InspectWire`
 offers the same checks for a Go request using its encoded JSON representation.
