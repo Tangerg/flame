@@ -135,9 +135,10 @@ export function ToolControls({
                       <div style={choice}>
                         <span>{t("mcp.tools.autoApprove")}</span>
                         <Switch
-                          checked={settings
-                            .allowRules(server, tool.name)
-                            .some((rule) => !rule.stale)}
+                          checked={
+                            settings.autoApproveRule(server, tool.name)
+                              ?.stale === false
+                          }
                           disabled={busy || rules.phase !== "ready"}
                           onCheckedChange={(on) =>
                             void settings.setAutoApprove(

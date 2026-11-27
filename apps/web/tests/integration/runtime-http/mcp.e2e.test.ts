@@ -1,8 +1,10 @@
 import { parseMcpImport } from "../../../../../plugins/mcp/component/import";
-import { candidate as mcpCandidate } from "../../../../../plugins/mcp/component/model";
+import { candidate as mcpCandidate, serverKey } from "../../../../../plugins/mcp/component/model";
+import { MCPSettings } from "../../../../../plugins/mcp/component/settings";
 import { createServer as createHttpServer } from "node:http";
 import { describe, expect, it } from "vitest";
 import { RpcError, asSessionId } from "@flame/runtime-client";
+import { HTTP_HEADERS } from "@flame/runtime-client/wire";
 import { liveMCPToolName } from "./fakeProvider";
 import {
   collectRunEvents,
@@ -10,6 +12,7 @@ import {
   originalOpeningEvents,
   waitForUserMCPConnection,
   watchRuntimeTopic,
+  within,
 } from "./observation";
 import { useRuntimeFixture } from "./fixture";
 
@@ -303,5 +306,65 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: MCP", () => {
       servers: expect.arrayContaining([serverId]),
     });
     await expect(fixture.client.mcp.listTools(serverId)).resolves.toMatchObject({ data: [] });
+  }, 30_000);
+
+  it("keeps the current tool visibility when an older acknowledgement arrives", async () => {
+    const server = { origin: { type: "user" as const }, name: "http-e2e-mcp-settings" };
+    await fixture.client.mcp.create({
+      name: server.name,
+      connection: { type: "stdio", command: process.execPath, args: [fixture.mcpFixturePath] },
+      enabled: true,
+      handshakeTimeout: { type: "unbounded" },
+    });
+    await fixture.awaitMCPTools(server, (tools) => tools.some((tool) => tool.name === "ping"));
+
+    const committed = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const client = fixture.createRuntimeClient(async (input, init) => {
+      const response = await fetch(input, init);
+      if (new Headers(init?.headers).get(HTTP_HEADERS.method) === "mcp.tools.setExposure") {
+        committed.resolve();
+        await release.promise;
+      }
+      return response;
+    });
+    const lifetime = new AbortController();
+    const context = {
+      runtime: client,
+      component: { installationId: "mcp", digest: "settings-test", componentId: "mcp" },
+      signal: lifetime.signal,
+      track<P extends Promise<unknown>>(operation: (signal: AbortSignal) => P): P {
+        lifetime.signal.throwIfAborted();
+        return operation(lifetime.signal);
+      },
+    };
+    const settings = new MCPSettings({ ...context, runtimeIdentity: client });
+    const visibility = () => settings.getSnapshot().exposure.get(serverKey(server));
+    const hiding = settings.setExposure(context, server, "ping", true);
+    const observed: string[][] = [];
+    const stopObserving = settings.subscribe(() => {
+      const view = visibility();
+      if (view?.phase === "ready") observed.push(view.data);
+    });
+    try {
+      await within(committed.promise, "tool visibility acknowledgement");
+      await expect(fixture.client.mcp.toolExposure(server)).resolves.toMatchObject({
+        disabledTools: ["ping"],
+      });
+      await fixture.client.mcp.setToolExposure({ server, name: "ping", disabled: false });
+      settings.readTools(context, server);
+      await expect.poll(visibility).toEqual({ phase: "ready", data: [] });
+
+      release.resolve();
+      await expect(hiding).resolves.toBe(true);
+      expect(observed).not.toContainEqual(["ping"]);
+    } finally {
+      release.resolve();
+      await hiding;
+      stopObserving();
+      lifetime.abort();
+      await client.close();
+      await fixture.client.mcp.delete(server);
+    }
   }, 30_000);
 });
