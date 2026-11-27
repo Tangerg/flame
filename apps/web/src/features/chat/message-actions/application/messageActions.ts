@@ -7,11 +7,7 @@ import { agentInputToComposerDraft } from "@/features/chat/message-actions/appli
 import { describeRpcError } from "@/lib/rpcErrors";
 
 import { type RestoreType } from "@/features/agent/public/session";
-import {
-  beginComposerDraftReplacement,
-  replaceComposerDraft,
-  type RequestDraftReplacementConfirmation,
-} from "@/features/composer/public/draft";
+import { type RequestDraftReplacementConfirmation } from "@/features/composer/public/draft";
 import {
   messageDraftContent,
   messageHasDraftContent,
@@ -63,7 +59,7 @@ export function editMessageInComposer(
   requestConfirmation: RequestDraftReplacementConfirmation,
 ): void {
   if (!messageHasDraftContent(msg)) return;
-  replaceComposerDraft(composerAccess, messageDraftContent(msg), requestConfirmation);
+  composerAccess.replaceDraft(messageDraftContent(msg), requestConfirmation);
 }
 
 export type HistoryEditScope = Exclude<RestoreType, "files">;
@@ -82,10 +78,9 @@ export function editAndRerunMessage(
   }
   const { sessionId } = conversation;
   const { runId } = msg;
-  beginComposerDraftReplacement(
-    composerAccess,
+  composerAccess.beginDraftRecovery(
     (apply) => requestConfirmation(restoreType, apply),
-    (replaceDraft) => {
+    (recoverDraft) => {
       const active = agentAccess.activeAgentConversation();
       if (active?.sessionId !== sessionId || !canRollbackMessage(msg, active.messages))
         return false;
@@ -93,10 +88,11 @@ export function editAndRerunMessage(
         .rollbackSessionToBeforeRun(sessionId, runId, restoreType)
         .then((rollback) => {
           if (rollback.status !== "committed") return;
-          const draft = rollback.userInput
-            ? agentInputToComposerDraft(rollback.userInput)
-            : messageDraftContent(msg);
-          if (!replaceDraft(draft)) {
+          if (!rollback.userInput) {
+            notifications.notify("info", t("session.regenerate.noInput"), { source: "session" });
+            return;
+          }
+          if (!recoverDraft(agentInputToComposerDraft(rollback.userInput))) {
             notifications.notify("info", t("session.editRerun.draftRetained"), {
               source: "session",
             });

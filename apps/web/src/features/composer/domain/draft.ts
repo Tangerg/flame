@@ -38,8 +38,10 @@ export interface PastedText {
   readonly lines: number;
 }
 
+const PARAGRAPH_BREAK = "\n\n";
+
 export function joinDraftParts(parts: readonly string[]): string {
-  return parts.filter(Boolean).join("\n\n");
+  return parts.filter(Boolean).join(PARAGRAPH_BREAK);
 }
 
 // Quoting keeps a path with whitespace inside one prompt token.
@@ -109,7 +111,17 @@ export class DraftContent {
   append(text: string): DraftContent {
     if (!text) return this;
     const base = this.trimEnd();
-    return base.isEmpty ? DraftContent.fromText(text) : base.concat(`\n\n${text}`);
+    return base.isEmpty ? DraftContent.fromText(text) : base.concat(PARAGRAPH_BREAK + text);
+  }
+
+  prepend(before: DraftContent): DraftContent {
+    if (before.isEmpty) return this;
+    if (this.isEmpty) return before;
+    return DraftContent.of([
+      ...before.segments,
+      { kind: "text", text: PARAGRAPH_BREAK },
+      ...this.segments,
+    ]);
   }
 
   startFileReference(): DraftContent {

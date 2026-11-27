@@ -1,9 +1,12 @@
 import { lstat } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
-import { asRunId, asSessionId } from "@flame/runtime-client";
+import { asRunId, asSessionId, type FlameClient } from "@flame/runtime-client";
 import { HTTP_HEADERS } from "@flame/runtime-client/wire";
 import { composeAgent } from "@/features/agent/adapters/agent";
+import { editAndRerunMessage } from "@/features/chat/message-actions/public/messageActions";
+import { createComposer } from "@/features/composer/adapters/composerStatePorts";
+import { DraftContent } from "@/features/composer/domain/draft";
 import { createRuntimeConnectionProjection } from "@/features/connection/adapters/runtimeConnectionProjection";
 import { createRuntimeEndpoint } from "@/features/connection/application/runtimeEndpoint";
 import { NotificationFeed } from "@/features/notifications/public/notifications";
@@ -31,6 +34,42 @@ import { useRuntimeFixture } from "./fixture";
 
 const compactionCutpointDeadlineMilliseconds = 15_000;
 
+function openWebSession(client: FlameClient, endpoint: string, sessionId: string) {
+  const connection = createRuntimeConnectionProjection();
+  const target = () => ({ endpoint });
+  const runtime = {
+    capabilities: connection.capabilities,
+    status: connection.status,
+    endpoint: createRuntimeEndpoint({
+      read: target,
+      defaultTarget: target,
+      replace: () => false,
+      reset: () => false,
+    }),
+  };
+  const notifications = new NotificationFeed(() => {});
+  const agent = composeAgent(
+    () => client,
+    createMemoryNavigator({ session: sessionId }),
+    runtime,
+    connection.stream,
+    connection.scope,
+    notifications,
+  );
+  agent.sessions.store.getState().holdOpen(sessionId);
+  agent.projection.store.getState().ensureSession(sessionId);
+  return {
+    agent,
+    connection,
+    notifications,
+    dispose() {
+      agent.dispose();
+      notifications.dispose();
+      connection.dispose();
+    },
+  };
+}
+
 describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", () => {
   const fixture = useRuntimeFixture("recovery");
 
@@ -56,29 +95,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
       if (method === "sessions.rollback") committed = true;
       return response;
     });
-    const connection = createRuntimeConnectionProjection();
-    const target = () => ({ endpoint: fixture.baseUrl });
-    const runtime = {
-      capabilities: connection.capabilities,
-      status: connection.status,
-      endpoint: createRuntimeEndpoint({
-        read: target,
-        defaultTarget: target,
-        replace: () => false,
-        reset: () => false,
-      }),
-    };
-    const notifications = new NotificationFeed(() => {});
-    const agent = composeAgent(
-      () => client,
-      createMemoryNavigator({ session: sessionId }),
-      runtime,
-      connection.stream,
-      connection.scope,
-      notifications,
-    );
-    agent.sessions.store.getState().holdOpen(sessionId);
-    agent.projection.store.getState().ensureSession(sessionId);
+    const { agent, notifications, dispose } = openWebSession(client, fixture.baseUrl, sessionId);
     try {
       await expect(
         agent.access.rollbackSessionToBeforeRun(sessionId, run.result.runId),
@@ -89,9 +106,87 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
         .poll(() => notifications.snapshot().some(({ level }) => level === "error"))
         .toBe(true);
     } finally {
-      agent.dispose();
-      notifications.dispose();
-      connection.dispose();
+      dispose();
+      await client.close();
+      await fixture.client.sessions.delete(sessionId);
+    }
+  }, 30_000);
+
+  it("recovers the original message and references beside edits made during rollback", async () => {
+    const session = await fixture.client.sessions.create({ workspace: { path: fixture.root } });
+    const sessionId = asSessionId(session.id);
+    const input = "The original input is available in the rollback receipt.";
+    const originalReference = { label: "notes.md:1", text: "Reference from the original input" };
+    const run = await fixture.client.runs.start({
+      sessionId,
+      input: [
+        { type: "text", text: input },
+        { type: "reference", ...originalReference },
+      ],
+    });
+    await collectRunEvents(originalOpeningEvents(run));
+
+    const committed = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const client = fixture.createRuntimeClient(async (url, init) => {
+      const response = await fetch(url, init);
+      if (new Headers(init?.headers).get(HTTP_HEADERS.method) === "sessions.rollback") {
+        committed.resolve();
+        await release.promise;
+      }
+      return response;
+    });
+    const { agent, connection, notifications, dispose } = openWebSession(
+      client,
+      fixture.baseUrl,
+      sessionId,
+    );
+    const access = agent.access;
+    const composer = createComposer(
+      {
+        getActiveSessionId: access.getActiveSessionId,
+        getLifecycleSnapshot: access.getAgentSessionLifecycleSnapshot,
+        subscribeActiveSessionId: access.subscribeActiveSessionId,
+        subscribeLifecycle: access.subscribeAgentSessionLifecycle,
+        subscribeDeleted: access.subscribeDeletedAgentSession,
+      },
+      () => fixture.baseUrl,
+      connection.scope,
+      connection.stream,
+    );
+    composer.store.getState().loadSession(sessionId);
+    try {
+      await access.rehydrateSessionView(sessionId);
+      const opening = access.activeAgentConversation()?.messages.find(
+        (message) => message.role === "user" && message.runId === run.result.runId,
+      );
+      if (!opening) throw new Error("the Web projection omitted the original message");
+      editAndRerunMessage(notifications, access, composer.access, opening, "history", (_type, apply) =>
+        apply(),
+      );
+      await within(committed.promise, "rollback acknowledgement before draft recovery");
+
+      const laterText = "A new note written while the original command was pending.";
+      const laterReference = { label: "notes.md:2", text: "Reference added after dispatch" };
+      composer.access.checkpoint(DraftContent.fromText(laterText));
+      expect(composer.access.captureAddReference()(laterReference)).toBe(true);
+      const scratch = "Draft in the newly selected conversation.";
+      access.selectAgentSession("");
+      composer.store.getState().loadSession("");
+      composer.access.checkpoint(DraftContent.fromText(scratch));
+      release.resolve();
+
+      const originalDraft = () => composer.store.getState().composer.activate(sessionId).draft;
+      await expect.poll(originalDraft).toMatchObject({
+        value: `${input}\n\n${laterText}`,
+        references: [originalReference, laterReference],
+      });
+      expect(composer.access.captureSubmission().value).toBe(scratch);
+      await expect(fixture.client.sessions.snapshot(sessionId)).resolves.toMatchObject({ runs: [] });
+    } finally {
+      release.resolve();
+      composer.dispose();
+      dispose();
       await client.close();
       await fixture.client.sessions.delete(sessionId);
     }

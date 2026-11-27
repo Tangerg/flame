@@ -9,7 +9,6 @@ import {
   type ImageReadResult,
 } from "@/features/composer/domain/draft";
 import {
-  type ComposerDraftReplacement,
   type ComposerModelPreference,
   type ComposerPersistenceState,
   type ComposerSubmission,
@@ -23,6 +22,13 @@ interface ComposerState {
   modelPreference: ComposerModelPreference;
   persistenceState: ComposerPersistenceState;
 }
+
+export interface DraftCapture {
+  current(): boolean;
+  replace(input: ComposerDraftInput): boolean;
+  recover(input: ComposerDraftInput): "active" | "stored" | "retired";
+}
+
 interface ComposerActions {
   checkpoint(content: DraftContent): void;
   addReference(reference: ComposerReference): void;
@@ -33,7 +39,7 @@ interface ComposerActions {
   clear(): void;
   captureSubmission(): ComposerSubmission;
   replaceDraft(input: ComposerDraftInput): void;
-  captureDraftReplacement(): { current(): boolean; replace: ComposerDraftReplacement };
+  captureDraft(): DraftCapture;
   addImages(images: readonly Omit<ComposerImage, "id">[]): void;
   addImageFiles(files: File[]): void;
   removeImage(id: string): void;
@@ -69,6 +75,17 @@ interface ImageRead {
 interface DraftAuthoring {
   sessionId: string;
   text: "compared" | "replaced";
+}
+
+function authoredDraft(input: ComposerDraftInput): ComposerDraft {
+  const images = (input.images ?? []).map((image) => ({ ...image, id: crypto.randomUUID() }));
+  const references = (input.references ?? []).map((reference) => ({
+    ...reference,
+    id: crypto.randomUUID(),
+  }));
+  return ComposerDraft.restore(DraftContent.fromText(input.text))
+    .withImages(images)
+    .withReferences(references);
 }
 
 export function createComposerStore() {
@@ -300,23 +317,10 @@ export function createComposerStore() {
       },
       replaceDraft: (input) => {
         cancelReads(current, current.state.composer.activeSessionId);
-        const images = (input.images ?? []).map((image) => ({
-          ...image,
-          id: crypto.randomUUID(),
-        }));
-        const references = (input.references ?? []).map((reference) => ({
-          ...reference,
-          id: crypto.randomUUID(),
-        }));
-        edit(
-          () =>
-            ComposerDraft.restore(DraftContent.fromText(input.text))
-              .withImages(images)
-              .withReferences(references),
-          "replaced",
-        );
+        edit(() => authoredDraft(input), "replaced");
       },
-      captureDraftReplacement: () => {
+      captureDraft: () => {
+        const target = current;
         const generation = storageGeneration;
         const { activeSessionId: sessionId, draft } = get().composer;
         const isCurrent = () => {
@@ -333,6 +337,18 @@ export function createComposerStore() {
             if (!isCurrent()) return false;
             get().replaceDraft(input);
             return true;
+          },
+          recover(input) {
+            if (generation !== storageGeneration) return "retired";
+            const recovery = target.state.composer.recoverDraft(
+              sessionId,
+              draft,
+              authoredDraft(input),
+            );
+            if (!recovery) return "retired";
+            publish({ composer: recovery.composer }, { sessionId, text: "replaced" });
+            if (recovery.replaced) cancelReads(target, sessionId);
+            return target.state.composer.activeSessionId === sessionId ? "active" : "stored";
           },
         };
       },

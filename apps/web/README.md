@@ -31,6 +31,11 @@ disable scripts and external resource loading.
 Native save failures preserve both transfer and cleanup diagnostics in
 the visible error; an unconfirmed cleanup is never reported as cancellation.
 
+Edit and rerun takes the original input from the committed rollback receipt.
+The composer recovers it into the captured Session and preserves text and
+attachments authored while the rollback was pending. Session reads update the
+conversation independently after the command settles.
+
 From the repository root:
 
 ```sh

@@ -89,6 +89,15 @@ export class ComposerDraft {
       : new ComposerDraft(content, this.imageAttachments, this.pastes, this.references);
   }
 
+  prependRecoveredInput(original: ComposerDraft): ComposerDraft {
+    return new ComposerDraft(
+      this.content.prepend(original.content),
+      [...original.imageAttachments, ...this.imageAttachments],
+      [...original.pastes, ...this.pastes],
+      [...original.references, ...this.references],
+    );
+  }
+
   hydrateText(draft: ComposerDraft): ComposerDraft {
     return new ComposerDraft(draft.content, this.imageAttachments, draft.pastes, draft.references);
   }
@@ -207,7 +216,12 @@ export class Composer {
   ) {}
 
   static empty(): Composer {
-    return new Composer(new Map(), new Map(), SCRATCH_SESSION_ID, NOT_RECALLING);
+    return new Composer(
+      new Map([[SCRATCH_SESSION_ID, ComposerDraft.empty()]]),
+      new Map(),
+      SCRATCH_SESSION_ID,
+      NOT_RECALLING,
+    );
   }
 
   static restoreDrafts(texts: ReadonlyMap<string, ComposerDraftText>): Composer {
@@ -297,8 +311,21 @@ export class Composer {
   }
 
   activate(sessionId: string): Composer {
-    if (sessionId === this.activeSessionId) return this;
-    return new Composer(this.drafts, this.rings, sessionId, NOT_RECALLING);
+    const admitted = this.drafts.has(sessionId);
+    if (admitted && sessionId === this.activeSessionId) return this;
+    const drafts = admitted
+      ? this.drafts
+      : new Map(this.drafts).set(sessionId, ComposerDraft.empty());
+    return new Composer(drafts, this.rings, sessionId, NOT_RECALLING);
+  }
+
+  recoverDraft(sessionId: string, captured: ComposerDraft, recovered: ComposerDraft) {
+    const current = this.drafts.get(sessionId);
+    if (!current) return null;
+    const replaced = current === captured;
+    const draft = replaced ? recovered : current.prependRecoveredInput(recovered);
+    const recall = sessionId === this.activeSessionId ? NOT_RECALLING : this.recall;
+    return { composer: this.replaceDraft(draft, recall, sessionId), replaced };
   }
 
   discardSession(sessionId: string): Composer {
@@ -367,9 +394,13 @@ export class Composer {
     return new Composer(this.drafts, this.rings, this.activeSessionId, recall);
   }
 
-  private replaceDraft(draft: ComposerDraft, recall: Recall): Composer {
+  private replaceDraft(
+    draft: ComposerDraft,
+    recall: Recall,
+    sessionId = this.activeSessionId,
+  ): Composer {
     return new Composer(
-      new Map(this.drafts).set(this.activeSessionId, draft),
+      new Map(this.drafts).set(sessionId, draft),
       this.rings,
       this.activeSessionId,
       recall,
