@@ -49,26 +49,22 @@ type AuthoredObservation interface {
 	ReconcileSkillPublication(paths []string) error
 }
 
-type identityInspector interface {
-	Inspect(path string) (Resolved, error)
-}
-
 type AuthoredWatch struct {
 	scope         *Scope
-	workspaces    identityInspector
+	directories   directoryInspector
 	watcher       AuthoredResourceWatcher
 	invalidations invalidation.Publish
 	mu            sync.Mutex
 	skillWatchers map[*managedAuthoredObservation]struct{}
 }
 
-func NewAuthoredWatch(scope *Scope, workspaces identityInspector, watcher AuthoredResourceWatcher, invalidations invalidation.Publish) (*AuthoredWatch, error) {
+func NewAuthoredWatch(scope *Scope, directories directoryInspector, watcher AuthoredResourceWatcher, invalidations invalidation.Publish) (*AuthoredWatch, error) {
 	for _, required := range []struct {
 		name  string
 		value any
 	}{
 		{name: "scope", value: scope},
-		{name: "workspace inspector", value: workspaces},
+		{name: "workspace inspector", value: directories},
 		{name: "resource watcher", value: watcher},
 		{name: "invalidations", value: invalidations},
 	} {
@@ -77,7 +73,7 @@ func NewAuthoredWatch(scope *Scope, workspaces identityInspector, watcher Author
 		}
 	}
 	return &AuthoredWatch{
-		scope: scope, workspaces: workspaces, watcher: watcher, invalidations: invalidations,
+		scope: scope, directories: directories, watcher: watcher, invalidations: invalidations,
 		skillWatchers: make(map[*managedAuthoredObservation]struct{}),
 	}, nil
 }
@@ -106,19 +102,19 @@ func (a *AuthoredWatch) Watch(
 		if err != nil {
 			return nil, err
 		}
-		resolved, err := a.workspaces.Inspect(root)
+		inspection, err := a.directories.Inspect(root)
 		if err != nil {
 			return nil, err
 		}
-		if resolved.Missing || resolved.RepositoryRoot == "" {
+		if inspection.Missing || inspection.RepositoryRoot == "" {
 			return nil, ErrCWDUnavailable
 		}
-		identity := authoredScopeKey{workspace: root, repositoryRoot: resolved.RepositoryRoot}
+		identity := authoredScopeKey{workspace: root, repositoryRoot: inspection.RepositoryRoot}
 		if _, duplicate := seen[identity]; duplicate {
 			continue
 		}
 		seen[identity] = struct{}{}
-		scopes = append(scopes, AuthoredScope{Workspace: root, RepositoryRoot: resolved.RepositoryRoot})
+		scopes = append(scopes, AuthoredScope{Workspace: root, RepositoryRoot: inspection.RepositoryRoot})
 	}
 	inner, err := a.watcher.Watch(scopes, resources, notify, report)
 	if err != nil {

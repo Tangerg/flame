@@ -8,7 +8,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
-	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
 var (
@@ -60,20 +59,16 @@ type worktreeMutationGate interface {
 	AcquireWorkingTreeRemoval(string) (func(), bool, error)
 }
 
-type worktreeSessions interface {
-	List(context.Context) ([]session.Session, error)
-}
-
 type TaskWorktrees struct {
 	scope         *Scope
 	backend       taskWorktreeBackend
 	gate          worktreeMutationGate
-	session       worktreeSessions
+	sessions      sessionLister
 	invalidations invalidation.Publish
 }
 
-func NewTaskWorktrees(scope *Scope, backend taskWorktreeBackend, gate worktreeMutationGate, sessions worktreeSessions, invalidations invalidation.Publish) *TaskWorktrees {
-	return &TaskWorktrees{scope: scope, backend: backend, gate: gate, session: sessions, invalidations: invalidations}
+func NewTaskWorktrees(scope *Scope, backend taskWorktreeBackend, gate worktreeMutationGate, sessions sessionLister, invalidations invalidation.Publish) *TaskWorktrees {
+	return &TaskWorktrees{scope: scope, backend: backend, gate: gate, sessions: sessions, invalidations: invalidations}
 }
 
 func (w *TaskWorktrees) Create(ctx context.Context, source, base, setup string, complete operation.Reply[TaskWorktree]) error {
@@ -143,7 +138,7 @@ func (w *TaskWorktrees) Release(ctx context.Context, id string, complete operati
 		return ErrTaskWorktreeBusy
 	}
 	defer release()
-	sessions, err := w.session.List(ctx)
+	sessions, err := w.sessions.List(ctx)
 	if err != nil {
 		return err
 	}

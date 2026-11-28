@@ -2,8 +2,8 @@ github.com/Tangerg/flame/packages/go-sdk v0.1.94-dev.20261128.tf317a24c5794 h1:4
 github.com/Tangerg/flame/packages/go-sdk v0.1.94-dev.20261128.tf317a24c5794/go.mod h1:ac/7XqIV7/hoHSUsgCZ6a87CEGwHhIMJ15JRwqDK7cw=
 github.com/Tangerg/flame/packages/local-runtime v0.1.14-dev.20261123.tca9fa5e1c260 h1:cZf86C76xIr0cwocGSAcmpWpKxN04f33xvwIjdqEmPw=
 github.com/Tangerg/flame/packages/local-runtime v0.1.14-dev.20261123.tca9fa5e1c260/go.mod h1:k7GImwPntRgT/FNYEO+2Bx351W/ULxJUH2cU0y3zKRg=
-github.com/Tangerg/flame/runtime v0.1.203-dev.20261128.t0b6d3ea2d4f0 h1:MXgGU8GRO0iZNLEa5oFoSpCZcdfZf/7Nks/7l3wi+yA=
-github.com/Tangerg/flame/runtime v0.1.203-dev.20261128.t0b6d3ea2d4f0/go.mod h1:1U7pOpY7wR0/0r9N/assLJ8koRmqQlm7lXStZMoBTg0=
+github.com/Tangerg/flame/runtime v0.1.204-dev.20261128.t2e8d4aa8f571 h1:tAv3nQOVloUd77UTFm78sEsRxpbQ4QKdlahq6lZ00rE=
+github.com/Tangerg/flame/runtime v0.1.204-dev.20261128.t2e8d4aa8f571/go.mod h1:1U7pOpY7wR0/0r9N/assLJ8koRmqQlm7lXStZMoBTg0=
 github.com/Tangerg/frame v0.5.0 h1:x3uYmasJFadXT8q04awNt1Vd5Mfxq0jH91UyzYkul4w=
 github.com/Tangerg/frame v0.5.0/go.mod h1:4DlxVue90iin6SHiaHrMGiako9t9mNrHG7Ed3+YdMdg=
 github.com/Tangerg/go-sdk v1.9.0-scope.1 h1:2cV13pDEdGqNGfunLoeFxHw9Fb2IFk5x9d4EwxSmVjs=

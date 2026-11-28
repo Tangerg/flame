@@ -146,7 +146,7 @@ func buildAssemblyCore(
 	taskWorktrees := workspace.NewTaskWorktrees(
 		workspaceServices.scope,
 		workspaceadapter.NewTaskWorktrees(filepath.Join(cfg.stores.DataDirectory, "task-worktrees"), cfg.sandboxReadOnlyPaths),
-		admissionGate, sessionCoordinator, policy.invalidations.publish,
+		admissionGate, cfg.stores.Sessions, policy.invalidations.publish,
 	)
 	recoverUncertain := startupRunRecovery(cfg.stores, pluginCoordinator, runCoordinator, recoveryPersistence, execution.executor, ownershipRecovery)
 	host := &Instance{

@@ -76,29 +76,34 @@ func (r Resolver) ResolveExistingInRoot(root, path string) (string, error) {
 	return rel, nil
 }
 
-func (r Resolver) Inspect(path string) (workspaceapp.Resolved, error) {
+func (r Resolver) Inspect(path string) (workspaceapp.DirectoryInspection, error) {
+	info, err := r.Resolve(path)
+	return info.DirectoryInspection, err
+}
+
+func (r Resolver) Resolve(path string) (workspaceapp.Info, error) {
 	cwd, err := r.CanonicalPath(path)
 	if err != nil {
-		return workspaceapp.Resolved{}, err
+		return workspaceapp.Info{}, err
 	}
-	identity := workspaceapp.Resolved{Path: cwd, RepositoryRoot: cwd}
+	workspace := workspaceapp.Info{Path: cwd, DirectoryInspection: workspaceapp.DirectoryInspection{RepositoryRoot: cwd}}
 	info, err := os.Stat(cwd)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			identity.Missing = true
-			return identity, nil
+			workspace.Missing = true
+			return workspace, nil
 		}
-		return workspaceapp.Resolved{}, unavailableWorkspace(path, err)
+		return workspaceapp.Info{}, unavailableWorkspace(path, err)
 	}
 	if !info.IsDir() {
-		identity.Missing = true
-		return identity, nil
+		workspace.Missing = true
+		return workspace, nil
 	}
 
 	root, err := repository.Root(cwd)
 	if err != nil {
-		return workspaceapp.Resolved{}, err
+		return workspaceapp.Info{}, err
 	}
-	identity.RepositoryRoot = root
-	return identity, nil
+	workspace.RepositoryRoot = root
+	return workspace, nil
 }

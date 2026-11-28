@@ -20,6 +20,20 @@ var (
 	ErrInvalidFileReadLimit = errors.New("workspace: invalid file read byte limit")
 )
 
+type DirectoryInspection struct {
+	RepositoryRoot string
+	Missing        bool
+}
+
+type Info struct {
+	Path string
+	DirectoryInspection
+}
+
+type directoryInspector interface {
+	Inspect(path string) (DirectoryInspection, error)
+}
+
 type paths interface {
 	ResolveExistingDir(path string) (string, error)
 	ResolveInRoot(root, path string) (string, error)

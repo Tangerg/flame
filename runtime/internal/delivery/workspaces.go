@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 )
 
 func (s *Handler) ResolveWorkspace(_ context.Context, in protocol.ResolveWorkspaceRequest) (*protocol.WorkspaceInfo, error) {
@@ -15,7 +16,7 @@ func (s *Handler) ResolveWorkspace(_ context.Context, in protocol.ResolveWorkspa
 	if err != nil {
 		return nil, wireWorkspaceError(err)
 	}
-	out := presentWorkspaceInfo(resolved.Path, resolved.RepositoryRoot, resolved.Missing)
+	out := presentWorkspaceInfo(resolved)
 	return &out, nil
 }
 
@@ -25,22 +26,22 @@ func (s *Handler) ListWorkspaces(ctx context.Context) (*protocol.Page[protocol.W
 		return nil, wireWorkspaceError(err)
 	}
 	out := make([]protocol.WorkspaceSummary, 0, len(workspaces))
-	for _, workspace := range workspaces {
-		lastActiveAt := workspace.LastActiveAt
+	for _, summary := range workspaces {
+		lastActiveAt := summary.LastActiveAt
 		out = append(out, protocol.WorkspaceSummary{
-			Workspace: presentWorkspaceInfo(workspace.Path, workspace.RepositoryRoot, workspace.Missing),
-			Name:      workspace.Name, SessionCount: workspace.SessionCount, LastActiveAt: &lastActiveAt,
+			Workspace: presentWorkspaceInfo(summary.Workspace),
+			Name:      summary.Name, SessionCount: summary.SessionCount, LastActiveAt: &lastActiveAt,
 		})
 	}
 	return protocol.NewPage(out), nil
 }
 
-func presentWorkspaceInfo(path, repositoryRoot string, missing bool) protocol.WorkspaceInfo {
+func presentWorkspaceInfo(workspace workspaceapp.Info) protocol.WorkspaceInfo {
 	availability := protocol.WorkspaceAvailable
-	if missing {
+	if workspace.Missing {
 		availability = protocol.WorkspaceMissing
 	}
 	return protocol.WorkspaceInfo{
-		Ref: protocol.WorkspaceRef{Path: path}, RepositoryRoot: repositoryRoot, Availability: availability,
+		Ref: protocol.WorkspaceRef{Path: workspace.Path}, RepositoryRoot: workspace.RepositoryRoot, Availability: availability,
 	}
 }

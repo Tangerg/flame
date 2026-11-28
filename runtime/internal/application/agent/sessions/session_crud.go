@@ -16,7 +16,7 @@ import (
 
 type workspaceResolver interface {
 	ResolveExistingDir(path string) (string, error)
-	Inspect(path string) (workspaceapp.Resolved, error)
+	Inspect(path string) (workspaceapp.DirectoryInspection, error)
 }
 
 type Patch struct {
@@ -63,16 +63,8 @@ func (p Patch) clone() Patch {
 	return p
 }
 
-func (c *Coordinator) List(ctx context.Context) ([]session.Session, error) {
-	return c.sessions.List(ctx)
-}
-
 func (c *Coordinator) Get(ctx context.Context, id identity.SessionID) (session.Session, error) {
 	return c.sessions.Get(ctx, id)
-}
-
-func (c *Coordinator) InspectWorkspace(cwd string) (workspaceapp.Resolved, error) {
-	return c.paths.Inspect(cwd)
 }
 
 func (c *Coordinator) Create(ctx context.Context, title, cwd string, project identity.ProjectID, complete operation.Reply[View]) error {

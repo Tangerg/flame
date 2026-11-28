@@ -75,6 +75,10 @@ Read-only Git status, diff and file listing compare the workspace against an iso
 
 Workspace filename suggestions use the optional `nameQuery` of `workspace.files.list`. The Runtime ranks the complete admitted file set before paging. Exact paths precede basename and path subsequences. The glob matcher compiles each bounded pattern once per listing.
 
+Session reads, workspace catalog grouping and Session filters use the stored
+workspace reference. Filesystem inspection refreshes its availability and
+repository root. Resolving a new workspace selection canonicalizes its path.
+
 Task worktrees live under the Runtime data directory. Create one from a local Git
 branch or a commit, then open an ordinary Session with the resulting workspace.
 An optional setup command runs in place with the restricted macOS sandbox and

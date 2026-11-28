@@ -42,7 +42,7 @@ func assembleReadServices(
 		return readServices{}, fmt.Errorf("runtime: build workspace vcs: %w", err)
 	}
 	workspaceDiscovery, err := workspace.NewDiscovery(
-		workspaceServices.scope, sessionCoordinator, promptsource.AgentDocs{},
+		workspaceServices.scope, cfg.stores.Sessions, workspaceadapter.Resolver{}, promptsource.AgentDocs{},
 	)
 	if err != nil {
 		return readServices{}, fmt.Errorf("runtime: build workspace discovery: %w", err)

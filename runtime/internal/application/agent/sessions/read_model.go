@@ -9,6 +9,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
+	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
@@ -21,16 +22,10 @@ const (
 	activityIdle    Activity = "idle"
 )
 
-type WorkspaceView struct {
-	Path           string
-	RepositoryRoot string
-	Missing        bool
-}
-
 type View struct {
 	ID              identity.SessionID
 	Title           string
-	Workspace       WorkspaceView
+	Workspace       workspaceapp.Info
 	Project         identity.ProjectID
 	Provider        string
 	Model           string
@@ -203,17 +198,16 @@ func (c *Coordinator) views(ctx context.Context, values []session.Session) ([]Vi
 }
 
 func (c *Coordinator) view(value session.Session, activity Activity) (View, error) {
-	workspace, err := c.InspectWorkspace(value.Workspace().Path())
+	path := value.Workspace().Path()
+	inspection, err := c.paths.Inspect(path)
 	if err != nil {
-		return View{}, fmt.Errorf("sessions: inspect workspace %q: %w", value.Workspace().Path(), err)
+		return View{}, fmt.Errorf("sessions: inspect workspace %q: %w", path, err)
 	}
 	selection := value.Selection()
 	return View{
-		ID:    value.ID(),
-		Title: value.Title(),
-		Workspace: WorkspaceView{
-			Path: workspace.Path, RepositoryRoot: workspace.RepositoryRoot, Missing: workspace.Missing,
-		},
+		ID:              value.ID(),
+		Title:           value.Title(),
+		Workspace:       workspaceapp.Info{Path: path, DirectoryInspection: inspection},
 		Project:         value.Project(),
 		Provider:        selection.Provider(),
 		Model:           selection.Model(),

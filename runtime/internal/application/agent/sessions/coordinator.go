@@ -23,7 +23,6 @@ import (
 )
 
 type Store interface {
-	List(ctx context.Context) ([]session.Session, error)
 	ListPage(ctx context.Context, read session.CatalogRead) ([]session.Session, error)
 	Get(ctx context.Context, id identity.SessionID) (session.Session, error)
 	Insert(ctx context.Context, value session.Session) error
