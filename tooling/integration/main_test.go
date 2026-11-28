@@ -29,11 +29,12 @@ func TestMain(tests *testing.M) {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	buildRunner := exec.Command(filepath.Join(runtime.GOROOT(), "bin", "go"), "build", "-mod=readonly", "-trimpath", "-o", runner, "github.com/Tangerg/frame/cmd/frame-runner")
-	buildRunner.Dir = filepath.Join(repository, "tooling")
-	buildRunner.Env = append(os.Environ(), "GOWORK=off")
-	buildRunner.Stdout, buildRunner.Stderr = os.Stdout, os.Stderr
-	if err := buildRunner.Run(); err != nil {
+	buildCompanions := exec.Command(filepath.Join(runtime.GOROOT(), "bin", "go"), "build", "-mod=readonly", "-trimpath", "-o", filepath.Dir(executable),
+		"github.com/Tangerg/frame/cmd/frame-runner", "github.com/Tangerg/flame/runtime/cmd/flame-worktree-writer")
+	buildCompanions.Dir = filepath.Join(repository, "tooling")
+	buildCompanions.Env = append(os.Environ(), "GOWORK=off")
+	buildCompanions.Stdout, buildCompanions.Stderr = os.Stdout, os.Stderr
+	if err := buildCompanions.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
@@ -62,9 +63,11 @@ func TestMain(tests *testing.M) {
 		fmt.Fprintln(os.Stderr, err)
 		status = 1
 	}
-	if err := os.Remove(runner); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		status = 1
+	for _, path := range []string{runner, filepath.Join(filepath.Dir(executable), "flame-worktree-writer")} {
+		if err := os.Remove(path); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			status = 1
+		}
 	}
 	os.Exit(status)
 }

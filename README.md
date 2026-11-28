@@ -36,7 +36,7 @@ make check-native
 make check-author
 ```
 
-Use `make dev-web` or `make dev-desktop` for the same Web product. `make build-runtime`, `make build-cli` and `make package-desktop` create deliveries under `out/`. A Runtime-hosting distribution includes its sibling `frame-runner`, `plugins/` directory and pinned `runtimes/node/<os>-<arch>/` companion. Ship these together; managed plugins do not search for a system Node executable. Desktop attaches to a Runtime rather than hosting plugin processes. Browser output is `apps/web/dist`; native embed staging is generated in `apps/desktop/assets/web`.
+Use `make dev-web` or `make dev-desktop` for the same Web product. `make build-runtime`, `make build-cli` and `make package-desktop` create distributions under `out/`. Ship the Runtime executable beside `frame-runner`, `flame-worktree-writer`, the `plugins/` directory and the pinned Node companion at `runtimes/node/<os>-<arch>/`. Managed plugins use the bundled Node executable. Desktop attaches to the Runtime that hosts plugin processes. The Web build writes to `apps/web/dist` and native embed staging writes to `apps/desktop/assets/web`.
 
 The repository root owns `go.work` and has no `go.mod`. Go SDK, local-runtime, Runtime, CLI, Desktop, first-party plugins, tooling and the independent Reviews backend own their Go dependency graphs. Root npm workspaces use one lock and one install. See [workspace ownership](docs/architecture/workspace.md) for module boundaries.
 

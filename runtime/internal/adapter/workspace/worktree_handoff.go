@@ -10,6 +10,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	work "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
 	"github.com/Tangerg/flame/runtime/internal/infra/git/process"
@@ -108,20 +109,16 @@ func readHandoffHead(ctx context.Context, checkout string) (handoffHead, error) 
 	return handoffHead{}, fmt.Errorf("%w: the destination is missing from Git's worktree list", work.ErrTaskWorktreeChanged)
 }
 
-func (t *taskCheckout) PrepareHandoff(ctx context.Context, digest string) (func(context.Context) (work.WorktreeHandoff, error), error) {
+func (t *taskCheckout) PrepareHandoff(ctx context.Context, digest string) (work.WorktreeHandoff, operation.ExternalExecution, error) {
 	preview, err := t.PreviewHandoff(ctx)
 	if err != nil {
-		return nil, err
+		return work.WorktreeHandoff{}, nil, err
 	}
 	if preview.Digest != digest {
-		return nil, work.ErrTaskWorktreeChanged
+		return work.WorktreeHandoff{}, nil, work.ErrTaskWorktreeChanged
 	}
-	return func(write context.Context) (work.WorktreeHandoff, error) {
-		if err := applyWorktreePatch(write, t.record.Source, preview.Patch); err != nil {
-			return work.WorktreeHandoff{}, err
-		}
-		return preview, nil
-	}, nil
+	execute, err := t.writer.prepare(writeHandoff, handoffWrite{Destination: t.record.Source, Patch: preview.Patch})
+	return preview, execute, err
 }
 
 func applyWorktreePatch(ctx context.Context, checkout, patch string) error {

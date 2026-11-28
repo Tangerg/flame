@@ -24,11 +24,12 @@ func BuildRuntimeCompanions(ctx context.Context, executable, directory, runner s
 		return fmt.Errorf("locate first-party test sources")
 	}
 	repository := filepath.Clean(filepath.Join(filepath.Dir(file), "../../../.."))
-	build := exec.CommandContext(ctx, "go", "build", "-mod=readonly", "-o", runner, "github.com/Tangerg/frame/cmd/frame-runner")
+	build := exec.CommandContext(ctx, "go", "build", "-mod=readonly", "-o", filepath.Dir(runner),
+		"github.com/Tangerg/frame/cmd/frame-runner", "github.com/Tangerg/flame/runtime/cmd/flame-worktree-writer")
 	build.Dir = filepath.Join(repository, "apps", "cli")
 	build.Stdout, build.Stderr = os.Stdout, os.Stderr
 	if err := build.Run(); err != nil {
-		return fmt.Errorf("build actual runner companion: %w", err)
+		return fmt.Errorf("build native Runtime companions: %w", err)
 	}
 	node := exec.CommandContext(ctx, nodeExecutable, filepath.Join(repository, "tooling/node-companion.mjs"), "--os", runtime.GOOS, "--arch", runtime.GOARCH, "--output", filepath.Dir(executable), "--offline")
 	node.Stdout, node.Stderr = os.Stdout, os.Stderr
@@ -79,10 +80,11 @@ func RunWithRuntimeCompanions(tests *testing.M, directoryForExecutable, runnerFo
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
-	err = os.Remove(runner)
-	if err != nil && !os.IsNotExist(err) {
-		fmt.Fprintln(os.Stderr, err)
-		return 1
+	for _, path := range []string{runner, filepath.Join(filepath.Dir(runner), "flame-worktree-writer")} {
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
 	}
 	return status
 }

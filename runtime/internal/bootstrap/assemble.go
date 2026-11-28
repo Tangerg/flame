@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"path/filepath"
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
@@ -61,10 +60,11 @@ func assemble(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLifetime
 	if err != nil {
 		return nil, err
 	}
-	return buildAssemblyCore(cfg, lifetime, policy, workspaceServices, execution)
+	return buildAssemblyCore(ctx, cfg, lifetime, policy, workspaceServices, execution)
 }
 
 func buildAssemblyCore(
+	ctx context.Context,
 	cfg assemblyConfig,
 	lifetime *runtimeLifetime,
 	policy policyComposition,
@@ -143,7 +143,7 @@ func buildAssemblyCore(
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct Project coordinator: %w", err)
 	}
-	taskWorktreeBackend, err := workspaceadapter.NewTaskWorktrees(filepath.Join(cfg.stores.DataDirectory, "task-worktrees"), cfg.sandboxReadOnlyPaths)
+	taskWorktreeBackend, err := workspaceadapter.NewTaskWorktrees(ctx, cfg.stores.DataDirectory, cfg.sandboxReadOnlyPaths)
 	if err != nil {
 		return nil, fmt.Errorf("runtime: prepare task worktree storage: %w", err)
 	}

@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	work "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
 )
@@ -121,11 +122,12 @@ func (t *taskCheckout) checkoutRegistration(ctx context.Context) (*taskRegistrat
 	return registration, err
 }
 
-func (t *taskCheckout) PrepareRelease(ctx context.Context) (func(context.Context) error, error) {
+func (t *taskCheckout) PrepareRelease(ctx context.Context) (operation.ExternalExecution, error) {
 	registration, err := t.record.registrationForRelease(ctx, t.path)
 	if err != nil {
 		return nil, err
 	}
+	write := releaseWrite{Manifest: filepath.Join(filepath.Dir(t.path), taskRecordName(t.record.ID))}
 	if registration != nil {
 		if registration.checkout != t.path {
 			return nil, fmt.Errorf("%w: Git moved the task worktree to %q", work.ErrTaskWorktreeChanged, registration.checkout)
@@ -137,25 +139,12 @@ func (t *taskCheckout) PrepareRelease(ctx context.Context) (func(context.Context
 		if head != t.record.Base {
 			return nil, fmt.Errorf("%w: the task worktree contains committed changes", work.ErrTaskWorktreeChanged)
 		}
-	}
-	return func(work context.Context) error {
-		return t.release(work, registration)
-	}, nil
-}
-
-func (t *taskCheckout) release(ctx context.Context, registration *taskRegistration) error {
-	if registration != nil {
-		common := filepath.Dir(filepath.Dir(registration.directory))
-		if err := git.RemoveWorktree(ctx, common, registration.checkout); err != nil {
-			return errors.Join(work.ErrTaskWorktreeChanged, err)
+		write.Registration = &checkoutRemoval{
+			Repository: filepath.Dir(filepath.Dir(registration.directory)),
+			Checkout:   registration.checkout,
 		}
 	}
-	root, err := os.OpenRoot(filepath.Dir(t.path))
-	if err != nil {
-		return err
-	}
-	defer root.Close()
-	return root.Remove(taskRecordName(t.record.ID))
+	return t.writer.prepare(writeRelease, write)
 }
 
 func checkoutGitDirectory(ctx context.Context, checkout string) (string, error) {

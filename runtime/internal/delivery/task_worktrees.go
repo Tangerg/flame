@@ -1,8 +1,10 @@
 package delivery
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"reflect"
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -41,12 +43,42 @@ func registerTaskWorktrees(registry *Registry) {
 		}, ctx context.Context, in protocol.TaskWorktreeRequest) (*protocol.WorktreeHandoff, error) {
 			return service.PreviewWorktreeHandoff(ctx, in)
 		})
-	registry.externalCommand(MethodMeta{
+	registerWorktreeWrite(registry, MethodMeta{
 		Name: TaskWorktreesApply, GoName: "ApplyWorktreeHandoff", CapabilityRules: git, Errors: writeErrors,
-	}, (*Handler).applyWorktreeHandoff, presentWorktreeHandoff, taskWorktreeError)
-	registry.externalCommand(MethodMeta{
+	}, (*Handler).applyWorktreeHandoff, presentWorktreeHandoff)
+	registerWorktreeWrite(registry, MethodMeta{
 		Name: TaskWorktreesRelease, GoName: "ReleaseTaskWorktree", CapabilityRules: git, Errors: writeErrors,
-	}, (*Handler).releaseTaskWorktree, func(ack struct{}) struct{} { return ack }, taskWorktreeError)
+	}, (*Handler).releaseTaskWorktree, func(ack struct{}) struct{} { return ack })
+}
+
+func registerWorktreeWrite[Params, Value, Result any](
+	registry *Registry,
+	meta MethodMeta,
+	prepare func(*Handler, context.Context, Params, operation.ExternalReply[Value]) error,
+	present func(Value) Result,
+) {
+	meta.Result = reflect.TypeFor[Result]()
+	if meta.Result == acknowledgementType {
+		meta.Result = nil
+	}
+	registry.requiredReplayCommand(meta, func(owner *Handler, ctx context.Context, in Params, call keyedCall) protocol.OperationResult {
+		payload, err := call.replay.InvokeOwnedExternal(ctx, call.key, call.fingerprint, call.admit, owner.taskWorktrees.Receipts(),
+			func(complete operation.ExternalCompletion) error {
+				return prepare(owner, ctx, in, func(ctx context.Context, value Value, write operation.ExternalExecution) (bool, error) {
+					success, err := encodeAtomicResult(call.method, present(value))
+					if err != nil {
+						return false, err
+					}
+					receipt, err := complete(ctx, write, success)
+					return bytes.Equal(receipt, success), err
+				})
+			}, EncodeTaskWriteRefusal)
+		return call.result(ctx, payload, err)
+	})
+}
+
+func EncodeTaskWriteRefusal(cause error) ([]byte, error) {
+	return encodeAcknowledgement(taskWorktreeError(cause))
 }
 
 func (s *Handler) createTaskWorktree(ctx context.Context, in protocol.CreateTaskWorktreeRequest, complete operation.Reply[workspace.TaskWorktree]) error {
@@ -73,11 +105,11 @@ func (s *Handler) PreviewWorktreeHandoff(ctx context.Context, in protocol.TaskWo
 	return presentWorktreeHandoff(preview), nil
 }
 
-func (s *Handler) applyWorktreeHandoff(ctx context.Context, in protocol.ApplyWorktreeHandoffRequest, complete operation.Reply[workspace.WorktreeHandoff]) error {
+func (s *Handler) applyWorktreeHandoff(ctx context.Context, in protocol.ApplyWorktreeHandoffRequest, complete operation.ExternalReply[workspace.WorktreeHandoff]) error {
 	return s.taskWorktrees.ApplyHandoff(ctx, in.ID, in.Digest, complete)
 }
 
-func (s *Handler) releaseTaskWorktree(ctx context.Context, in protocol.TaskWorktreeRequest, complete operation.Reply[struct{}]) error {
+func (s *Handler) releaseTaskWorktree(ctx context.Context, in protocol.TaskWorktreeRequest, complete operation.ExternalReply[struct{}]) error {
 	return s.taskWorktrees.Release(ctx, in.ID, complete)
 }
 

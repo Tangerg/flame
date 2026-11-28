@@ -23,6 +23,7 @@ import (
 )
 
 const (
+	taskCatalogDirectory = "task-worktrees"
 	taskRecordSuffix     = ".json"
 	taskPendingSuffix    = ".next"
 	taskIDBytes          = 16
@@ -31,18 +32,23 @@ const (
 )
 
 type TaskWorktrees struct {
-	root       string
+	root string
+	*taskWriter
 	toolDirs   []string
 	creatingMu sync.RWMutex
 	creating   map[string]struct{}
 }
 
-func NewTaskWorktrees(root string, toolDirs []string) (*TaskWorktrees, error) {
-	canonical, err := filesystem.CanonicalPath(root)
+func NewTaskWorktrees(ctx context.Context, dataDirectory string, toolDirs []string) (*TaskWorktrees, error) {
+	canonical, err := filesystem.CanonicalPath(filepath.Join(dataDirectory, taskCatalogDirectory))
 	if err != nil {
 		return nil, err
 	}
-	return &TaskWorktrees{root: canonical, toolDirs: toolDirs, creating: make(map[string]struct{})}, nil
+	writer, err := openTaskWriter(ctx, dataDirectory)
+	if err != nil {
+		return nil, err
+	}
+	return &TaskWorktrees{root: canonical, taskWriter: writer, toolDirs: toolDirs, creating: make(map[string]struct{})}, nil
 }
 
 type taskRecord struct {
@@ -57,6 +63,7 @@ type taskRecord struct {
 type taskCheckout struct {
 	path   string
 	record taskRecord
+	writer *taskWriter
 }
 
 func taskRecordName(id string) string { return id + taskRecordSuffix }
@@ -170,7 +177,7 @@ func (b *TaskWorktrees) registerTask(ctx, setupCtx context.Context, record taskR
 			return work.TaskWorktree{}, err
 		}
 	}
-	return (&taskCheckout{path: checkout, record: record}).Inspect(ctx)
+	return (&taskCheckout{path: checkout, record: record, writer: b.taskWriter}).Inspect(ctx)
 }
 
 func (b *TaskWorktrees) runSetup(ctx context.Context, checkout string, setup *work.TaskWorktreeSetup) {
@@ -265,7 +272,7 @@ func (b *TaskWorktrees) openCheckout(id string) (*taskCheckout, error) {
 	if !filepath.IsAbs(record.Source) || !filepath.IsAbs(record.CommonDir) || !validTaskSHA(record.Base) {
 		return nil, errors.New("workspace: invalid task worktree record")
 	}
-	return &taskCheckout{path: path, record: record}, nil
+	return &taskCheckout{path: path, record: record, writer: b.taskWriter}, nil
 }
 
 func (t *taskCheckout) SourcePath() string { return t.record.Source }
@@ -314,7 +321,10 @@ func writeTaskRecord(root *os.Root, record taskRecord) error {
 	if err != nil {
 		return err
 	}
-	name := taskRecordName(record.ID)
+	return publishTaskFile(root, taskRecordName(record.ID), raw)
+}
+
+func publishTaskFile(root *os.Root, name string, raw []byte) error {
 	pending := name + taskPendingSuffix
 	file, err := root.OpenFile(pending, os.O_WRONLY|os.O_CREATE|os.O_EXCL, filesystem.PrivateFileMode)
 	if err != nil {

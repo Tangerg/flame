@@ -49,7 +49,7 @@ Each macOS distribution targets one explicit `amd64` or `arm64` architecture.
 `ARCH` selects `TARGET_ARCH` once; binary output, bundle output, Go compilation and
 companions consume that same target, including cross-architecture builds.
 The bundle's `Contents/MacOS` contains the Desktop executable, a separately
-started `flame-runtime`, `frame-runner`, the verified Node companion and first-party
+started `flame-runtime`, `frame-runner`, `flame-worktree-writer`, the verified Node companion and first-party
 plugin packages built for that same target. Packaging uses the existing pinned
 Node artifact cache prepared by `make setup` and signs the complete bundle after
 all companions are present. Universal packaging is rejected: joining only the

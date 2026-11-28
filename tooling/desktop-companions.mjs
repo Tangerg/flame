@@ -38,8 +38,9 @@ export async function stageDesktopCompanions({ arch, output }) {
       "build",
       "-trimpath",
       "-o",
-      join(destination, "frame-runner"),
+      destination,
       "github.com/Tangerg/frame/cmd/frame-runner",
+      "./cmd/flame-worktree-writer",
     ],
     {
       cwd: join(repository, "runtime"),

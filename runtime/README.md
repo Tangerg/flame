@@ -121,6 +121,12 @@ admits the Git write, it settles the receipt under that key even when the
 caller disconnects. Reusing the original request and key returns the receipt.
 The current Git capability gates first execution. The same store can replay a
 recorded response after Runtime restarts without Git.
+The worktree writer companion owns an admitted handoff or release through the
+native Git command and durable publication of its original response. It retains
+its workspace lease across serving-process exit. A replacement Runtime joins
+those writes before admitting workspace activity and consumes each completed
+receipt through its original key. Loss of the writer itself can leave an
+admitted operation unconfirmed.
 
 Project Home shows recent accepted background Runs and links to their original
 Sessions and PR reviews. A schedule or file watcher can capture a Project ID when
@@ -316,7 +322,8 @@ gets its own existing process, immutable release lease, frozen requirements and
 call-scoped callbacks. There is no shared JavaScript supervisor or result store.
 
 Build Runtime/CLI distributions with `make build-runtime` / `make build-cli` after
-`make setup`. Ship the hosting executable, sibling `frame-runner`, and companion
+`make setup`. Ship the hosting executable with `frame-runner`,
+`flame-worktree-writer`, and the companion
 `runtimes` and `plugins` directories together.
 Replace the complete distribution only while quiescent. Desktop attaches to a
 Runtime and does not host backends; it does not ship an unused interpreter.
@@ -536,7 +543,7 @@ the new lifetime lease. Opening does not migrate or discard unknown commands.
 ## First-party initialization
 
 Root `make build-runtime` produces `out/runtime/<platform>/flame-runtime`, its
-sibling `frame-runner`, the `plugins/` distribution and the pinned
+sibling `frame-runner` and `flame-worktree-writer`, the `plugins/` distribution and the pinned
 `runtimes/node/<os>-<arch>/` companion. Run that executable in the foreground.
 The embedded Go binding requires the same companions beside its actual hosting
 executable. `localruntime` owns this layout, with no PATH, working-directory or

@@ -46,6 +46,7 @@ type WorktreeHandoff struct {
 }
 
 type taskWorktreeBackend interface {
+	operation.ExternalReceipts
 	PrepareCreate(context.Context, string, string, string) (func(context.Context) (TaskWorktree, error), error)
 	List(context.Context) ([]TaskWorktree, error)
 	CheckoutPath(string) (string, error)
@@ -59,8 +60,8 @@ type TaskCheckout interface {
 	SourcePath() string
 	Inspect(context.Context) (TaskWorktree, error)
 	PreviewHandoff(context.Context) (WorktreeHandoff, error)
-	PrepareHandoff(context.Context, string) (func(context.Context) (WorktreeHandoff, error), error)
-	PrepareRelease(context.Context) (func(context.Context) error, error)
+	PrepareHandoff(context.Context, string) (WorktreeHandoff, operation.ExternalExecution, error)
+	PrepareRelease(context.Context) (operation.ExternalExecution, error)
 }
 
 type worktreeMutationGate interface {
@@ -107,7 +108,9 @@ func (w *TaskWorktrees) Preview(ctx context.Context, id string) (WorktreeHandoff
 	return task.PreviewHandoff(ctx)
 }
 
-func (w *TaskWorktrees) ApplyHandoff(ctx context.Context, id, digest string, complete operation.Reply[WorktreeHandoff]) error {
+func (w *TaskWorktrees) Receipts() operation.ExternalReceipts { return w.backend }
+
+func (w *TaskWorktrees) ApplyHandoff(ctx context.Context, id, digest string, complete operation.ExternalReply[WorktreeHandoff]) error {
 	path, err := w.backend.CheckoutPath(id)
 	if err != nil {
 		return err
@@ -126,14 +129,15 @@ func (w *TaskWorktrees) ApplyHandoff(ctx context.Context, id, digest string, com
 		return err
 	}
 	defer releaseSource()
-	apply, err := task.PrepareHandoff(ctx, digest)
+	result, apply, err := task.PrepareHandoff(ctx, digest)
 	if err != nil {
 		return err
 	}
-	return complete(ctx, apply)
+	_, err = complete(ctx, result, apply)
+	return err
 }
 
-func (w *TaskWorktrees) Release(ctx context.Context, id string, complete operation.Reply[struct{}]) error {
+func (w *TaskWorktrees) Release(ctx context.Context, id string, complete operation.ExternalReply[struct{}]) error {
 	path, err := w.backend.CheckoutPath(id)
 	if err != nil {
 		return err
@@ -167,9 +171,11 @@ func (w *TaskWorktrees) Release(ctx context.Context, id string, complete operati
 	if err != nil {
 		return err
 	}
-	return commitTaskCatalogChange(ctx, complete, func(work context.Context) (struct{}, error) {
-		return struct{}{}, remove(work)
-	}, w.invalidations)
+	applied, err := complete(ctx, struct{}{}, remove)
+	if applied {
+		w.invalidations.Notify(invalidation.Notice{Resource: invalidation.TaskWorktrees})
+	}
+	return err
 }
 
 func commitTaskCatalogChange[T any](ctx context.Context, complete operation.Reply[T], write func(context.Context) (T, error), publish invalidation.Publish) error {

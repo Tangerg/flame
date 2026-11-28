@@ -59,15 +59,17 @@ func RunWithFirstPartyPackages(tests *testing.M) int {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
-	if err := os.Remove(filepath.Join(filepath.Dir(executable), "frame-runner")); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return 1
+	for _, name := range []string{"frame-runner", "flame-worktree-writer"} {
+		if err := os.Remove(filepath.Join(filepath.Dir(executable), name)); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
 	}
 	return status
 }
 
 func PrepareRuntimeCompanions(executable string) error {
-	if err := prepareRunner(executable); err != nil {
+	if err := prepareNativeCompanions(executable); err != nil {
 		return err
 	}
 	return prepareNode(executable)
@@ -129,16 +131,13 @@ func TempDirectory(t testing.TB) string {
 	return directory
 }
 
-func prepareRunner(executable string) error {
+func prepareNativeCompanions(executable string) error {
 	_, file, _, ok := goruntime.Caller(0)
 	if !ok {
-		return fmt.Errorf("locate runner companion sources")
+		return fmt.Errorf("locate native companion sources")
 	}
-	runner, err := localruntime.RunnerExecutable(executable)
-	if err != nil {
-		return err
-	}
-	command := exec.Command("go", "build", "-mod=readonly", "-o", runner, "github.com/Tangerg/frame/cmd/frame-runner")
+	command := exec.Command("go", "build", "-mod=readonly", "-o", filepath.Dir(executable),
+		"github.com/Tangerg/frame/cmd/frame-runner", "./cmd/flame-worktree-writer")
 	command.Dir = filepath.Join(filepath.Dir(file), "../..")
 	command.Stdout, command.Stderr = os.Stdout, os.Stderr
 	return command.Run()

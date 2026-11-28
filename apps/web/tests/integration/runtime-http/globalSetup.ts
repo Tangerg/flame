@@ -52,8 +52,9 @@ export default async function prepareRuntimeHttp(project: TestProject) {
       [
         "build",
         "-o",
-        join(environmentRoot, "frame-runner"),
+        environmentRoot,
         "github.com/Tangerg/frame/cmd/frame-runner",
+        "./cmd/flame-worktree-writer",
       ],
       { cwd: runtimeDirectory },
     );

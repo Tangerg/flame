@@ -400,7 +400,7 @@ export function useRuntimeFixture(
       const directory = join(distribution, "plugins");
       await mkdir(directory, { recursive: true });
       await Promise.all([
-        ...["flame-e2e", "frame-runner"].map((name) =>
+        ...["flame-e2e", "frame-runner", "flame-worktree-writer"].map((name) =>
           link(join(environmentRoot, name), join(distribution, name)),
         ),
         ...packages.map((name) =>

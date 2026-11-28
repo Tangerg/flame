@@ -35,6 +35,7 @@ try {
   );
   for (const [name, member, owner] of [
     ["frame-runner", "runtime", "github.com/Tangerg/frame/cmd/frame-runner"],
+    ["flame-worktree-writer", "runtime", "./cmd/flame-worktree-writer"],
     ["flame-runtime", "runtime", "./cmd/flame-runtime"],
     ["flame", "apps/cli", "."],
     ["qualify", "tooling", "./nodequalification"],
