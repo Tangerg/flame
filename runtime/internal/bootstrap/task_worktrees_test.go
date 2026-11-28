@@ -13,9 +13,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
-	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 )
@@ -152,18 +150,7 @@ func TestTaskWorktreesKeepSeparateChangesAndHandoffAfterRestart(t *testing.T) {
 		t.Fatal("parallel worktrees reused an independent verification")
 	}
 
-	r.close()
-	if err := cfg.stores.Close(); err != nil {
-		t.Fatal(err)
-	}
-	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: cfg.stores.DataDirectory, ValidateDirectory: persistencefixture.UnleasedDirectory})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = stores.Close() })
-	cfg.stores = stores
-	cfg.providerRegistry = stores.Providers
-	r = poMCPOpen(t, cfg)
+	r = restartTaskWorktreeRuntime(t, r, cfg)
 	for _, want := range []*protocol.Session{first, second} {
 		found := r.must(delivery.SessionsGet, protocol.GetSessionRequest{SessionID: want.ID}, "").(*protocol.Session)
 		if found.Workspace != want.Workspace {

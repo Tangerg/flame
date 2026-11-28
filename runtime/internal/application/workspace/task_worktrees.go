@@ -17,6 +17,11 @@ var (
 	ErrTaskWorktreeInput    = errors.New("workspace: a valid commit or branch is required")
 )
 
+const (
+	maxTaskBaseBytes  = 256
+	maxTaskSetupBytes = 4096
+)
+
 type TaskWorktree struct {
 	ID        string
 	Path      string
@@ -41,7 +46,7 @@ type WorktreeHandoff struct {
 }
 
 type taskWorktreeBackend interface {
-	Create(context.Context, string, string, string) (TaskWorktree, error)
+	Create(context.Context, string, string, string, operation.Reply[TaskWorktree]) error
 	List(context.Context) ([]TaskWorktree, error)
 	Get(context.Context, string) (TaskWorktree, error)
 	Preview(context.Context, TaskWorktree) (WorktreeHandoff, error)
@@ -69,15 +74,15 @@ func NewTaskWorktrees(scope *Scope, backend taskWorktreeBackend, gate worktreeMu
 	return &TaskWorktrees{scope: scope, backend: backend, gate: gate, session: sessions}
 }
 
-func (w *TaskWorktrees) Create(ctx context.Context, source, base, setup string) (TaskWorktree, error) {
-	if strings.TrimSpace(base) != base || base == "" || len(base) > 256 || len(setup) > 4096 {
-		return TaskWorktree{}, ErrTaskWorktreeInput
+func (w *TaskWorktrees) Create(ctx context.Context, source, base, setup string, complete operation.Reply[TaskWorktree]) error {
+	if strings.TrimSpace(base) != base || base == "" || len(base) > maxTaskBaseBytes || len(setup) > maxTaskSetupBytes {
+		return ErrTaskWorktreeInput
 	}
 	path, err := w.scope.ResolveRoot(source)
 	if err != nil {
-		return TaskWorktree{}, err
+		return err
 	}
-	return w.backend.Create(ctx, path, base, setup)
+	return w.backend.Create(ctx, path, base, setup, complete)
 }
 
 func (w *TaskWorktrees) List(ctx context.Context) ([]TaskWorktree, error) {

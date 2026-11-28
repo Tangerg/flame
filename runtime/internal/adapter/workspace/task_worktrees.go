@@ -27,14 +27,15 @@ import (
 )
 
 const (
-	taskManifest  = "task.json"
-	taskCheckout  = "checkout"
-	taskCustody   = "flame-task-id"
-	maxHandoff    = 512 << 10
-	maxTaskRecord = 16 << 10
+	taskManifest         = "task.json"
+	taskCheckout         = "checkout"
+	taskCustody          = "flame-task-id"
+	taskIDBytes          = 16
+	taskSetupTimeout     = 90 * time.Second
+	taskSetupOutputLimit = 4096
+	maxHandoff           = 512 << 10
+	maxTaskRecord        = 16 << 10
 )
-
-const taskPublicationTimeout = 5 * time.Second
 
 type TaskWorktrees struct {
 	root       string
@@ -55,26 +56,41 @@ type taskRecord struct {
 	Setup  *work.TaskWorktreeSetup `json:"setup,omitzero"`
 }
 
-func (b *TaskWorktrees) Create(ctx context.Context, path, base, setup string) (work.TaskWorktree, error) {
+func (b *TaskWorktrees) Create(ctx context.Context, path, base, setup string, complete operation.Reply[work.TaskWorktree]) error {
 	source, err := taskGitValue(ctx, path, "rev-parse", "--show-toplevel")
 	if err != nil {
-		return work.TaskWorktree{}, errors.Join(work.ErrVCSUnavailable, err)
+		return errors.Join(work.ErrVCSUnavailable, err)
 	}
 	source, err = filepath.EvalSymlinks(source)
 	if err != nil {
-		return work.TaskWorktree{}, err
+		return err
 	}
 	if relative, err := filepath.Rel(source, b.root); err == nil && filepath.IsLocal(relative) {
-		return work.TaskWorktree{}, fmt.Errorf("%w: task storage must be outside the source checkout", work.ErrTaskWorktreeInput)
+		return fmt.Errorf("%w: task storage must be outside the source checkout", work.ErrTaskWorktreeInput)
 	}
 	common, err := taskCommonDir(ctx, source)
 	if err != nil {
-		return work.TaskWorktree{}, err
+		return err
 	}
 	commit, err := taskGitValue(ctx, source, "rev-parse", "--verify", "--end-of-options", base+"^{commit}")
 	if err != nil {
-		return work.TaskWorktree{}, errors.Join(work.ErrTaskWorktreeInput, err)
+		return errors.Join(work.ErrTaskWorktreeInput, err)
 	}
+	var key [taskIDBytes]byte
+	if _, err := rand.Read(key[:]); err != nil {
+		return err
+	}
+	record := taskRecord{ID: hex.EncodeToString(key[:]), Source: source, Common: common, Base: commit}
+	if setup != "" {
+		record.Setup = &work.TaskWorktreeSetup{Command: setup}
+	}
+	return complete(ctx, func(registration context.Context) (work.TaskWorktree, error) {
+		// Setup remains cancellable after the caller has authorized registration.
+		return b.registerTask(registration, ctx, record)
+	})
+}
+
+func (b *TaskWorktrees) registerTask(ctx, setupCtx context.Context, record taskRecord) (work.TaskWorktree, error) {
 	if err := os.MkdirAll(b.root, filesystem.PrivateDirectoryMode); err != nil {
 		return work.TaskWorktree{}, err
 	}
@@ -83,17 +99,6 @@ func (b *TaskWorktrees) Create(ctx context.Context, path, base, setup string) (w
 		return work.TaskWorktree{}, err
 	}
 	defer root.Close()
-	var key [16]byte
-	if _, err := rand.Read(key[:]); err != nil {
-		return work.TaskWorktree{}, err
-	}
-	record := taskRecord{ID: hex.EncodeToString(key[:]), Source: source, Common: common, Base: commit}
-	if setup != "" {
-		record.Setup = &work.TaskWorktreeSetup{Command: setup}
-	}
-	if err := root.Mkdir(record.ID, filesystem.PrivateDirectoryMode); err != nil {
-		return work.TaskWorktree{}, err
-	}
 	// The manifest must survive interruption. A live creation still owns the
 	// checkout until its setup and registration can be published together.
 	b.creatingMu.Lock()
@@ -104,11 +109,14 @@ func (b *TaskWorktrees) Create(ctx context.Context, path, base, setup string) (w
 		delete(b.creating, record.ID)
 		b.creatingMu.Unlock()
 	}()
+	if err := root.Mkdir(record.ID, filesystem.PrivateDirectoryMode); err != nil {
+		return work.TaskWorktree{}, err
+	}
 	if err := writeTaskRecord(root, record); err != nil {
 		return work.TaskWorktree{}, err
 	}
 	checkout := filepath.Join(b.root, record.ID, taskCheckout)
-	if _, err := taskGitValue(ctx, source, "worktree", "add", "--detach", "--quiet", "--", checkout, commit); err != nil {
+	if _, err := taskGitValue(ctx, record.Source, "worktree", "add", "--detach", "--quiet", "--", checkout, record.Base); err != nil {
 		return work.TaskWorktree{}, err
 	}
 	custody, err := taskCustodyPath(ctx, checkout)
@@ -121,29 +129,30 @@ func (b *TaskWorktrees) Create(ctx context.Context, path, base, setup string) (w
 		return work.TaskWorktree{}, fmt.Errorf("workspace: record task worktree custody: %w", err)
 	}
 	if record.Setup != nil {
-		limited, cancel := context.WithTimeout(ctx, 90*time.Second)
-		output, runErr := sandbox.RunInPlace(limited, sandbox.Config{RestrictReads: true, ReadOnlyPaths: b.toolDirs}, checkout, toolshell.Input{Cmd: setup})
-		cancel()
-		log := capture.NewWriter(4096)
-		_, _ = log.Write(output.Stdout)
-		_, _ = log.Write(output.Stderr)
-		if runErr != nil {
-			_, _ = log.Write([]byte(runErr.Error()))
-		} else if !output.CancellationObserved {
-			record.Setup.ExitCode = new(output.ExitCode)
-		}
-		record.Setup.Output = log.Diagnostic()
-		if log.Truncated() {
-			record.Setup.Output += "\n... [setup output truncated] ..."
-		}
+		b.runSetup(setupCtx, checkout, record.Setup)
 		if err := writeTaskRecord(root, record); err != nil {
 			return work.TaskWorktree{}, err
 		}
 	}
-	// The caller can stop setup after Git has registered the checkout.
-	publicationCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), taskPublicationTimeout)
+	return b.inspect(ctx, record)
+}
+
+func (b *TaskWorktrees) runSetup(ctx context.Context, checkout string, setup *work.TaskWorktreeSetup) {
+	limited, cancel := context.WithTimeout(ctx, taskSetupTimeout)
 	defer cancel()
-	return b.inspect(publicationCtx, record)
+	output, err := sandbox.RunInPlace(limited, sandbox.Config{RestrictReads: true, ReadOnlyPaths: b.toolDirs}, checkout, toolshell.Input{Cmd: setup.Command})
+	log := capture.NewWriter(taskSetupOutputLimit)
+	_, _ = log.Write(output.Stdout)
+	_, _ = log.Write(output.Stderr)
+	if err != nil {
+		_, _ = log.Write([]byte(err.Error()))
+	} else if !output.CancellationObserved {
+		setup.ExitCode = new(output.ExitCode)
+	}
+	setup.Output = log.Diagnostic()
+	if log.Truncated() {
+		setup.Output += "\n... [setup output truncated] ..."
+	}
 }
 
 func (b *TaskWorktrees) List(ctx context.Context) ([]work.TaskWorktree, error) {
@@ -443,7 +452,7 @@ func writeTaskRecord(root *os.Root, record taskRecord) (err error) {
 
 func isTaskID(value string) bool {
 	decoded, err := hex.DecodeString(value)
-	return err == nil && len(decoded) == 16 && value == strings.ToLower(value)
+	return err == nil && len(decoded) == taskIDBytes && value == strings.ToLower(value)
 }
 
 func validTaskSHA(value string) bool {

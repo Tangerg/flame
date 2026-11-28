@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"strings"
-	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
@@ -30,7 +29,9 @@ func registerTaskWorktrees(registry *Registry) {
 			CreateTaskWorktree(context.Context, protocol.CreateTaskWorktreeRequest) (*protocol.TaskWorktree, error)
 		}, ctx context.Context, in protocol.CreateTaskWorktreeRequest) (*protocol.TaskWorktree, error) {
 			return service.CreateTaskWorktree(ctx, in)
-		}).withOwnedReplay((*Handler).replayCreateTaskWorktree)
+		}).withOwnedReplay(worktreeMutationReplay((*Handler).createTaskWorktree, func(task workspace.TaskWorktree) *protocol.TaskWorktree {
+		return new(presentTaskWorktree(task))
+	}))
 	registry.query(MethodMeta{Name: TaskWorktreesList, GoName: "ListTaskWorktrees", CapabilityRules: git},
 		func(service interface {
 			ListTaskWorktrees(context.Context) (*protocol.Page[protocol.TaskWorktree], error)
@@ -80,41 +81,16 @@ func worktreeMutationReplay[P, T, R any](
 	}
 }
 
-func (s *Handler) replayCreateTaskWorktree(ctx context.Context, in protocol.CreateTaskWorktreeRequest, call keyedCall) protocol.OperationResult {
-	payload, err := call.replay.InvokeDeferred(ctx, call.key, call.fingerprint, func(complete *operation.DeferredCompletion) ([]byte, error) {
-		if err := complete.ReserveExternal(ctx); err != nil {
-			return nil, err
-		}
-		result, cause := s.CreateTaskWorktree(ctx, in)
-		var data []byte
-		var encodingErr error
-		if cause != nil {
-			if ctx.Err() != nil {
-				return nil, errors.Join(operation.ErrOutcomePending, cause)
-			}
-			data, encodingErr = encodeAcknowledgement(cause)
-		} else {
-			data, encodingErr = encodeAtomicResult(call.method, result)
-		}
-		if encodingErr != nil {
-			return nil, errors.Join(operation.ErrOutcomePending, encodingErr)
-		}
-		save, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
-		defer cancel()
-		if err := complete.Stage(save, func(context.Context) ([]byte, error) { return data, nil }); err != nil {
-			return nil, errors.Join(operation.ErrOutcomePending, err)
-		}
-		return data, nil
-	}, func(data []byte, _ bool) ([]byte, error) { return data, nil })
-	return call.result(ctx, payload, err)
-}
-
 func (s *Handler) CreateTaskWorktree(ctx context.Context, in protocol.CreateTaskWorktreeRequest) (*protocol.TaskWorktree, error) {
-	task, err := s.taskWorktrees.Create(ctx, in.Source.Path, in.Base, in.Setup)
-	if err != nil {
+	var task workspace.TaskWorktree
+	if err := s.createTaskWorktree(ctx, in, operation.DirectReply(&task)); err != nil {
 		return nil, taskWorktreeError(err)
 	}
 	return new(presentTaskWorktree(task)), nil
+}
+
+func (s *Handler) createTaskWorktree(ctx context.Context, in protocol.CreateTaskWorktreeRequest, complete operation.Reply[workspace.TaskWorktree]) error {
+	return s.taskWorktrees.Create(ctx, in.Source.Path, in.Base, in.Setup, complete)
 }
 
 func (s *Handler) ListTaskWorktrees(ctx context.Context) (*protocol.Page[protocol.TaskWorktree], error) {

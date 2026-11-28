@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -21,10 +22,12 @@ import (
 type taskGitBoundary string
 
 const (
-	beforeHandoffPreview  taskGitBoundary = "before-preview"
-	afterHandoffApply     taskGitBoundary = "after-apply"
-	beforeCheckoutRemoval taskGitBoundary = "before-removal"
-	afterCheckoutRemoval  taskGitBoundary = "after-removal"
+	beforeCheckoutCreation taskGitBoundary = "before-create"
+	afterCheckoutCreation  taskGitBoundary = "after-create"
+	beforeHandoffPreview   taskGitBoundary = "before-preview"
+	afterHandoffApply      taskGitBoundary = "after-apply"
+	beforeCheckoutRemoval  taskGitBoundary = "before-removal"
+	afterCheckoutRemoval   taskGitBoundary = "after-removal"
 )
 
 func TestTaskWorktreeReceiptsSurviveRequestCancellation(t *testing.T) {
@@ -113,19 +116,7 @@ func TestTaskWorktreeReceiptsSurviveRequestCancellation(t *testing.T) {
 				t.Fatalf("the accepted operation did not settle: %v", initial.Failure)
 			}
 
-			r.close()
-			if err := cfg.stores.Close(); err != nil {
-				t.Fatal(err)
-			}
-			stores, err := persistence.Open(t.Context(), persistence.Config{
-				DataDirectory: cfg.stores.DataDirectory, ValidateDirectory: persistencefixture.UnleasedDirectory,
-			})
-			if err != nil {
-				t.Fatal(err)
-			}
-			t.Cleanup(func() { _ = stores.Close() })
-			cfg.stores, cfg.providerRegistry = stores, stores.Providers
-			r = poMCPOpen(t, cfg)
+			r = restartTaskWorktreeRuntime(t, r, cfg)
 
 			retry, stop := context.WithTimeout(protocolLifecycleContext(t.Context()), lifecycleWaitBudget(t))
 			defer stop()
@@ -155,6 +146,100 @@ func TestTaskWorktreeReceiptsSurviveRequestCancellation(t *testing.T) {
 	}
 }
 
+func TestTaskWorktreeCreationSettlesAcrossRequestCancellation(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the Git timing fixture uses a POSIX shell")
+	}
+	for _, boundary := range []taskGitBoundary{beforeCheckoutCreation, afterCheckoutCreation} {
+		t.Run(string(boundary), func(t *testing.T) {
+			source, git := taskWorktreeTestRepository(t)
+			git("commit", "--quiet", "--allow-empty", "-m", "initial checkout")
+			cfg := poMCPConfig(t)
+			cfg.defaultWorkspacePath = source
+			r := poMCPOpen(t, cfg)
+			registered := func() []string {
+				var paths []string
+				for line := range strings.SplitSeq(git("worktree", "list", "--porcelain"), "\n") {
+					if path, ok := strings.CutPrefix(line, "worktree "); ok {
+						paths = append(paths, path)
+					}
+				}
+				return paths
+			}
+			request := protocol.CreateTaskWorktreeRequest{Source: protocol.WorkspaceRef{Path: source}, Base: "target"}
+			options := protocol.CallMetadata{IdempotencyKey: "cancelled-worktree-creation"}
+			entered, proceed := holdTaskGitBoundary(t, boundary)
+			ctx, cancel := context.WithTimeout(protocolLifecycleContext(t.Context()), lifecycleWaitBudget(t))
+			var caller sync.WaitGroup
+			defer func() {
+				cancel()
+				if err := os.WriteFile(proceed, nil, 0o600); err != nil {
+					t.Error(err)
+				}
+				caller.Wait()
+			}()
+			first := make(chan protocol.OperationResult, 1)
+			caller.Go(func() { first <- r.endpoint.Invoke(ctx, delivery.TaskWorktreesCreate, request, options) })
+			awaitTaskGitBoundary(t, ctx, entered, first)
+			paths := registered()
+			expectedRegistrations := 1
+			if boundary == afterCheckoutCreation {
+				expectedRegistrations = 2
+			}
+			if len(paths) != expectedRegistrations {
+				t.Fatalf("Git registrations at %s = %q", boundary, paths)
+			}
+			cancel()
+			if err := os.WriteFile(proceed, nil, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			caller.Wait()
+			initial := <-first
+			if boundary == beforeCheckoutCreation {
+				if paths := registered(); initial.Failure == nil || len(paths) != 1 {
+					t.Fatalf("cancelled preflight = %+v, %v; Git registrations = %q", initial.Value, initial.Failure, paths)
+				}
+			} else if initial.Failure != nil {
+				t.Errorf("the registered checkout did not produce a receipt: %v", initial.Failure)
+			}
+
+			r = restartTaskWorktreeRuntime(t, r, cfg)
+			retry, stop := context.WithTimeout(protocolLifecycleContext(t.Context()), lifecycleWaitBudget(t))
+			defer stop()
+			result := r.endpoint.Invoke(retry, delivery.TaskWorktreesCreate, request, options)
+			if result.Failure != nil {
+				t.Fatalf("retry with the original creation key after %s = %v", boundary, result.Failure)
+			}
+			task := result.Value.(*protocol.TaskWorktree)
+			published := r.must(delivery.TaskWorktreesList, struct{}{}, "").(*protocol.Page[protocol.TaskWorktree])
+			if paths := registered(); !task.Available || len(paths) != 2 || paths[1] != task.Workspace.Path ||
+				len(published.Data) != 1 || !reflect.DeepEqual(published.Data[0], *task) {
+				t.Fatalf("creation receipt = %+v; registrations = %q; catalog = %+v", task, paths, published.Data)
+			}
+			if boundary == afterCheckoutCreation && (paths[1] != task.Workspace.Path || !reflect.DeepEqual(initial.Value, result.Value)) {
+				t.Fatalf("restart changed the registered checkout: before = %+v (%q), after = %+v", initial.Value, paths[1], task)
+			}
+		})
+	}
+}
+
+func restartTaskWorktreeRuntime(t *testing.T, r *poMCPRuntime, cfg assemblyConfig) *poMCPRuntime {
+	t.Helper()
+	r.close()
+	if err := cfg.stores.Close(); err != nil {
+		t.Fatal(err)
+	}
+	stores, err := persistence.Open(t.Context(), persistence.Config{
+		DataDirectory: cfg.stores.DataDirectory, ValidateDirectory: persistencefixture.UnleasedDirectory,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = stores.Close() })
+	cfg.stores, cfg.providerRegistry = stores, stores.Providers
+	return poMCPOpen(t, cfg)
+}
+
 func holdTaskGitBoundary(t *testing.T, boundary taskGitBoundary) (entered, proceed string) {
 	t.Helper()
 	realGit, err := exec.LookPath("git")
@@ -170,6 +255,8 @@ for argument do
   case "$argument" in
     symbolic-ref) operation=before-preview ;;
     apply) operation=after-apply ;;
+    *'^{commit}') operation=before-create ;;
+    add) if [ "$previous" = worktree ]; then operation=after-create; fi ;;
     HEAD) if [ "$previous" = --verify ]; then operation=before-removal; fi ;;
     remove) if [ "$previous" = worktree ]; then operation=after-removal; fi ;;
   esac
