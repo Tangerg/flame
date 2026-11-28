@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-11-28.3` · 115 methods
+Protocol `2026-11-28.4` · 115 methods
 
 ## Methods
 
@@ -43,11 +43,11 @@ Protocol `2026-11-28.3` · 115 methods
 | `interrupts.list` | query | unary | none | none | cursor | — | — | `run_not_root`, `capability_not_negotiated` |
 | `plan.get` | query | unary | none | none | none | — | `plan` | `session_not_found`, `capability_not_negotiated` |
 | `items.list` | query | unary | none | none | cursor | — | `childRuns` | `session_not_found`, `run_not_found`, `capability_not_negotiated` |
-| `workspaces.tasks.create` | command | unary | replayResponse | none | none | — | `git` | `workspace_unavailable`, `vcs_unavailable`, `capability_not_negotiated` |
+| `workspaces.tasks.create` | command | unary | requiredReplayResponse | none | none | — | `git` | `workspace_unavailable`, `vcs_unavailable`, `capability_not_negotiated` |
 | `workspaces.tasks.list` | query | unary | none | none | none | — | `git` | `capability_not_negotiated` |
 | `workspaces.tasks.handoff.preview` | query | unary | none | none | none | — | `git` | `workspace_unavailable`, `revision_conflict`, `capability_not_negotiated` |
-| `workspaces.tasks.handoff.apply` | command | unary | replayResponse | none | none | — | `git` | `workspace_unavailable`, `session_busy`, `revision_conflict`, `capability_not_negotiated` |
-| `workspaces.tasks.release` | command | unary | replayResponse | none | none | — | `git` | `workspace_unavailable`, `session_busy`, `revision_conflict`, `capability_not_negotiated` |
+| `workspaces.tasks.handoff.apply` | command | unary | requiredReplayResponse | none | none | — | `git` | `workspace_unavailable`, `session_busy`, `revision_conflict`, `capability_not_negotiated` |
+| `workspaces.tasks.release` | command | unary | requiredReplayResponse | none | none | — | `git` | `workspace_unavailable`, `session_busy`, `revision_conflict`, `capability_not_negotiated` |
 | `workspaces.resolve` | query | unary | none | none | none | — | — | `workspace_unavailable` |
 | `workspaces.list` | query | unary | none | none | none | — | — | — |
 | `workspace.changes.list` | query | unary | none | none | none | — | `git` | `workspace_unavailable`, `vcs_unavailable`, `capability_not_negotiated` |

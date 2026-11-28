@@ -3,6 +3,7 @@ package delivery
 import (
 	"context"
 	"errors"
+	"reflect"
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -23,13 +24,11 @@ func registerTaskWorktrees(registry *Registry) {
 	unavailable, conflict := protocol.ErrWorkspaceUnavailable.Error(), protocol.ErrRevisionConflict.Error()
 	readErrors := []string{unavailable, conflict}
 	writeErrors := []string{unavailable, protocol.ErrSessionBusy.Error(), conflict}
-	registry.command(MethodMeta{Name: TaskWorktreesCreate, GoName: "CreateTaskWorktree", CapabilityRules: git,
-		Errors: []string{protocol.ErrWorkspaceUnavailable.Error(), protocol.ErrVcsUnavailable.Error()}},
-		func(service interface {
-			CreateTaskWorktree(context.Context, protocol.CreateTaskWorktreeRequest) (*protocol.TaskWorktree, error)
-		}, ctx context.Context, in protocol.CreateTaskWorktreeRequest) (*protocol.TaskWorktree, error) {
-			return service.CreateTaskWorktree(ctx, in)
-		}).withOwnedReplay(worktreeMutationReplay((*Handler).createTaskWorktree, func(task workspace.TaskWorktree) *protocol.TaskWorktree {
+	registry.requiredReplayCommand(MethodMeta{
+		Name: TaskWorktreesCreate, GoName: "CreateTaskWorktree", CapabilityRules: git,
+		Result: reflect.TypeFor[*protocol.TaskWorktree](),
+		Errors: []string{unavailable, protocol.ErrVcsUnavailable.Error()},
+	}, worktreeMutationReplay((*Handler).createTaskWorktree, func(task workspace.TaskWorktree) *protocol.TaskWorktree {
 		return new(presentTaskWorktree(task))
 	}))
 	registry.query(MethodMeta{Name: TaskWorktreesList, GoName: "ListTaskWorktrees", CapabilityRules: git},
@@ -44,18 +43,13 @@ func registerTaskWorktrees(registry *Registry) {
 		}, ctx context.Context, in protocol.TaskWorktreeRequest) (*protocol.WorktreeHandoff, error) {
 			return service.PreviewWorktreeHandoff(ctx, in)
 		})
-	registry.command(MethodMeta{Name: TaskWorktreesApply, GoName: "ApplyWorktreeHandoff", CapabilityRules: git, Errors: writeErrors},
-		func(service interface {
-			ApplyWorktreeHandoff(context.Context, protocol.ApplyWorktreeHandoffRequest) (*protocol.WorktreeHandoff, error)
-		}, ctx context.Context, in protocol.ApplyWorktreeHandoffRequest) (*protocol.WorktreeHandoff, error) {
-			return service.ApplyWorktreeHandoff(ctx, in)
-		}).withOwnedReplay(worktreeMutationReplay((*Handler).applyWorktreeHandoff, presentWorktreeHandoff))
-	registry.commandAck(MethodMeta{Name: TaskWorktreesRelease, GoName: "ReleaseTaskWorktree", CapabilityRules: git, Errors: writeErrors},
-		func(service interface {
-			ReleaseTaskWorktree(context.Context, protocol.TaskWorktreeRequest) error
-		}, ctx context.Context, in protocol.TaskWorktreeRequest) error {
-			return service.ReleaseTaskWorktree(ctx, in)
-		}).withOwnedReplay(worktreeMutationReplay((*Handler).releaseTaskWorktree, func(value struct{}) struct{} { return value }))
+	registry.requiredReplayCommand(MethodMeta{
+		Name: TaskWorktreesApply, GoName: "ApplyWorktreeHandoff", CapabilityRules: git, Errors: writeErrors,
+		Result: reflect.TypeFor[*protocol.WorktreeHandoff](),
+	}, worktreeMutationReplay((*Handler).applyWorktreeHandoff, presentWorktreeHandoff))
+	registry.requiredReplayCommand(MethodMeta{
+		Name: TaskWorktreesRelease, GoName: "ReleaseTaskWorktree", CapabilityRules: git, Errors: writeErrors,
+	}, worktreeMutationReplay((*Handler).releaseTaskWorktree, func(ack struct{}) struct{} { return ack }))
 }
 
 func worktreeMutationReplay[P, T, R any](
@@ -79,14 +73,6 @@ func worktreeMutationReplay[P, T, R any](
 		}, refuse)
 		return call.result(ctx, payload, err)
 	}
-}
-
-func (s *Handler) CreateTaskWorktree(ctx context.Context, in protocol.CreateTaskWorktreeRequest) (*protocol.TaskWorktree, error) {
-	var task workspace.TaskWorktree
-	if err := s.createTaskWorktree(ctx, in, operation.DirectReply(&task)); err != nil {
-		return nil, taskWorktreeError(err)
-	}
-	return new(presentTaskWorktree(task)), nil
 }
 
 func (s *Handler) createTaskWorktree(ctx context.Context, in protocol.CreateTaskWorktreeRequest, complete operation.Reply[workspace.TaskWorktree]) error {
@@ -113,21 +99,8 @@ func (s *Handler) PreviewWorktreeHandoff(ctx context.Context, in protocol.TaskWo
 	return presentWorktreeHandoff(preview), nil
 }
 
-func (s *Handler) ApplyWorktreeHandoff(ctx context.Context, in protocol.ApplyWorktreeHandoffRequest) (*protocol.WorktreeHandoff, error) {
-	var handoff workspace.WorktreeHandoff
-	if err := s.applyWorktreeHandoff(ctx, in, operation.DirectReply(&handoff)); err != nil {
-		return nil, taskWorktreeError(err)
-	}
-	return presentWorktreeHandoff(handoff), nil
-}
-
 func (s *Handler) applyWorktreeHandoff(ctx context.Context, in protocol.ApplyWorktreeHandoffRequest, complete operation.Reply[workspace.WorktreeHandoff]) error {
 	return s.taskWorktrees.ApplyHandoff(ctx, in.ID, in.Digest, complete)
-}
-
-func (s *Handler) ReleaseTaskWorktree(ctx context.Context, in protocol.TaskWorktreeRequest) error {
-	var ack struct{}
-	return taskWorktreeError(s.releaseTaskWorktree(ctx, in, operation.DirectReply(&ack)))
 }
 
 func (s *Handler) releaseTaskWorktree(ctx context.Context, in protocol.TaskWorktreeRequest, complete operation.Reply[struct{}]) error {

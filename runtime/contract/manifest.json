@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-11-28.3",
+  "protocolVersion": "2026-11-28.4",
   "features": [
     "reasoning",
     "multimodal",
@@ -512,7 +512,7 @@
       "name": "workspaces.tasks.create",
       "kind": "unary",
       "operation": "command",
-      "idempotency": "replayResponse",
+      "idempotency": "requiredReplayResponse",
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
@@ -561,7 +561,7 @@
       "name": "workspaces.tasks.handoff.apply",
       "kind": "unary",
       "operation": "command",
-      "idempotency": "replayResponse",
+      "idempotency": "requiredReplayResponse",
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
@@ -579,7 +579,7 @@
       "name": "workspaces.tasks.release",
       "kind": "unary",
       "operation": "command",
-      "idempotency": "replayResponse",
+      "idempotency": "requiredReplayResponse",
       "replayCursor": "none",
       "pagination": "none",
       "errors": [

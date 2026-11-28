@@ -69,6 +69,21 @@ func (m *methodsEmitter) methodPolicy(metas []delivery.MethodMeta) {
 	}
 	m.line("} as const satisfies { readonly [M in WireMethodName]: WireMethodPolicy };")
 	m.line("")
+	var responseReplayPolicies []delivery.MethodMeta
+	for _, meta := range metas {
+		if meta.Idempotency.ReplaysResponse() {
+			responseReplayPolicies = append(responseReplayPolicies, meta)
+		}
+	}
+	responseReplay := methodPolicyValues(responseReplayPolicies, func(meta delivery.MethodMeta) string {
+		return meta.Idempotency.String()
+	})
+	m.line("const RESPONSE_REPLAY_POLICIES: readonly WireIdempotencyPolicy[] = [%s];", strings.Join(responseReplay, ", "))
+	m.line("")
+	m.line("export function wireMethodReplaysResponse(method: WireMethodName): boolean {")
+	m.line("  return RESPONSE_REPLAY_POLICIES.includes(WIRE_METHOD_POLICY[method].idempotency);")
+	m.line("}")
+	m.line("")
 	m.line("/** True only for calls whose first response the runtime durably replays. */")
 	m.line("export type WireMutationMethodName = {")
 	m.line("  [M in WireMethodName]: (typeof WIRE_METHOD_POLICY)[M][\"operation\"] extends \"command\"")
@@ -301,14 +316,18 @@ func (m *methodsEmitter) line(format string, arguments ...any) {
 }
 
 func methodPolicyUnion(metas []delivery.MethodMeta, value func(delivery.MethodMeta) string) string {
+	values := methodPolicyValues(metas, value)
+	if len(values) == 0 {
+		return "never"
+	}
+	return strings.Join(values, " | ")
+}
+
+func methodPolicyValues(metas []delivery.MethodMeta, value func(delivery.MethodMeta) string) []string {
 	values := make([]string, 0, len(metas))
 	for _, meta := range metas {
 		values = append(values, wiregen.Literal(value(meta)))
 	}
 	slices.Sort(values)
-	values = slices.Compact(values)
-	if len(values) == 0 {
-		return "never"
-	}
-	return strings.Join(values, " | ")
+	return slices.Compact(values)
 }

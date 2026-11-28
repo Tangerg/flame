@@ -50,7 +50,7 @@ func (r *Registry) add(meta MethodMeta, invoke func(any, context.Context, any) r
 }
 
 func (m *Method) withOwnedReplay[Capability, Params any](settle func(Capability, context.Context, Params, keyedCall) protocol.OperationResult) {
-	if m.Meta.Params != reflect.TypeFor[Params]() || m.Meta.Idempotency != idempotencyReplayResponse {
+	if m.Meta.Params != reflect.TypeFor[Params]() || !m.Meta.Idempotency.ReplaysResponse() {
 		panic(fmt.Sprintf("operation: %s cannot settle its own replay for %s", m.Meta.Name, reflect.TypeFor[Params]()))
 	}
 	if m.ownedReplay != nil {
@@ -68,8 +68,11 @@ func (m *Method) withOwnedReplay[Capability, Params any](settle func(Capability,
 func (r *Registry) requireReplayOwners() {
 	for _, name := range r.names {
 		method := r.byName[name]
-		if method.Meta.Idempotency == idempotencyReplayResponse && method.ownedReplay == nil {
+		if method.Meta.Idempotency.ReplaysResponse() && method.ownedReplay == nil {
 			panic(fmt.Sprintf("operation: %s has no replay owner", name))
+		}
+		if method.Meta.Idempotency == idempotencyRequiredReplayResponse && method.invoke != nil {
+			panic(fmt.Sprintf("operation: %s has an invocation outside its replay owner", name))
 		}
 	}
 }
@@ -144,6 +147,19 @@ func (r *Registry) command[Capability, Params, Response any](
 	}
 	meta.ReplayCursor = replayCursorNone
 	return r.registerUnary(meta, call)
+}
+
+func (r *Registry) requiredReplayCommand[Capability, Params any](
+	meta MethodMeta,
+	settle func(Capability, context.Context, Params, keyedCall) protocol.OperationResult,
+) {
+	meta.Kind = kindUnary
+	meta.Operation = OperationCommand
+	meta.Idempotency = idempotencyRequiredReplayResponse
+	meta.ReplayCursor = replayCursorNone
+	meta.Pagination = paginationNone
+	meta.Params = reflect.TypeFor[Params]()
+	r.add(meta, nil).withOwnedReplay(settle)
 }
 
 func (r *Registry) extension[Capability, Params, Response any](meta MethodMeta, prepare func(Capability, context.Context, Params) (frame.MethodKind, func(context.Context) (Response, error), error)) {

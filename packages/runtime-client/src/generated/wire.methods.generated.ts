@@ -440,7 +440,7 @@ export function wireMethodReturnsValue(
 
 export type WireOperationKind = "command" | "extension" | "notice" | "query" | "subscription";
 export type WireResponseKind = "stream" | "unary";
-export type WireIdempotencyPolicy = "none" | "ownerPlugin" | "ownerResponse" | "ownerRun" | "replayResponse";
+export type WireIdempotencyPolicy = "none" | "ownerPlugin" | "ownerResponse" | "ownerRun" | "replayResponse" | "requiredReplayResponse";
 export type WireReplayCursorPolicy = "none" | "run";
 export type WirePaginationKind = "cursor" | "none";
 
@@ -680,7 +680,7 @@ export const WIRE_METHOD_POLICY = {
   "workspaces.tasks.create": {
     operation: "command",
     response: "unary",
-    idempotency: "replayResponse",
+    idempotency: "requiredReplayResponse",
     replayCursor: "none",
     pagination: "none",
   },
@@ -701,14 +701,14 @@ export const WIRE_METHOD_POLICY = {
   "workspaces.tasks.handoff.apply": {
     operation: "command",
     response: "unary",
-    idempotency: "replayResponse",
+    idempotency: "requiredReplayResponse",
     replayCursor: "none",
     pagination: "none",
   },
   "workspaces.tasks.release": {
     operation: "command",
     response: "unary",
-    idempotency: "replayResponse",
+    idempotency: "requiredReplayResponse",
     replayCursor: "none",
     pagination: "none",
   },
@@ -1259,6 +1259,12 @@ export const WIRE_METHOD_POLICY = {
     pagination: "none",
   },
 } as const satisfies { readonly [M in WireMethodName]: WireMethodPolicy };
+
+const RESPONSE_REPLAY_POLICIES: readonly WireIdempotencyPolicy[] = ["replayResponse", "requiredReplayResponse"];
+
+export function wireMethodReplaysResponse(method: WireMethodName): boolean {
+  return RESPONSE_REPLAY_POLICIES.includes(WIRE_METHOD_POLICY[method].idempotency);
+}
 
 /** True only for calls whose first response the runtime durably replays. */
 export type WireMutationMethodName = {

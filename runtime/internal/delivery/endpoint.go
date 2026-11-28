@@ -178,14 +178,14 @@ func (e *Endpoint) bind(ctx context.Context, method *Method, parameters any, opt
 
 func (e *Endpoint) dispatch(ctx context.Context, method *Method, parameters any, key string) protocol.OperationResult {
 	if key != "" {
-		switch method.Meta.Idempotency {
-		case IdempotencyOwnerRun:
+		switch policy := method.Meta.Idempotency; {
+		case policy == IdempotencyOwnerRun:
 			releaseKey, err := e.idempotency.Serialize(ctx, key)
 			if err != nil {
 				return failed(projectError(err))
 			}
 			defer releaseKey()
-		case idempotencyReplayResponse:
+		case policy.ReplaysResponse():
 			return e.replayOperation(ctx, method, parameters, key)
 		}
 	}

@@ -25,9 +25,9 @@ import {
 } from "./pagination";
 import type { RequestMeta, ServerCapabilities } from "@flame/runtime-client/wire";
 import {
-  WIRE_METHOD_POLICY,
   isWireStreamingMethodName,
   wireMethodIsPaginated,
+  wireMethodReplaysResponse,
   wireMethodReturnsValue,
   type WireMethodName,
   type WireMutationMethodName,
@@ -189,7 +189,7 @@ export function createWireCallPath(client: RpcClient, options: WireCallPathOptio
     } catch (error) {
       if (
         phase === "replay" &&
-        WIRE_METHOD_POLICY[method].idempotency === "replayResponse" &&
+        wireMethodReplaysResponse(method) &&
         error instanceof RpcError &&
         !error.recordedOutcome &&
         !mutationSettlementIsUnknown(error)

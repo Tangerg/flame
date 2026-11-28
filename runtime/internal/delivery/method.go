@@ -72,7 +72,8 @@ type IdempotencyPolicy string
 const (
 	idempotencyNone IdempotencyPolicy = "none"
 
-	idempotencyReplayResponse IdempotencyPolicy = "replayResponse"
+	idempotencyReplayResponse         IdempotencyPolicy = "replayResponse"
+	idempotencyRequiredReplayResponse IdempotencyPolicy = "requiredReplayResponse"
 
 	idempotencyOwnerResponse IdempotencyPolicy = "ownerResponse"
 
@@ -86,15 +87,19 @@ func (i IdempotencyPolicy) Valid() bool {
 }
 
 func (i IdempotencyPolicy) Replays() bool {
-	return i == idempotencyReplayResponse || i.OwnsOutcome()
+	return i.ReplaysResponse() || i.OwnsOutcome()
+}
+
+func (i IdempotencyPolicy) ReplaysResponse() bool {
+	return i == idempotencyReplayResponse || i == idempotencyRequiredReplayResponse
 }
 
 func (i IdempotencyPolicy) OwnsOutcome() bool {
-	return i == idempotencyOwnerResponse || i.requiresCallerKey()
+	return i == idempotencyOwnerResponse || i == idempotencyOwnerPlugin || i == IdempotencyOwnerRun
 }
 
 func (i IdempotencyPolicy) requiresCallerKey() bool {
-	return i == idempotencyOwnerPlugin || i == IdempotencyOwnerRun
+	return i == idempotencyRequiredReplayResponse || i == idempotencyOwnerPlugin || i == IdempotencyOwnerRun
 }
 
 type ReplayCursorPolicy string

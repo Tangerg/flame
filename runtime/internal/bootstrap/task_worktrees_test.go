@@ -38,6 +38,43 @@ func taskWorktreeTestRepository(t *testing.T) (string, func(...string) string) {
 	return source, git
 }
 
+func TestTaskWorktreeWritesRequireCallerIdentity(t *testing.T) {
+	source, git := taskWorktreeTestRepository(t)
+	git("commit", "--quiet", "--allow-empty", "-m", "original checkout")
+	cfg := poMCPConfig(t)
+	cfg.defaultWorkspacePath = source
+	r := poMCPOpen(t, cfg)
+	withoutKey := func(method delivery.Name, input any) {
+		t.Helper()
+		result := r.endpoint.Invoke(protocolLifecycleContext(t.Context()), method, input, protocol.CallMetadata{})
+		if result.Failure == nil || !errors.Is(result.Failure, protocol.ErrInvalidParams) {
+			t.Errorf("%s without a key = %+v, %v; want invalid params", method, result.Value, result.Failure)
+		}
+	}
+	request := protocol.CreateTaskWorktreeRequest{Source: protocol.WorkspaceRef{Path: source}, Base: "HEAD"}
+	registered := git("worktree", "list", "--porcelain")
+	withoutKey(delivery.TaskWorktreesCreate, request)
+	if after := git("worktree", "list", "--porcelain"); after != registered {
+		t.Error("creation without a caller key registered a Git worktree")
+	}
+
+	handoff := r.must(delivery.TaskWorktreesCreate, request, "create-task-for-keyed-handoff").(*protocol.TaskWorktree)
+	release := r.must(delivery.TaskWorktreesCreate, request, "create-task-for-keyed-release").(*protocol.TaskWorktree)
+	const file = "draft.txt"
+	if err := os.WriteFile(filepath.Join(handoff.Workspace.Path, file), []byte("approved draft\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	preview := r.must(delivery.TaskWorktreesPreview, protocol.TaskWorktreeRequest{ID: handoff.ID}, "").(*protocol.WorktreeHandoff)
+	withoutKey(delivery.TaskWorktreesApply, protocol.ApplyWorktreeHandoffRequest{ID: handoff.ID, Digest: preview.Digest})
+	if status := git("status", "--porcelain"); status != "" {
+		t.Errorf("handoff without a caller key changed the destination: %s", status)
+	}
+	withoutKey(delivery.TaskWorktreesRelease, protocol.TaskWorktreeRequest{ID: release.ID})
+	if _, err := os.Stat(release.Workspace.Path); err != nil {
+		t.Errorf("release without a caller key removed the checkout: %v", err)
+	}
+}
+
 func TestTaskWorktreesKeepSeparateChangesAndHandoffAfterRestart(t *testing.T) {
 	source, git := taskWorktreeTestRepository(t)
 	write := func(root, name string, body []byte) {

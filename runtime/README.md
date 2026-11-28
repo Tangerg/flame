@@ -110,6 +110,14 @@ A worktree moved with Git appears unavailable. Move it back to the managed path
 or remove its registration in Git before releasing the task. A checkout without
 a matching Git custody stamp appears unavailable and stays on disk.
 
+Starting with protocol 2026-11-28.4, creating, applying and releasing a task
+worktree require a caller-retained idempotency key. Go callers supply it in the
+call metadata and direct HTTP callers send the `Idempotency-Key` header.
+The TypeScript SDK supplies and retains the key through its command journal.
+If preflight is canceled, the caller can retry with the same key. Once Runtime
+admits the Git write, it settles the receipt under that key even when the
+caller disconnects. Reusing the original request and key returns the receipt.
+
 Project Home shows recent accepted background Runs and links to their original
 Sessions and PR reviews. A schedule or file watcher can capture a Project ID when
 configured. Claimed events freeze their source version and keep their original
