@@ -1,0 +1,25 @@
+{
+  "protocol": "io.github.tangerg.flame/plugin/1",
+  "contributions": [
+    {
+      "id": "project-methods",
+      "server": "methods",
+      "export": "project-methods",
+      "background": true,
+      "contract": "io.github.tangerg.flame/contracts/capability.generated.json"
+    }
+  ],
+  "components": [
+    {
+      "id": "project-methods",
+      "material": "project-methods",
+      "title": "Methods",
+      "localizedTitles": { "zh": "方法", "zh-TW": "方法" },
+      "scope": "client",
+      "placement": "workspaceView",
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "ProjectMethods",
+      "contribution": "project-methods"
+    }
+  ]
+}

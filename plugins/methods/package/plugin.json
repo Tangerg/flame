@@ -1,0 +1,9 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "flame.methods",
+  "version": "1.0.0",
+  "description": "Run versioned project methods with managed worktrees, parallel review and human decisions.",
+  "extensions": {
+    "io.github.tangerg.flame": { "declaration": "io.github.tangerg.flame/declaration.json" }
+  }
+}

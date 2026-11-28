@@ -772,7 +772,7 @@ async function goMembers(native) {
           // Bound the lifetime of a growing integration suite while each test
           // retains its original process deadlines and isolated Runtime fixture.
           const installedWorkflows =
-            "^Test(Plugin|Filewatch|GitHub|KnowledgeBase|OpenCode|Projects|Research|Schedule|TaskWorktrees|UsageReports|WebInstalled)";
+            "^Test(Plugin|ACPRegistry|Filewatch|GitHub|KnowledgeBase|Methods|OpenCode|Projects|Research|Schedule|TaskWorktrees|UsageReports|WebInstalled)";
           run(
             "go",
             [...args, "-run", installedWorkflows, bootstrap],

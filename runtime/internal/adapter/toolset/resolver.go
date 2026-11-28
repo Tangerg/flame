@@ -91,6 +91,7 @@ type staticSpec struct {
 	placement    placement
 	availability availability
 	deferred     bool
+	restricted   []domaintool.Profile
 }
 
 type resolverDeps struct {
@@ -145,10 +146,10 @@ func newResolver(d resolverDeps) (*Resolver, error) {
 		goalAvailable: d.GoalAvailable,
 		planAvailable: d.PlanAvailable,
 		staticSpecs: []staticSpec{
-			{tool: d.AskUser, audience: audienceBoth, placement: interactionTail},
+			{tool: d.AskUser, audience: audienceBoth, placement: interactionTail, restricted: []domaintool.Profile{domaintool.ProfileMethodChange, domaintool.ProfileMethodReview}},
 			{tool: d.EnterPlan, audience: audienceRoot, placement: interactionTail, availability: whenPlanAvailable},
 			{tool: d.ExitPlan, audience: audienceRoot, placement: interactionTail, availability: whenPlanAvailable},
-			{tool: d.Plan, audience: audienceRoot, placement: afterSkill, availability: whenPlanAvailable},
+			{tool: d.Plan, audience: audienceRoot, placement: afterSkill, availability: whenPlanAvailable, restricted: []domaintool.Profile{domaintool.ProfileMethodChange}},
 			{tool: d.ToolResult, audience: audienceBoth, placement: afterSkill},
 			{tool: d.Script, audience: audienceBoth, placement: afterSkill},
 			{tool: d.ProposeSkill, audience: audienceRoot, placement: afterSkill, deferred: true},
@@ -346,11 +347,11 @@ func (r *Resolver) toolsForCWD(cwd string) (cwdTools, error) {
 	return openCWDTools(cwd, r.codeIntel, r.readTracker, r.pathLocker)
 }
 
-func (r *Resolver) Manifest(ctx context.Context, group domaintool.Group, retained *Retained, verificationOnly bool) (Manifest, error) {
+func (r *Resolver) Manifest(ctx context.Context, group domaintool.Group, retained *Retained, profile domaintool.Profile) (Manifest, error) {
 	if err := retained.validate(); err != nil {
 		return Manifest{}, err
 	}
-	resolved, err := r.resolve(ctx, group, retained, verificationOnly)
+	resolved, err := r.resolve(ctx, group, retained, profile)
 	if err != nil {
 		return Manifest{}, err
 	}
@@ -364,7 +365,7 @@ func (r *Resolver) Manifest(ctx context.Context, group domaintool.Group, retaine
 	return manifest, nil
 }
 
-func (r *Resolver) resolve(ctx context.Context, group domaintool.Group, retained *Retained, verificationOnly bool) (_ manifestBuilder, err error) {
+func (r *Resolver) resolve(ctx context.Context, group domaintool.Group, retained *Retained, profile domaintool.Profile) (_ manifestBuilder, err error) {
 	if !group.Valid() {
 		return manifestBuilder{}, fmt.Errorf("toolset: unsupported Tool group %q", group)
 	}
@@ -384,7 +385,23 @@ func (r *Resolver) resolve(ctx context.Context, group domaintool.Group, retained
 	}()
 	tools := manifestBuilder{close: localTools.close}
 	tools.direct(localTools.readSearch...)
-	if verificationOnly {
+	if profile != domaintool.ProfileDefault {
+		if !profile.Valid() {
+			return manifestBuilder{}, errors.New("toolset: invalid Tool profile")
+		}
+		canPlan := false
+		if profile == domaintool.ProfileMethodChange {
+			tools.direct(localTools.edit, localTools.applyPatch)
+			canPlan, err = r.planAvailable(ctx)
+			if err != nil {
+				return manifestBuilder{}, err
+			}
+		}
+		for _, spec := range r.staticSpecs {
+			if slices.Contains(spec.restricted, profile) && spec.audience.includes(group) && spec.availability.admits(ctx, canPlan) {
+				tools.direct(spec.tool)
+			}
+		}
 		return tools, tools.bindDiscovery(retained)
 	}
 	tools.direct(localTools.edit)

@@ -34,6 +34,7 @@ export function ProjectBackground({
   const views = useWorkspaceViews();
   const review = views.find((view) => view.material === "project-pr-reviews");
   const deliveries = views.find((view) => view.material === "project-issue-deliveries");
+  const methods = views.find((view) => view.material === "project-methods");
   const activity = useQuery({
     queryKey: ["project-background", project.id],
     queryFn: ({ signal }) => access.background.get(project.id, signal),
@@ -77,6 +78,16 @@ export function ProjectBackground({
           }
         >
           {labelText(deliveries.title)}
+        </Button>
+      )}
+      {methods && (
+        <Button
+          size="sm"
+          onClick={(event) =>
+            workspace.navigation.openViewInDock(methods.id, event.currentTarget, project.id)
+          }
+        >
+          {labelText(methods.title)}
         </Button>
       )}
       {data && (
