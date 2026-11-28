@@ -148,10 +148,21 @@ func (s *Server) Handler() http.Handler {
 func (s *Server) withServerLifecycle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithCancel(r.Context())
-		stop := context.AfterFunc(s.handlerCtx, cancel)
-		defer func() {
-			stop()
+		defer cancel()
+		interrupted := make(chan struct{})
+		stop := context.AfterFunc(s.handlerCtx, func() {
+			defer close(interrupted)
 			cancel()
+			err := http.NewResponseController(w).SetReadDeadline(time.Now())
+			if err != nil && !errors.Is(err, http.ErrNotSupported) && !errors.Is(err, net.ErrClosed) {
+				recordError(ctx, "http.interrupt-read", err)
+			}
+		})
+		defer func() {
+			// The response controller belongs to this handler invocation.
+			if !stop() {
+				<-interrupted
+			}
 		}()
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
@@ -169,13 +180,16 @@ func (s *Server) Start(ctx context.Context) (net.Addr, <-chan error, error) {
 }
 
 func (s *Server) Shutdown(ctx context.Context) error {
-	s.stopHandlers()
-	s.unstarted.seal()
+	s.stopTransport()
 	return s.httpServer.Shutdown(ctx)
 }
 
 func (s *Server) Close() error {
+	s.stopTransport()
+	return s.httpServer.Close()
+}
+
+func (s *Server) stopTransport() {
 	s.stopHandlers()
 	s.unstarted.seal()
-	return s.httpServer.Close()
 }
