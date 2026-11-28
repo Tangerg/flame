@@ -34,13 +34,8 @@ type Row struct {
 }
 
 type DiffFile struct {
-	Path         string
-	Status       Status
-	PreviousPath string
-	Added        int
-	Removed      int
-	Binary       bool
-	Rows         []Row
+	FileChange
+	Rows []Row
 }
 
 type BaselineType string
@@ -85,48 +80,44 @@ func Diff(ctx context.Context, dir, relPath string, mode Mode, projection Projec
 	if projection != Rows && projection != Visual {
 		return DiffResult{}, fmt.Errorf("git: unsupported diff projection %q", projection)
 	}
-	patch, untrackedPaths, baseline, err := completeDiff(ctx, dir, relPath, mode, budget.Bytes)
+	output, baseline, err := completeDiff(ctx, dir, relPath, mode, budget.Bytes)
 	if err != nil {
 		return DiffResult{}, err
 	}
-	parsed, err := parseUnifiedDiff(patch, budget.Files, budget.Rows, projection == Rows)
+	parsed, err := parseUnifiedDiff(output.data, budget.Files, budget.Rows, projection == Rows)
 	if err != nil {
 		return DiffResult{}, err
-	}
-	untracked := make(map[string]struct{}, len(untrackedPaths))
-	for _, path := range untrackedPaths {
-		untracked[path] = struct{}{}
 	}
 	for index := range parsed.files {
-		if _, ok := untracked[parsed.files[index].Path]; ok && parsed.files[index].Status == StatusAdded {
-			parsed.files[index].Status = StatusUntracked
-		}
+		file := &parsed.files[index]
+		file.Status = output.status(file.Path, file.Status)
 	}
 	result := DiffResult{Baseline: baseline, Files: parsed.files, Truncated: parsed.truncated}
 	if projection == Visual {
-		result.Patch = string(patch[:parsed.end])
+		result.Patch = string(output.data[:parsed.end])
 	}
 	return result, nil
 }
 
 func RawDiff(ctx context.Context, dir, relPath string, mode Mode, maxBytes int) (RawDiffResult, error) {
-	patch, _, baseline, err := completeDiff(ctx, dir, relPath, mode, maxBytes)
+	output, baseline, err := completeDiff(ctx, dir, relPath, mode, maxBytes)
 	if err != nil {
 		return RawDiffResult{}, err
 	}
-	return RawDiffResult{Baseline: baseline, Patch: string(patch)}, nil
+	return RawDiffResult{Baseline: baseline, Patch: string(output.data)}, nil
 }
 
-func completeDiff(ctx context.Context, dir, relPath string, mode Mode, maxBytes int) ([]byte, []string, Baseline, error) {
+func completeDiff(ctx context.Context, dir, relPath string, mode Mode, maxBytes int) (worktreeComparisonOutput, Baseline, error) {
 	baseline, revision, err := diffBaseline(ctx, dir, mode)
 	if err != nil {
-		return nil, nil, Baseline{}, err
+		return worktreeComparisonOutput{}, Baseline{}, err
 	}
-	patch, untracked, err := readWorktreePatch(ctx, dir, patchComparison{
+	comparison := worktreeComparison{
 		revision: revision, path: relPath, includeUntracked: mode == Worktree,
-	}, maxBytes)
-	if err != nil {
-		return nil, nil, Baseline{}, err
 	}
-	return patch, untracked, baseline, nil
+	output, err := comparison.patch(ctx, dir, maxBytes)
+	if err != nil {
+		return worktreeComparisonOutput{}, Baseline{}, err
+	}
+	return output, baseline, nil
 }

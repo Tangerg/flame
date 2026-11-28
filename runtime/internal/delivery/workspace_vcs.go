@@ -32,16 +32,9 @@ func (s *Handler) ListWorkspaceFileChanges(ctx context.Context, in protocol.Work
 	}
 	out := make([]protocol.WorkspaceFileChange, 0, len(changes))
 	for _, change := range changes {
-		status, ok := presentFileStatus(change.Status)
-		if !ok {
-			return nil, fmt.Errorf("workspace.changes.list: unsupported file status %q", change.Status)
-		}
-		entry := protocol.WorkspaceFileChange{
-			Path: change.Path, Status: status, PreviousPath: change.PreviousPath, Binary: change.Binary,
-		}
-		if !change.Binary {
-			added, removed := change.Added, change.Removed
-			entry.Added, entry.Removed = &added, &removed
+		entry, err := presentFileChange(change)
+		if err != nil {
+			return nil, err
 		}
 		out = append(out, entry)
 	}
@@ -115,13 +108,9 @@ func presentDiff(diff workspaceapp.Diff) (*protocol.Diff, error) {
 func presentDiffManifest(files []workspaceapp.FileDiff) ([]protocol.WorkspaceFileChange, error) {
 	manifest := make([]protocol.WorkspaceFileChange, 0, len(files))
 	for _, file := range files {
-		status, ok := presentFileStatus(file.Status)
-		if !ok {
-			return nil, fmt.Errorf("workspace.diff.get: unsupported file status %q", file.Status)
-		}
-		entry := protocol.WorkspaceFileChange{Path: file.Path, Status: status, PreviousPath: file.PreviousPath, Binary: file.Binary}
-		if !file.Binary {
-			entry.Added, entry.Removed = new(file.Added), new(file.Removed)
+		entry, err := presentFileChange(file.Change)
+		if err != nil {
+			return nil, err
 		}
 		manifest = append(manifest, entry)
 	}
@@ -131,23 +120,18 @@ func presentDiffManifest(files []workspaceapp.FileDiff) ([]protocol.WorkspaceFil
 func presentDiffFiles(files []workspaceapp.FileDiff) ([]protocol.FileDiff, error) {
 	out := make([]protocol.FileDiff, 0, len(files))
 	for _, file := range files {
-		status, ok := presentFileStatus(file.Status)
-		if !ok {
-			return nil, fmt.Errorf("workspace.diff.get: unsupported file status %q", file.Status)
+		change, err := presentFileChange(file.Change)
+		if err != nil {
+			return nil, err
 		}
 		rows, err := presentDiffRows(file.Rows)
 		if err != nil {
 			return nil, err
 		}
-		entry := protocol.FileDiff{
-			Path: file.Path, Status: status, PreviousPath: file.PreviousPath,
-			Binary: file.Binary, Rows: rows,
-		}
-		if !file.Binary {
-			added, removed := file.Added, file.Removed
-			entry.Added, entry.Removed = &added, &removed
-		}
-		out = append(out, entry)
+		out = append(out, protocol.FileDiff{
+			Path: change.Path, Status: change.Status, PreviousPath: change.PreviousPath,
+			Binary: change.Binary, Added: change.Added, Removed: change.Removed, Rows: rows,
+		})
 	}
 	return out, nil
 }
@@ -170,21 +154,26 @@ func presentDiffRows(rows []workspaceapp.DiffRow) ([]protocol.DiffRow, error) {
 	return out, nil
 }
 
-func presentFileStatus(status workspaceapp.FileStatus) (protocol.FileStatus, bool) {
-	switch status {
+func presentFileChange(change workspaceapp.FileChange) (protocol.WorkspaceFileChange, error) {
+	entry := protocol.WorkspaceFileChange{Path: change.Path, PreviousPath: change.PreviousPath, Binary: change.Binary}
+	switch change.Status {
 	case workspaceapp.FileStatusAdded:
-		return protocol.FileStatusAdded, true
+		entry.Status = protocol.FileStatusAdded
 	case workspaceapp.FileStatusModified:
-		return protocol.FileStatusModified, true
+		entry.Status = protocol.FileStatusModified
 	case workspaceapp.FileStatusDeleted:
-		return protocol.FileStatusDeleted, true
+		entry.Status = protocol.FileStatusDeleted
 	case workspaceapp.FileStatusRenamed:
-		return protocol.FileStatusRenamed, true
+		entry.Status = protocol.FileStatusRenamed
 	case workspaceapp.FileStatusUntracked:
-		return protocol.FileStatusUntracked, true
+		entry.Status = protocol.FileStatusUntracked
 	default:
-		return "", false
+		return protocol.WorkspaceFileChange{}, fmt.Errorf("workspace: unsupported file status %q", change.Status)
 	}
+	if !change.Binary {
+		entry.Added, entry.Removed = new(change.Added), new(change.Removed)
+	}
+	return entry, nil
 }
 
 func presentDiffRowType(kind workspaceapp.DiffRowType) (protocol.DiffRowType, bool) {

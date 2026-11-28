@@ -1,14 +1,12 @@
 package workspace
 
 import (
-	"cmp"
 	"context"
 	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"slices"
 
 	"github.com/samber/lo"
 )
@@ -73,13 +71,8 @@ type DiffRow struct {
 }
 
 type FileDiff struct {
-	Path         string
-	Status       FileStatus
-	PreviousPath string
-	Binary       bool
-	Added        int
-	Removed      int
-	Rows         []DiffRow
+	Change FileChange
+	Rows   []DiffRow
 }
 
 type DiffBaselineType string
@@ -190,22 +183,7 @@ func (v *VCS) Changes(ctx context.Context, cwd string) ([]FileChange, error) {
 	if err != nil {
 		return nil, err
 	}
-	changes, err := v.git.Changes(ctx, root, maxWorkspaceChanges)
-	if err != nil {
-		return nil, err
-	}
-	if len(changes) > maxWorkspaceChanges {
-		return nil, fmt.Errorf("%w: more than %d workspace changes", ErrVCSResultTooLarge, maxWorkspaceChanges)
-	}
-	paths := make(map[string]struct{}, len(changes))
-	for _, change := range changes {
-		if _, duplicate := paths[change.Path]; duplicate {
-			return nil, fmt.Errorf("workspace: VCS changes repeated path %q", change.Path)
-		}
-		paths[change.Path] = struct{}{}
-	}
-	slices.SortFunc(changes, func(a, b FileChange) int { return cmp.Compare(a.Path, b.Path) })
-	return changes, nil
+	return v.git.Changes(ctx, root, maxWorkspaceChanges)
 }
 
 func (v *VCS) Diff(ctx context.Context, input DiffInput) (Diff, error) {
@@ -275,10 +253,10 @@ func (v *VCS) structuredDiff(ctx context.Context, root, path string, input DiffI
 	}
 	paths := make(map[string]struct{}, len(result.Files))
 	for _, file := range result.Files {
-		if _, duplicate := paths[file.Path]; duplicate {
-			return Diff{}, fmt.Errorf("workspace: VCS diff repeated path %q", file.Path)
+		if _, duplicate := paths[file.Change.Path]; duplicate {
+			return Diff{}, fmt.Errorf("workspace: VCS diff repeated path %q", file.Change.Path)
 		}
-		paths[file.Path] = struct{}{}
+		paths[file.Change.Path] = struct{}{}
 	}
 	return Diff{
 		Format: format, Baseline: result.Baseline, Files: result.Files,

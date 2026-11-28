@@ -9,7 +9,7 @@ import (
 const (
 	WorkspacesResolve    Name = "workspaces.resolve"
 	workspacesList       Name = "workspaces.list"
-	workspaceChangesList Name = "workspace.changes.list"
+	WorkspaceChangesList Name = "workspace.changes.list"
 	WorkspaceDiffGet     Name = "workspace.diff.get"
 	workspaceFilesSearch Name = "workspace.files.search"
 	workspaceFilesList   Name = "workspace.files.list"
@@ -35,7 +35,7 @@ func registerWorkspace(registry *Registry) {
 		})
 
 	registry.query(MethodMeta{
-		Name: workspaceChangesList, GoName: "ListWorkspaceFileChanges",
+		Name: WorkspaceChangesList, GoName: "ListWorkspaceFileChanges",
 		Errors: []string{protocol.ErrWorkspaceUnavailable.
 			Error(), protocol.ErrVcsUnavailable.
 			Error(),

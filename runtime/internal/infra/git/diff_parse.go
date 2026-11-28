@@ -118,8 +118,7 @@ func (parser *unifiedDiffParser) startFragment(header string, offset int) (bool,
 		return true, err
 	}
 	parser.current = &DiffFile{
-		Path:   path,
-		Status: StatusModified,
+		FileChange: FileChange{Path: path, Status: StatusModified},
 	}
 	parser.left = hunkRange{}
 	parser.right = hunkRange{}

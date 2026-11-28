@@ -18,14 +18,11 @@ func (VCS) Changes(ctx context.Context, root string, maxChanges int) ([]workspac
 	}
 	out := make([]workspaceapp.FileChange, 0, len(changes))
 	for _, change := range changes {
-		status, ok := fileStatus(change.Status)
-		if !ok {
-			return nil, fmt.Errorf("workspace: unsupported git status %q", change.Status)
+		converted, err := fileChange(change)
+		if err != nil {
+			return nil, err
 		}
-		out = append(out, workspaceapp.FileChange{
-			Path: change.Path, Status: status, PreviousPath: change.PreviousPath,
-			Binary: change.Binary, Added: change.Added, Removed: change.Removed,
-		})
+		out = append(out, converted)
 	}
 	return out, nil
 }
@@ -55,9 +52,9 @@ func (VCS) StructuredDiff(
 	}
 	out := make([]workspaceapp.FileDiff, 0, len(result.Files))
 	for _, file := range result.Files {
-		status, ok := fileStatus(file.Status)
-		if !ok {
-			return workspaceapp.StructuredDiffResult{}, fmt.Errorf("workspace: unsupported git status %q", file.Status)
+		change, err := fileChange(file.FileChange)
+		if err != nil {
+			return workspaceapp.StructuredDiffResult{}, err
 		}
 		rows := make([]workspaceapp.DiffRow, 0, len(file.Rows))
 		for _, row := range file.Rows {
@@ -69,10 +66,7 @@ func (VCS) StructuredDiff(
 				Type: kind, Text: row.Text, LeftLine: row.LeftLine, RightLine: row.RightLine, Code: row.Code, NoNewline: row.NoNewline,
 			})
 		}
-		out = append(out, workspaceapp.FileDiff{
-			Path: file.Path, Status: status, PreviousPath: file.PreviousPath,
-			Binary: file.Binary, Added: file.Added, Removed: file.Removed, Rows: rows,
-		})
+		out = append(out, workspaceapp.FileDiff{Change: change, Rows: rows})
 	}
 	return workspaceapp.StructuredDiffResult{
 		Baseline: baseline, Files: out, Patch: result.Patch, Truncated: result.Truncated,
@@ -121,21 +115,26 @@ func diffBaseline(baseline git.Baseline) (workspaceapp.DiffBaseline, error) {
 	return workspaceapp.DiffBaseline{Type: kind, Commit: baseline.Commit}, nil
 }
 
-func fileStatus(status git.Status) (workspaceapp.FileStatus, bool) {
-	switch status {
-	case git.StatusAdded:
-		return workspaceapp.FileStatusAdded, true
-	case git.StatusModified:
-		return workspaceapp.FileStatusModified, true
-	case git.StatusDeleted:
-		return workspaceapp.FileStatusDeleted, true
-	case git.StatusRenamed:
-		return workspaceapp.FileStatusRenamed, true
-	case git.StatusUntracked:
-		return workspaceapp.FileStatusUntracked, true
-	default:
-		return "", false
+func fileChange(change git.FileChange) (workspaceapp.FileChange, error) {
+	out := workspaceapp.FileChange{
+		Path: change.Path, PreviousPath: change.PreviousPath,
+		Binary: change.Binary, Added: change.Added, Removed: change.Removed,
 	}
+	switch change.Status {
+	case git.StatusAdded:
+		out.Status = workspaceapp.FileStatusAdded
+	case git.StatusModified:
+		out.Status = workspaceapp.FileStatusModified
+	case git.StatusDeleted:
+		out.Status = workspaceapp.FileStatusDeleted
+	case git.StatusRenamed:
+		out.Status = workspaceapp.FileStatusRenamed
+	case git.StatusUntracked:
+		out.Status = workspaceapp.FileStatusUntracked
+	default:
+		return workspaceapp.FileChange{}, fmt.Errorf("workspace: unsupported git status %q", change.Status)
+	}
+	return out, nil
 }
 
 func diffRowType(kind git.RowType) (workspaceapp.DiffRowType, bool) {

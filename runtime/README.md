@@ -1936,7 +1936,10 @@ Worktree comparisons and handoffs include selected untracked paths in a private
 Git index before comparing with the baseline. Patches and manifests follow
 Git's comparison order. Git reads existing objects from the repository as an
 alternate. Untracked directory entries such as embedded Git repositories are
-rejected before comparison.
+rejected before comparison. `workspace.changes.list` reads names and line counts
+from the same worktree comparison using Git's raw and numstat projections in a
+single invocation. Before the first commit, both reads compare against the empty
+tree.
 
 Checkpoint predicates accept exit codes only from admitted Git command results.
 A process failure carrying the same status remains a failed observation. Object

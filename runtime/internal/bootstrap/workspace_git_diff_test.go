@@ -3,12 +3,58 @@ package bootstrap
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
+
+func TestWorkspaceChangesUseTheSameGitComparisonAsDiff(t *testing.T) {
+	for _, scenario := range []struct {
+		name       string
+		withCommit bool
+	}{
+		{name: "recreated tracked path", withCommit: true},
+		{name: "initial staged path"},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			source, git := taskWorktreeTestRepository(t)
+			const material = "material.txt"
+			path := filepath.Join(source, material)
+			if err := os.WriteFile(path, []byte("first line\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			git("add", "--", material)
+			if scenario.withCommit {
+				git("commit", "--quiet", "-m", "initial material")
+				git("rm", "--cached", "--", material)
+				if err := os.WriteFile(path, []byte("new material\n"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := os.WriteFile(filepath.Join(source, "asset.bin"), []byte("\x00asset"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+
+			cfg := poMCPConfig(t)
+			cfg.defaultWorkspacePath = source
+			r := poMCPOpen(t, cfg)
+			workspace := protocol.WorkspaceRef{Path: source}
+			visual := r.must(delivery.WorkspaceDiffGet, protocol.GetDiffRequest{
+				Workspace: workspace, Format: protocol.DiffFormatVisual,
+			}, "").(*protocol.Diff).Visual
+			if visual == nil || visual.Truncated || len(visual.Manifest) != 2 {
+				t.Fatalf("worktree comparison = %+v; want both files", visual)
+			}
+			listed := r.must(delivery.WorkspaceChangesList, protocol.WorkspaceQuery{Workspace: workspace}, "").(*protocol.Page[protocol.WorkspaceFileChange])
+			if !reflect.DeepEqual(listed.Data, visual.Manifest) {
+				t.Fatalf("change list = %+v; want Git comparison %+v", listed.Data, visual.Manifest)
+			}
+		})
+	}
+}
 
 func TestWorkspaceGitDiffPreservesFileIdentities(t *testing.T) {
 	source, git := taskWorktreeTestRepository(t)
@@ -46,8 +92,9 @@ func TestWorkspaceGitDiffPreservesFileIdentities(t *testing.T) {
 	cfg := poMCPConfig(t)
 	cfg.defaultWorkspacePath = source
 	r := poMCPOpen(t, cfg)
+	workspace := protocol.WorkspaceRef{Path: source}
 	diff := r.must(delivery.WorkspaceDiffGet, protocol.GetDiffRequest{
-		Workspace: protocol.WorkspaceRef{Path: source}, Format: protocol.DiffFormatVisual,
+		Workspace: workspace, Format: protocol.DiffFormatVisual,
 	}, "").(*protocol.Diff)
 	want := []struct {
 		path, previous string
@@ -62,6 +109,10 @@ func TestWorkspaceGitDiffPreservesFileIdentities(t *testing.T) {
 	}
 	if diff.Visual == nil || len(diff.Visual.Manifest) != len(want) {
 		t.Fatalf("workspace diff has the wrong set of files: %+v", diff.Visual)
+	}
+	listed := r.must(delivery.WorkspaceChangesList, protocol.WorkspaceQuery{Workspace: workspace}, "").(*protocol.Page[protocol.WorkspaceFileChange])
+	if !reflect.DeepEqual(listed.Data, diff.Visual.Manifest) {
+		t.Errorf("change list = %+v; want Git comparison %+v", listed.Data, diff.Visual.Manifest)
 	}
 	for _, expected := range want {
 		if !slices.ContainsFunc(diff.Visual.Manifest, func(change protocol.WorkspaceFileChange) bool {
@@ -98,6 +149,11 @@ func TestWorkspaceGitDiffProjectsTypeChangesAsOneFile(t *testing.T) {
 	cfg.defaultWorkspacePath = source
 	r := poMCPOpen(t, cfg)
 	request := protocol.GetDiffRequest{Workspace: protocol.WorkspaceRef{Path: source}, Format: protocol.DiffFormatRows}
+	listed := r.must(delivery.WorkspaceChangesList, protocol.WorkspaceQuery{Workspace: request.Workspace}, "").(*protocol.Page[protocol.WorkspaceFileChange])
+	if len(listed.Data) != 1 || listed.Data[0].Path != name || listed.Data[0].Status != protocol.FileStatusModified ||
+		listed.Data[0].Added == nil || *listed.Data[0].Added != 1 || listed.Data[0].Removed == nil || *listed.Data[0].Removed != 1 {
+		t.Errorf("change list should contain one type change with both line counts: %+v", listed.Data)
+	}
 	read := r.must(delivery.WorkspaceDiffGet, request, "").(*protocol.Diff)
 	if read.Rows == nil || read.Rows.Truncated || len(read.Rows.Files) != 1 {
 		t.Errorf("type change should be one complete file: %+v", read.Rows)
