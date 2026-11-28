@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
 	"sync"
@@ -93,6 +94,46 @@ func TestTaskWorktreeReleaseRemovesRegistrationWithoutCheckout(t *testing.T) {
 	catalog := r.must(delivery.TaskWorktreesList, struct{}{}, "").(*protocol.Page[protocol.TaskWorktree])
 	if len(catalog.Data) != 0 {
 		t.Errorf("release left the task in the catalog: %+v", catalog.Data)
+	}
+}
+
+func TestTaskWorktreeReleaseReceiptIgnoresFilesOutsideCheckout(t *testing.T) {
+	source, git := taskWorktreeTestRepository(t)
+	git("commit", "--quiet", "--allow-empty", "-m", "initial checkout")
+	cfg := poMCPConfig(t)
+	cfg.defaultWorkspacePath = source
+	r := poMCPOpen(t, cfg)
+	task := r.must(delivery.TaskWorktreesCreate, protocol.CreateTaskWorktreeRequest{
+		Source: protocol.WorkspaceRef{Path: source}, Base: "HEAD",
+	}, "create-task-next-to-folder-metadata").(*protocol.TaskWorktree)
+	metadata := filepath.Join(filepath.Dir(task.Workspace.Path), ".DS_Store")
+	const contents = "folder display preferences"
+	if err := os.WriteFile(metadata, []byte(contents), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx := protocolLifecycleContext(t.Context())
+	request := protocol.TaskWorktreeRequest{ID: task.ID}
+	options := protocol.CallMetadata{IdempotencyKey: "release-task-next-to-folder-metadata"}
+	result := r.endpoint.Invoke(ctx, delivery.TaskWorktreesRelease, request, options)
+	if registrations := git("worktree", "list", "--porcelain"); strings.Contains(registrations, "worktree "+task.Workspace.Path+"\n") {
+		t.Fatalf("Git still has the released checkout: %s", registrations)
+	}
+	if result.Failure != nil {
+		t.Errorf("Git removed the checkout but release returned %v", result.Failure)
+	}
+	catalog := r.must(delivery.TaskWorktreesList, struct{}{}, "").(*protocol.Page[protocol.TaskWorktree])
+	if len(catalog.Data) != 0 {
+		t.Errorf("release left a task in the catalog: %+v", catalog.Data)
+	}
+	if got, err := os.ReadFile(metadata); err != nil || string(got) != contents {
+		t.Errorf("unrelated folder metadata = %q, %v; want %q", got, err, contents)
+	}
+
+	r = restartTaskWorktreeRuntime(t, r, cfg)
+	replayed := r.endpoint.Invoke(ctx, delivery.TaskWorktreesRelease, request, options)
+	if replayed.Failure != nil || !reflect.DeepEqual(replayed.Value, result.Value) {
+		t.Fatalf("cold replay of the original release = %+v, %v; want %+v", replayed.Value, replayed.Failure, result.Value)
 	}
 }
 

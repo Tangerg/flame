@@ -24,8 +24,8 @@ import (
 )
 
 const (
-	taskManifest         = "task.json"
-	taskCheckout         = "checkout"
+	taskRecordSuffix     = ".json"
+	taskPendingSuffix    = ".next"
 	taskIDBytes          = 16
 	taskSetupTimeout     = 90 * time.Second
 	taskSetupOutputLimit = 4096
@@ -39,17 +39,25 @@ type TaskWorktrees struct {
 	creating   map[string]struct{}
 }
 
-func NewTaskWorktrees(root string, toolDirs []string) *TaskWorktrees {
-	return &TaskWorktrees{root: root, toolDirs: toolDirs, creating: make(map[string]struct{})}
+func NewTaskWorktrees(root string, toolDirs []string) (*TaskWorktrees, error) {
+	canonical, err := filesystem.CanonicalPath(root)
+	if err != nil {
+		return nil, err
+	}
+	return &TaskWorktrees{root: canonical, toolDirs: toolDirs, creating: make(map[string]struct{})}, nil
 }
 
 type taskRecord struct {
-	ID        string                  `json:"id"`
+	ID        string                  `json:"-"`
 	Source    string                  `json:"source"`
 	CommonDir string                  `json:"common"`
 	Base      string                  `json:"base"`
 	Setup     *work.TaskWorktreeSetup `json:"setup,omitzero"`
 }
+
+func taskRecordName(id string) string { return id + taskRecordSuffix }
+
+func (b *TaskWorktrees) checkoutPath(id string) string { return filepath.Join(b.root, id) }
 
 func (b *TaskWorktrees) PrepareCreate(ctx context.Context, path, base, setup string) (func(context.Context) (work.TaskWorktree, error), error) {
 	source, err := taskGitValue(ctx, path, "rev-parse", "--show-toplevel")
@@ -60,7 +68,7 @@ func (b *TaskWorktrees) PrepareCreate(ctx context.Context, path, base, setup str
 	if err != nil {
 		return nil, err
 	}
-	if relative, err := filepath.Rel(source, b.root); err == nil && filepath.IsLocal(relative) {
+	if _, inside := relativeInTree(source, b.root); inside {
 		return nil, fmt.Errorf("%w: task storage must be outside the source checkout", work.ErrTaskWorktreeInput)
 	}
 	common, err := taskCommonDir(ctx, source)
@@ -104,13 +112,10 @@ func (b *TaskWorktrees) registerTask(ctx, setupCtx context.Context, record taskR
 		delete(b.creating, record.ID)
 		b.creatingMu.Unlock()
 	}()
-	if err := root.Mkdir(record.ID, filesystem.PrivateDirectoryMode); err != nil {
-		return work.TaskWorktree{}, err
-	}
 	if err := writeTaskRecord(root, record); err != nil {
 		return work.TaskWorktree{}, err
 	}
-	checkout := filepath.Join(b.root, record.ID, taskCheckout)
+	checkout := b.checkoutPath(record.ID)
 	// The source checkout can be released after its base has been captured.
 	if _, err := taskGitValue(ctx, record.CommonDir, "worktree", "add", "--detach", "--quiet", "--", checkout, record.Base); err != nil {
 		return work.TaskWorktree{}, err
@@ -164,10 +169,11 @@ func (b *TaskWorktrees) List(ctx context.Context) ([]work.TaskWorktree, error) {
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		if !entry.IsDir() || !isTaskID(entry.Name()) {
+		id, record := strings.CutSuffix(entry.Name(), taskRecordSuffix)
+		if entry.IsDir() || !record {
 			continue
 		}
-		task, err := b.Get(ctx, entry.Name())
+		task, err := b.Get(ctx, id)
 		if errors.Is(err, work.ErrTaskWorktreeNotFound) {
 			continue
 		}
@@ -204,7 +210,7 @@ func (b *TaskWorktrees) load(id string) (taskRecord, error) {
 		return taskRecord{}, err
 	}
 	defer root.Close()
-	file, err := root.Open(filepath.Join(id, taskManifest))
+	file, err := root.Open(taskRecordName(id))
 	if errors.Is(err, os.ErrNotExist) {
 		return taskRecord{}, work.ErrTaskWorktreeNotFound
 	}
@@ -216,20 +222,16 @@ func (b *TaskWorktrees) load(id string) (taskRecord, error) {
 	if err != nil {
 		return taskRecord{}, err
 	}
-	var record taskRecord
+	record := taskRecord{ID: id}
 	if len(raw) > maxTaskRecord || json.Unmarshal(raw, &record, json.RejectUnknownMembers(true)) != nil ||
-		record.ID != id || !filepath.IsAbs(record.Source) || !filepath.IsAbs(record.CommonDir) || !validTaskSHA(record.Base) {
+		!filepath.IsAbs(record.Source) || !filepath.IsAbs(record.CommonDir) || !validTaskSHA(record.Base) {
 		return taskRecord{}, errors.New("workspace: invalid task worktree record")
 	}
 	return record, nil
 }
 
 func (b *TaskWorktrees) inspect(ctx context.Context, record taskRecord) (work.TaskWorktree, error) {
-	directory, err := (filesystem.DirectoryResolver{}).ResolveExistingDir(filepath.Join(b.root, record.ID))
-	if err != nil {
-		return work.TaskWorktree{}, err
-	}
-	checkout := filepath.Join(directory, taskCheckout)
+	checkout := b.checkoutPath(record.ID)
 	task := work.TaskWorktree{ID: record.ID, Path: checkout, Source: record.Source, Base: record.Base, Setup: record.Setup}
 	gitDir, err := checkoutGitDirectory(ctx, checkout)
 	if errors.Is(err, os.ErrNotExist) {
@@ -288,29 +290,25 @@ func taskGitBytes(ctx context.Context, path string, args ...string) ([]byte, err
 	return result.Stdout, nil
 }
 
-func writeTaskRecord(root *os.Root, record taskRecord) (err error) {
+func writeTaskRecord(root *os.Root, record taskRecord) error {
 	raw, err := json.Marshal(record)
 	if err != nil {
 		return err
 	}
-	directory, err := root.OpenRoot(record.ID)
-	if err != nil {
-		return err
-	}
-	defer func() { err = errors.Join(err, directory.Close()) }()
-	pending := taskManifest + ".next"
-	file, err := directory.OpenFile(pending, os.O_WRONLY|os.O_CREATE|os.O_EXCL, filesystem.PrivateFileMode)
+	name := taskRecordName(record.ID)
+	pending := name + taskPendingSuffix
+	file, err := root.OpenFile(pending, os.O_WRONLY|os.O_CREATE|os.O_EXCL, filesystem.PrivateFileMode)
 	if err != nil {
 		return err
 	}
 	_, writeErr := file.Write(raw)
 	if err := errors.Join(writeErr, file.Sync(), file.Close()); err != nil {
-		return errors.Join(err, directory.Remove(pending))
+		return errors.Join(err, root.Remove(pending))
 	}
-	if err := directory.Rename(pending, taskManifest); err != nil {
-		return errors.Join(err, directory.Remove(pending))
+	if err := root.Rename(pending, name); err != nil {
+		return errors.Join(err, root.Remove(pending))
 	}
-	entry, err := directory.Open(".")
+	entry, err := root.Open(".")
 	if err != nil {
 		return err
 	}

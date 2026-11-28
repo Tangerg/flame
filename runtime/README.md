@@ -82,8 +82,10 @@ Session reads, workspace catalog grouping and Session filters use the stored
 workspace reference. Filesystem inspection refreshes its availability and
 repository root. Resolving a new workspace selection canonicalizes its path.
 
-Task worktrees live under the Runtime data directory. Create one from a local Git
-branch or a commit, then open an ordinary Session with the resulting workspace.
+Task worktrees live under the Runtime data directory. Each `task-worktrees/<id>`
+checkout has a sibling catalog file identified by the same task ID. Create a task
+from a local Git branch or a commit, then open an ordinary Session with the
+resulting workspace.
 An optional setup command runs in place with the restricted macOS sandbox and
 retains its exit status and bounded output. A registered checkout keeps its
 creation receipt when the request ends during setup. The catalog keeps serving
@@ -95,11 +97,12 @@ handoff destination. Handoff previews bind tracked and untracked
 changes to the original checkout's branch and HEAD. Accepting a current preview
 stages its changes in that clean destination. Release uses Git's non-forced
 removal for an owned registration at its original base, even if the checkout
-directory is missing. Release is blocked if a Session's saved workspace path
-lies inside the checkout or currently resolves to a directory inside it. A
-worktree moved with Git appears unavailable. Move it back to the managed path
-or remove its registration in Git before releasing the task. Worktrees created
-before Runtime recorded Git custody appear as unavailable and remain on disk.
+directory is missing. Release retires the catalog file and leaves unrelated
+files beside the checkout in place. Release is blocked if a Session's saved
+workspace path lies inside the checkout or resolves to a directory inside it.
+A worktree moved with Git appears unavailable. Move it back to the managed path
+or remove its registration in Git before releasing the task. A checkout without
+a matching Git custody stamp appears unavailable and stays on disk.
 
 Project Home shows recent accepted background Runs and links to their original
 Sessions and PR reviews. A schedule or file watcher can capture a Project ID when

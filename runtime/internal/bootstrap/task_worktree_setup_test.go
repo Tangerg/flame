@@ -2,10 +2,12 @@ package bootstrap
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -25,7 +27,7 @@ type heldTaskSetup struct {
 	requests    sync.WaitGroup
 }
 
-func holdTaskSetup(t *testing.T, r *poMCPRuntime, request protocol.CreateTaskWorktreeRequest, checkout, key string) *heldTaskSetup {
+func holdTaskSetup(t *testing.T, r *poMCPRuntime, request protocol.CreateTaskWorktreeRequest, git func(...string) string, key string) *heldTaskSetup {
 	t.Helper()
 	const readyFile = "setup-ready"
 	const releaseFile = "release-setup"
@@ -40,19 +42,22 @@ func holdTaskSetup(t *testing.T, r *poMCPRuntime, request protocol.CreateTaskWor
 		setup.result <- r.endpoint.Invoke(ctx, delivery.TaskWorktreesCreate, request, protocol.CallMetadata{IdempotencyKey: key})
 	})
 
-	markerPattern := filepath.Join(filepath.Dir(filepath.Dir(checkout)), "*", filepath.Base(checkout), readyFile)
 	ready, cancelReady := context.WithTimeout(ctx, 20*time.Second)
 	defer cancelReady()
 	poll := time.NewTicker(10 * time.Millisecond)
 	defer poll.Stop()
 	for {
-		matches, err := filepath.Glob(markerPattern)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(matches) == 1 {
-			setup.releasePath = filepath.Join(filepath.Dir(matches[0]), releaseFile)
-			return setup
+		for field := range strings.SplitSeq(git("worktree", "list", "--porcelain", "-z"), "\x00") {
+			checkout, found := strings.CutPrefix(field, "worktree ")
+			if !found {
+				continue
+			}
+			if _, err := os.Stat(filepath.Join(checkout, readyFile)); err == nil {
+				setup.releasePath = filepath.Join(checkout, releaseFile)
+				return setup
+			} else if !errors.Is(err, os.ErrNotExist) {
+				t.Fatal(err)
+			}
 		}
 		select {
 		case reply := <-setup.result:
@@ -77,7 +82,7 @@ func TestTaskWorktreeSetupKeepsOtherTasksAvailable(t *testing.T) {
 	request := protocol.CreateTaskWorktreeRequest{Source: protocol.WorkspaceRef{Path: source}, Base: "target"}
 	existing := r.must(delivery.TaskWorktreesCreate, request, "existing-task").(*protocol.TaskWorktree)
 
-	setup := holdTaskSetup(t, r, request, existing.Workspace.Path, "task-with-held-setup")
+	setup := holdTaskSetup(t, r, request, git, "task-with-held-setup")
 
 	listCtx, cancelList := context.WithTimeout(setup.ctx, 5*time.Second)
 	defer cancelList()
@@ -142,7 +147,7 @@ func TestTaskWorktreeCreateRecoversReceiptAfterSetupCancellation(t *testing.T) {
 
 	request := protocol.CreateTaskWorktreeRequest{Source: protocol.WorkspaceRef{Path: source}, Base: "target"}
 	existing := r.must(delivery.TaskWorktreesCreate, request, "existing-task").(*protocol.TaskWorktree)
-	setup := holdTaskSetup(t, r, request, existing.Workspace.Path, "task-with-canceled-setup")
+	setup := holdTaskSetup(t, r, request, git, "task-with-canceled-setup")
 	setup.cancel()
 	<-setup.result
 

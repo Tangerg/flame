@@ -143,11 +143,11 @@ func buildAssemblyCore(
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct Project coordinator: %w", err)
 	}
-	taskWorktrees := workspace.NewTaskWorktrees(
-		workspaceServices.scope,
-		workspaceadapter.NewTaskWorktrees(filepath.Join(cfg.stores.DataDirectory, "task-worktrees"), cfg.sandboxReadOnlyPaths),
-		admissionGate, cfg.stores.Sessions, policy.invalidations.publish,
-	)
+	taskWorktreeBackend, err := workspaceadapter.NewTaskWorktrees(filepath.Join(cfg.stores.DataDirectory, "task-worktrees"), cfg.sandboxReadOnlyPaths)
+	if err != nil {
+		return nil, fmt.Errorf("runtime: prepare task worktree storage: %w", err)
+	}
+	taskWorktrees := workspace.NewTaskWorktrees(workspaceServices.scope, taskWorktreeBackend, admissionGate, cfg.stores.Sessions, policy.invalidations.publish)
 	recoverUncertain := startupRunRecovery(cfg.stores, pluginCoordinator, runCoordinator, recoveryPersistence, execution.executor, ownershipRecovery)
 	host := &Instance{
 		application: &runtimeApplication{

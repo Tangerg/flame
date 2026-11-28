@@ -144,8 +144,5 @@ func (b *TaskWorktrees) removeTask(ctx context.Context, id string, registration 
 		return err
 	}
 	defer root.Close()
-	if err := root.Remove(filepath.Join(id, taskManifest)); err != nil {
-		return err
-	}
-	return root.Remove(id)
+	return root.Remove(taskRecordName(id))
 }
