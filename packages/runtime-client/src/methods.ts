@@ -146,7 +146,11 @@ import { createRuntimeEventFeed } from "./runtimeEventFeed";
 import type { AutoPagingPromise } from "./pagination";
 import { RUNTIME_SUBSCRIBE_METHOD } from "./transport";
 import type { PluginCommandInput, PluginCommandBinding, PluginCommandChange, MutationJournal } from "./mutationJournal";
-import type { PendingRuntimeCommand } from "./mutationJournalEntry";
+import {
+  APPLY_WORKTREE_HANDOFF,
+  RELEASE_TASK_WORKTREE,
+  type PendingRuntimeCommand,
+} from "./mutationJournalEntry";
 
 import { callOrDispose, type StreamingResult } from "./stream";
 import {
@@ -185,6 +189,10 @@ interface WorkspaceMethods {
     rejectProposal: (ref: Omit<SkillProposalRef, "workspace">) => MutationPromise<void>;
   };
 }
+
+type WorktreeCommandRecovery =
+  | { readonly operation: "apply"; retry(): MutationPromise<WorktreeHandoff> }
+  | { readonly operation: "release"; retry(): MutationPromise<void> };
 
 export interface Methods {
   runtime: {
@@ -298,6 +306,7 @@ export interface Methods {
       preview: (id: string, signal?: AbortSignal) => Promise<WorktreeHandoff>;
       apply: (request: ApplyWorktreeHandoffRequest) => MutationPromise<WorktreeHandoff>;
       release: (id: string) => MutationPromise<void>;
+      pendingCommands: () => readonly WorktreeCommandRecovery[];
     };
   };
   workspace: (ref: WorkspaceRef) => WorkspaceMethods;
@@ -595,8 +604,21 @@ export function createMethods(
         list: (signal) => call("workspaces.tasks.list", {}, { signal }),
         create: (request) => call("workspaces.tasks.create", request),
         preview: (id, signal) => call("workspaces.tasks.handoff.preview", { id }, { signal }),
-        apply: (request) => call("workspaces.tasks.handoff.apply", request),
-        release: (id) => call("workspaces.tasks.release", { id }),
+        apply: (request) => call(APPLY_WORKTREE_HANDOFF, request),
+        release: (id) => call(RELEASE_TASK_WORKTREE, { id }),
+        pendingCommands: () =>
+          mutationJournal.pendingWorktreeCommands().map(({ request, ...identity }) => {
+            if (request.method === APPLY_WORKTREE_HANDOFF) {
+              return {
+                operation: "apply",
+                retry: () => wire.retryCommand(request.method, identity, request.params),
+              };
+            }
+            return {
+              operation: "release",
+              retry: () => wire.retryCommand(request.method, identity, request.params),
+            };
+          }),
       },
     },
     workspace: (ref) => bindWorkspace(call, ref),

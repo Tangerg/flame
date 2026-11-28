@@ -39,6 +39,12 @@ When regeneration cannot start a new Run, the composer keeps its input beside
 the Session's existing draft. An unresolved Run opening retains its original
 command identity.
 
+Task worktree handoff and release retain their original command across page
+reloads. The Tasks panel reads recoverable commands from the Runtime client's
+mutation journal when the connection is ready. Recover original command sends
+the captured request and key. A completed release returns its original receipt
+even after the checkout leaves the list.
+
 From the repository root:
 
 ```sh

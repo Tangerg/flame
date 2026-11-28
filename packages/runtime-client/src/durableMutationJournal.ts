@@ -17,6 +17,7 @@ import {
   matchesCommand,
   mutationIdentity,
   pluginRouteForIntent,
+  runtimeCommandMethod,
   validSteerItem,
   validText,
 } from "./mutationJournalEntry";
@@ -63,6 +64,7 @@ export interface DurableMutationJournal {
     requestMeta: RequestMeta | null,
   ): CapturedPluginCommand;
   pendingEntries(): JournalEntry[];
+  pendingForCurrentStore(): JournalEntry[];
   validatePluginCommand(identity: DurableMutationIdentity, request: CallPluginRequest): void;
   recoverRuntimeCommand(command: PendingRuntimeCommand, params: unknown): DurableMutationIdentity;
   reserve(
@@ -197,17 +199,19 @@ export function openDurableMutationJournal(
     return scope;
   };
 
+  const expired = (identity: DurableMutationIdentity, scope: MutationJournalScope) =>
+    Math.min(
+      identity.expiresAt,
+      identity.createdAt + scope.retentionSeconds * MILLISECONDS_PER_SECOND,
+    ) <= options.now();
+
   const validateIdentity = (identity: DurableMutationIdentity, scope: MutationJournalScope) => {
     if (identity.namespace !== scope.namespace) {
       throw new MutationJournalOwnershipError(
         "Runtime mutation identity belongs to a replaced Runtime store",
       );
     }
-    const effectiveExpiry = Math.min(
-      identity.expiresAt,
-      identity.createdAt + scope.retentionSeconds * MILLISECONDS_PER_SECOND,
-    );
-    if (effectiveExpiry <= options.now()) {
+    if (expired(identity, scope)) {
       throw new MutationJournalError("Runtime mutation identity expired before delivery");
     }
   };
@@ -299,6 +303,13 @@ export function openDurableMutationJournal(
     pendingEntries() {
       return loadEntries(options.storage);
     },
+    pendingForCurrentStore() {
+      const scope = options.scope();
+      if (!validScope(scope)) return [];
+      return loadEntries(options.storage).filter(
+        (entry) => entry.namespace === scope.namespace && !expired(entry, scope),
+      );
+    },
     validatePluginCommand(identity, request) {
       validateIdentity(identity, currentScope());
       readReservedEntry(identity);
@@ -321,7 +332,8 @@ export function openDurableMutationJournal(
       }
       const entry = readEntry(options.storage, entryKey(command.idempotencyKey));
       if (
-        entry?.command.kind !== "method" ||
+        !entry ||
+        runtimeCommandMethod(entry.command) !== command.method ||
         entry.namespace !== command.namespace ||
         !matchesCommand(entry, command.method, params, entry.requestMeta)
       ) {

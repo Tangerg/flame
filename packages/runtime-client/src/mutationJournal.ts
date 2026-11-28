@@ -7,9 +7,11 @@ import {
 import type { WireMethodName } from "@flame/runtime-client/methods";
 import {
   mutationIdentity,
+  runtimeCommandMethod,
   type DurableMutationIdentity,
   type PendingRuntimeCommand,
   type RunCommand,
+  type WorktreeCommand,
   type PluginCommandInput,
   type PluginCommandBinding,
 } from "./mutationJournalEntry";
@@ -50,6 +52,12 @@ export interface MutationReservation {
   authorizeDispatch(): string;
   markDispatched(): DispatchPhase;
   track<T>(create: () => MutationPromise<T>): MutationPromise<T>;
+}
+
+interface PendingWorktreeCommand {
+  readonly request: WorktreeCommand;
+  readonly idempotencyKey: string;
+  readonly namespace: string;
 }
 
 export interface PluginCommandIdentity {
@@ -201,9 +209,21 @@ export class MutationJournal {
   pendingRuntimeCommands(): PendingRuntimeCommand[] {
     this.#assertCurrent();
     return this.#journal.pendingEntries().flatMap(({ command, idempotencyKey, namespace }) => {
-      if (command.kind !== "method" || this.#claims.has(idempotencyKey)) return [];
-      return [{ method: command.method, idempotencyKey, namespace }];
+      const method = runtimeCommandMethod(command);
+      if (!method || this.#claims.has(idempotencyKey)) return [];
+      return [{ method, idempotencyKey, namespace }];
     });
+  }
+
+  pendingWorktreeCommands(): PendingWorktreeCommand[] {
+    this.#assertCurrent();
+    return this.#journal
+      .pendingForCurrentStore()
+      .sort((left, right) => left.createdAt - right.createdAt)
+      .flatMap(({ command, idempotencyKey, namespace }) => {
+        if (command.kind !== "worktree" || this.#claims.has(idempotencyKey)) return [];
+        return [{ request: command.request, idempotencyKey, namespace }];
+      });
   }
 
   recoverRuntimeCommand(command: PendingRuntimeCommand, params: unknown): MutationReservation {

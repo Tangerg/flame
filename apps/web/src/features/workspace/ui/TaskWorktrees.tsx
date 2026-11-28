@@ -1,4 +1,4 @@
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Button,
@@ -59,11 +59,15 @@ export function TaskWorktrees() {
         ? previewState.error
         : undefined;
   const location = source ?? active?.workspace.path ?? "";
+  const endpoint = runtime.endpoint.currentRuntimeEndpoint();
   const tasks = useQuery({
-    queryKey: taskWorktreesQueryKey(runtime.endpoint.currentRuntimeEndpoint()),
+    queryKey: taskWorktreesQueryKey(endpoint),
     queryFn: ({ signal }) => workspace.taskWorktrees().list(signal),
     enabled: commandAvailable,
   });
+  useEffect(() => {
+    if (commandAvailable) commands.restorePending();
+  }, [commandAvailable, commands, endpoint]);
 
   const showPreview = async (id: string) => {
     setPreview({ phase: "loading" });

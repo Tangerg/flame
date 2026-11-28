@@ -1,4 +1,10 @@
-import { OperationFailure, RpcError, asSessionId } from "@flame/runtime-client";
+import {
+  OperationFailure,
+  RpcError,
+  asSessionId,
+  createFlameClient,
+  createHttpTransport,
+} from "@flame/runtime-client";
 import { HTTP_HEADERS } from "@flame/runtime-client/wire";
 import { TaskWorktreeCommands } from "@/features/workspace/application/taskWorktreeCommands";
 import { parseVisualDiff } from "../../../../../plugins/diff/component/visualDiff";
@@ -11,7 +17,7 @@ import {
   updateInstalledMemory,
 } from "./memoryOperations";
 import { execFile } from "node:child_process";
-import { mkdir, realpath, symlink, writeFile } from "node:fs/promises";
+import { mkdir, realpath, stat, symlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
@@ -23,8 +29,28 @@ import {
   within,
 } from "./observation";
 import { useRuntimeFixture } from "./fixture";
+import { MemoryMutationStorage } from "./mutationStorage";
 
 const execFileAsync = promisify(execFile);
+
+function workspaceGit(cwd: string) {
+  return (...args: string[]) =>
+    execFileAsync(
+      "git",
+      [
+        "-c",
+        "user.name=Runtime HTTP E2E",
+        "-c",
+        "user.email=runtime-http-e2e@example.invalid",
+        "-c",
+        "core.hooksPath=/dev/null",
+        "-c",
+        "commit.gpgSign=false",
+        ...args,
+      ],
+      { cwd },
+    );
+}
 
 describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: workspace", () => {
   const fixture = useRuntimeFixture("workspace");
@@ -32,22 +58,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: workspace", () => {
   it("recovers the original worktree command through the Workspace owner", async () => {
     const source = join(fixture.root, "task-worktree-command");
     await mkdir(source);
-    const git = (...args: string[]) =>
-      execFileAsync(
-        "git",
-        [
-          "-c",
-          "user.name=Runtime HTTP E2E",
-          "-c",
-          "user.email=runtime-http-e2e@example.invalid",
-          "-c",
-          "core.hooksPath=/dev/null",
-          "-c",
-          "commit.gpgSign=false",
-          ...args,
-        ],
-        { cwd: source },
-      );
+    const git = workspaceGit(source);
     const file = "tracked.txt";
     const baseline = "original source\n";
     const change = "worktree handoff\n";
@@ -121,6 +132,95 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: workspace", () => {
       }
     }
   }, 30_000);
+
+  it.each(["apply", "release"] as const)(
+    "recovers the original %s receipt after replacing the Workspace owner",
+    async (operation) => {
+      const source = join(fixture.root, `task-recovery-${operation}`);
+      await mkdir(source);
+      const git = workspaceGit(source);
+      const file = "tracked.txt";
+      const baseline = "original source\n";
+      const change = "approved handoff\n";
+      await git("init", "--quiet", "--template=");
+      await writeFile(join(source, file), baseline);
+      await git("add", "--", file);
+      await git("commit", "--quiet", "-m", "source baseline");
+      const { tasks } = fixture.client.workspaces;
+      const task = await tasks.create({ source: { path: source }, base: "HEAD" });
+      const taskFile = join(task.workspace.path, file);
+      const method =
+        operation === "apply" ? "workspaces.tasks.handoff.apply" : "workspaces.tasks.release";
+      const storage = new MemoryMutationStorage();
+      const receipts: { key: string; result: unknown }[] = [];
+      const openClient = (loseReceipt: boolean) =>
+        createFlameClient(
+          createHttpTransport({
+            baseUrl: fixture.baseUrl,
+            fetch: async (url, init) => {
+              const response = await fetch(url, init);
+              const headers = new Headers(init?.headers);
+              if (headers.get(HTTP_HEADERS.method) !== method) return response;
+              const key = headers.get(HTTP_HEADERS.idempotencyKey);
+              if (!key) throw new Error("the worktree command omitted its key");
+              const envelope = (await response.clone().json()) as { result?: unknown };
+              if (Object.hasOwn(envelope, "result")) receipts.push({ key, result: envelope.result });
+              if (loseReceipt) {
+                await response.arrayBuffer();
+                throw new Error("connection lost after Git committed");
+              }
+              return response;
+            },
+          }),
+          { capabilities: () => fixture.negotiated, mutationStorage: storage },
+        );
+      const disconnected = openClient(true);
+      const commands = new TaskWorktreeCommands(() => disconnected.workspaces.tasks);
+      commands.replaceTarget();
+      try {
+        if (operation === "apply") {
+          await writeFile(taskFile, change);
+          const preview = await tasks.preview(task.id);
+          await expect(commands.apply({ id: task.id, digest: preview.digest })).resolves.toBe(false);
+          expect((await git("show", `:${file}`)).stdout).toBe(change);
+        } else {
+          await expect(commands.release(task.id)).resolves.toBe(false);
+          await expect(stat(task.workspace.path)).rejects.toMatchObject({ code: "ENOENT" });
+        }
+        expect(commands.snapshot()).toMatchObject({ phase: "unconfirmed", operation });
+        const original = receipts[0];
+        if (!original) throw new Error("the original Git receipt was not captured");
+        const originalAttempts = receipts.length;
+        expect(storage.size).toBe(1);
+        commands.retireTarget();
+        await disconnected.close();
+
+        const connected = openClient(false);
+        const restored = new TaskWorktreeCommands(() => connected.workspaces.tasks);
+        restored.replaceTarget();
+        try {
+          restored.restorePending();
+          expect(restored.snapshot()).toMatchObject({ phase: "unconfirmed", operation });
+          await expect(restored.recover()).resolves.toBe(true);
+          expect(restored.snapshot()).toEqual({ phase: "committed", operation });
+          expect(receipts).toHaveLength(originalAttempts + 1);
+          expect(receipts.at(-1)).toEqual(original);
+          expect(storage.size).toBe(0);
+        } finally {
+          restored.retireTarget();
+          await connected.close();
+        }
+      } finally {
+        commands.retireTarget();
+        await disconnected.close();
+        if ((await tasks.list()).data.some(({ id }) => id === task.id)) {
+          await writeFile(taskFile, baseline);
+          await tasks.release(task.id);
+        }
+      }
+    },
+    30_000,
+  );
 
   it("reads current diagnostic tool output through the query binding", async () => {
     const workspace = { path: join(fixture.root, "diagnostic-query") };

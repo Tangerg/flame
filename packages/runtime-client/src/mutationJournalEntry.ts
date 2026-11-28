@@ -24,6 +24,9 @@ const FINGERPRINT_HEX_LENGTH = 32;
 
 const FINGERPRINT_PATTERN = new RegExp(`^[0-9a-f]{${FINGERPRINT_HEX_LENGTH}}$`);
 
+export const APPLY_WORKTREE_HANDOFF = "workspaces.tasks.handoff.apply";
+export const RELEASE_TASK_WORKTREE = "workspaces.tasks.release";
+
 export type RuntimeCommandMethod = {
   [M in WireMutationMethodName]: (typeof WIRE_METHOD_POLICY)[M]["idempotency"] extends "ownerRun"
     ? never
@@ -42,7 +45,7 @@ function isRuntimeCommandMethod(value: unknown): value is RuntimeCommandMethod {
   return policy.operation === "command" && policy.idempotency !== "ownerRun";
 }
 
-function commandParams<M extends "runs.start" | "runs.resume" | "runs.steer">(method: M) {
+function commandParams<M extends WireMethodName>(method: M) {
   return z.custom<ReturnType<typeof checkRequest<M>>>((value) => {
     try {
       checkRequest(method, value);
@@ -61,12 +64,26 @@ const runCommand = z.discriminatedUnion("operation", [
 
 export type RunCommand = z.infer<typeof runCommand>;
 
+const worktreeCommand = z.discriminatedUnion("method", [
+  z.strictObject({
+    method: z.literal(APPLY_WORKTREE_HANDOFF),
+    params: commandParams(APPLY_WORKTREE_HANDOFF),
+  }),
+  z.strictObject({
+    method: z.literal(RELEASE_TASK_WORKTREE),
+    params: commandParams(RELEASE_TASK_WORKTREE),
+  }),
+]);
+
+export type WorktreeCommand = z.infer<typeof worktreeCommand>;
+
 const boundedText = z.string().min(1).max(MAX_IDENTITY_LENGTH);
 
 const digest = z.string().regex(FINGERPRINT_PATTERN);
 
 const journalCommand = z.discriminatedUnion("kind", [
   z.strictObject({ kind: z.literal("run"), request: runCommand }),
+  z.strictObject({ kind: z.literal("worktree"), request: worktreeCommand }),
   z.strictObject({
     kind: z.literal("plugin"),
     intentFingerprint: digest.nullable(),
@@ -121,6 +138,8 @@ function commandMethod(command: JournalCommand): WireMethodName {
       return `runs.${command.request.operation}`;
     case "plugin":
       return pluginMethod(command.route).delivery;
+    case "worktree":
+      return command.request.method;
     case "method":
       return command.method;
   }
@@ -128,6 +147,17 @@ function commandMethod(command: JournalCommand): WireMethodName {
 
 export function isSteerCommand(command: JournalCommand): boolean {
   return command.kind === "run" && command.request.operation === "steer";
+}
+
+export function runtimeCommandMethod(command: JournalCommand): RuntimeCommandMethod | undefined {
+  switch (command.kind) {
+    case "method":
+      return command.method;
+    case "worktree":
+      return command.request.method;
+    default:
+      return undefined;
+  }
 }
 
 export function validText(value: unknown, maximum: number): value is string {
@@ -161,7 +191,7 @@ export function decodeJournalEntry(value: unknown): JournalEntry | undefined {
   )
     return undefined;
   if (
-    entry.command.kind === "run" &&
+    (entry.command.kind === "run" || entry.command.kind === "worktree") &&
     !matchesCommand(
       entry,
       commandMethod(entry.command),
@@ -194,6 +224,16 @@ export function captureJournalCommand(
       return {
         kind: "run",
         request: { operation: "steer", params: checkRequest(method, cloneJSON(params)) },
+      };
+    case APPLY_WORKTREE_HANDOFF:
+      return {
+        kind: "worktree",
+        request: { method, params: checkRequest(method, cloneJSON(params)) },
+      };
+    case RELEASE_TASK_WORKTREE:
+      return {
+        kind: "worktree",
+        request: { method, params: checkRequest(method, cloneJSON(params)) },
       };
     case "plugins.call":
     case "plugins.stream": {

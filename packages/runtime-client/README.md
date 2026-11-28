@@ -129,6 +129,13 @@ fingerprint for ordinary command inputs, so credentials and other inputs stay
 with the caller. The stable-intent plugin API can recover the original command
 through its authored intent.
 
+`workspaces.tasks.pendingCommands()` exposes pending handoffs and releases for
+the current Runtime store by recorded submission time. The journal captures the
+task ID and, for handoffs, the approved digest. Call `retry()` on an entry
+to send its original input and key. A settled response comes from the Runtime's
+receipt. Worktree creation follows ordinary command recovery and leaves its
+setup command with the caller.
+
 `approval.forgetRule` accepts `{ id, expectedDecision }`. Supply the decision
 when withdrawing an observed approval or denial. Omit it when deliberately
 forgetting the rule at that identity regardless of its decision.
@@ -202,10 +209,11 @@ retry, including stable-intent plugin commands. Replacing client defaults cannot
 change an unresolved command. A replay refusal at the HTTP boundary does not
 prove whether an earlier dispatch was accepted, so it retains the original
 identity for receipt reconciliation. The current journal requires captured
-metadata, the delivery phase and one tagged command. A Run record contains the
-original request, a plugin record contains the admitted route, and other Runtime
-commands name their protocol method. An invalid record stops recovery with a
-storage error and remains available for inspection. Settle outstanding commands
+metadata, the delivery phase and one tagged command. Run, worktree handoff and
+worktree release records contain their original request. Plugin records contain
+the admitted route. Other Runtime commands name their protocol method. An invalid
+record stops recovery with a storage error and remains available for inspection.
+Settle outstanding commands
 with the previous client before upgrading, or preserve that client and its
 journal separately for recovery and start with a fresh client journal.
 

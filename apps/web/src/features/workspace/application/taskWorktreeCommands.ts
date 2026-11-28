@@ -18,7 +18,7 @@ type TaskWorktreeCommandStatus =
 type TaskWorktreeCommandState =
   | Exclude<TaskWorktreeCommandStatus, { phase: "unconfirmed" }>
   | (Extract<TaskWorktreeCommandStatus, { phase: "unconfirmed" }> & {
-      original: MutationPromise<unknown>;
+      retry: OpenMutation;
     });
 
 type OpenMutation = () => MutationPromise<unknown>;
@@ -49,6 +49,24 @@ export class TaskWorktreeCommands {
     this.#publish({ phase: "idle" });
   }
 
+  restorePending(): boolean {
+    if (!this.#target || this.#state.phase === "sending" || this.#state.phase === "unconfirmed")
+      return false;
+    try {
+      const [pending] = this.worktrees().pendingCommands();
+      if (!pending) return true;
+      this.#publish({
+        phase: "unconfirmed",
+        operation: pending.operation,
+        retry: pending.retry,
+        error: undefined,
+      });
+    } catch (error) {
+      this.#publish({ phase: "failed", error });
+    }
+    return false;
+  }
+
   create(request: Parameters<TaskWorktrees["create"]>[0]): Promise<boolean> {
     return this.#submit("create", () => this.worktrees().create(request));
   }
@@ -61,34 +79,38 @@ export class TaskWorktreeCommands {
     return this.#submit("release", () => this.worktrees().release(id));
   }
 
-  recover(): Promise<boolean> {
+  async recover(): Promise<boolean> {
     const state = this.#state;
-    if (state.phase !== "unconfirmed") return Promise.resolve(false);
-    return this.#observe(state.operation, () => state.original.retry(), state.original);
+    if (state.phase !== "unconfirmed") return false;
+    const target = this.#target;
+    const accepted = await this.#observe(state.operation, state.retry, state.retry);
+    if (this.#target === target) this.restorePending();
+    return accepted;
   }
 
   #submit(operation: TaskWorktreeMutation, open: OpenMutation): Promise<boolean> {
-    if (this.#state.phase === "sending" || this.#state.phase === "unconfirmed")
-      return Promise.resolve(false);
+    if (!this.restorePending()) return Promise.resolve(false);
     return this.#observe(operation, open);
   }
 
   async #observe(
     operation: TaskWorktreeMutation,
     open: OpenMutation,
-    original?: MutationPromise<unknown>,
+    retryOriginal?: OpenMutation,
   ): Promise<boolean> {
     const target = this.#target;
     if (!target) return false;
     this.#publish({ phase: "sending", operation });
-    let receipt = original;
+    let receipt: MutationPromise<unknown> | undefined;
     try {
       await target.run(() => (receipt = open()));
       target.assertCurrent();
     } catch (error) {
       if (target.retired) return false;
-      if (receipt && mutationSettlementIsUnknown(error)) {
-        this.#publish({ phase: "unconfirmed", operation, original: receipt, error });
+      const original = receipt;
+      const retry = original ? () => original.retry() : retryOriginal;
+      if (retry && (!original || mutationSettlementIsUnknown(error))) {
+        this.#publish({ phase: "unconfirmed", operation, retry, error });
       } else {
         this.#publish({ phase: "failed", error });
       }
@@ -106,5 +128,5 @@ export class TaskWorktreeCommands {
 
 export type TaskWorktreeCommandAccess = Pick<
   TaskWorktreeCommands,
-  "snapshot" | "subscribe" | "create" | "apply" | "release" | "recover"
+  "snapshot" | "subscribe" | "restorePending" | "create" | "apply" | "release" | "recover"
 >;
