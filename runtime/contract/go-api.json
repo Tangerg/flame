@@ -10745,7 +10745,7 @@
         {
           "name": "Version",
           "type": "untyped string",
-          "value": "\"2026-11-27.13\""
+          "value": "\"2026-11-28.1\""
         },
         {
           "name": "WorkspaceAvailable",
@@ -19471,8 +19471,8 @@
             },
             {
               "name": "Branch",
-              "type": "string",
-              "tag": "json:\"branch\""
+              "type": "*string",
+              "tag": "json:\"branch,omitzero\""
             },
             {
               "name": "Head",

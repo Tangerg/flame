@@ -661,6 +661,7 @@
   "workspace.tasks.recover": "Ursprünglichen Befehl wiederherstellen",
   "workspace.tasks.open": "Aufgabe öffnen",
   "workspace.tasks.preview": "Übergabevorschau",
+  "workspace.tasks.detachedHead": "Losgelöster HEAD",
   "workspace.tasks.release": "Worktree freigeben",
   "workspace.tasks.apply": "Änderungen lokal vormerken",
   "workspace.tasks.applied": "Die Änderungen wurden im ursprünglichen Checkout vorgemerkt.",

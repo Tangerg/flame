@@ -671,6 +671,7 @@
   "workspace.tasks.recover": "Récupérer la commande d’origine",
   "workspace.tasks.open": "Ouvrir la tâche",
   "workspace.tasks.preview": "Prévisualiser le transfert",
+  "workspace.tasks.detachedHead": "HEAD détachée",
   "workspace.tasks.release": "Libérer l’arbre de travail",
   "workspace.tasks.apply": "Indexer les changements localement",
   "workspace.tasks.applied": "Les changements sont indexés dans la copie d’origine.",

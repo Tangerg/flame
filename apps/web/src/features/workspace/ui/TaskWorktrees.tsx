@@ -197,7 +197,7 @@ export function TaskWorktrees() {
         <PanelSection title={t("workspace.tasks.preview")}>
           <Metadata>
             <code>
-              {preview.branch} · {preview.head}
+              {preview.branch ?? t("workspace.tasks.detachedHead")} · {preview.head}
             </code>
           </Metadata>
           <RecordBody>

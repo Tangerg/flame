@@ -5099,7 +5099,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     head: text(),
     patch: text(),
     worktree: ref(() => CHECKS.TaskWorktree),
-  }, ["branch", "digest", "head", "patch", "worktree"]),
+  }, ["digest", "head", "patch", "worktree"]),
   WorktreeSetup: object({
     command: text(),
     exitCode: integer(),

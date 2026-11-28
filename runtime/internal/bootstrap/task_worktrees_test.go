@@ -189,7 +189,7 @@ func TestTaskWorktreesKeepSeparateChangesAndHandoffAfterRestart(t *testing.T) {
 		t.Fatalf("the first task preview mixed worktrees: %q", patch)
 	}
 	chosen := preview(b)
-	if chosen.Branch != "target" || chosen.Head != base || !strings.Contains(chosen.Patch, "+second task") || !strings.Contains(chosen.Patch, "attachment.bin") {
+	if chosen.Branch == nil || *chosen.Branch != "target" || chosen.Head != base || !strings.Contains(chosen.Patch, "+second task") || !strings.Contains(chosen.Patch, "attachment.bin") {
 		t.Fatalf("the handoff preview lacks its exact destination and changes: %+v", chosen)
 	}
 	write(b.Workspace.Path, "shared.txt", []byte("second task updated\n"))

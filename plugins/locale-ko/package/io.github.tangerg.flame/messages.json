@@ -651,6 +651,7 @@
   "workspace.tasks.recover": "원래 명령 복구",
   "workspace.tasks.open": "작업 열기",
   "workspace.tasks.preview": "인계 미리보기",
+  "workspace.tasks.detachedHead": "분리된 HEAD",
   "workspace.tasks.release": "워크트리 해제",
   "workspace.tasks.apply": "로컬에 변경 사항 스테이징",
   "workspace.tasks.applied": "원래 체크아웃에 변경 사항을 스테이징했습니다.",

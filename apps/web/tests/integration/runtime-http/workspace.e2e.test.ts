@@ -49,6 +49,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: workspace", () => {
     await writeFile(join(source, file), baseline);
     await git("add", file);
     await git("commit", "--quiet", "-m", "source baseline");
+    await git("switch", "--quiet", "--detach");
 
     const originalKeys: string[] = [];
     let deliverReceipts = false;
@@ -95,6 +96,8 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: workspace", () => {
 
       await writeFile(recoveredPath, change);
       const handoff = await client.workspaces.tasks.preview(worktree.id);
+      expect(handoff.branch).toBeUndefined();
+      expect(handoff.head).toBe(worktree.base);
       await expect(commands.apply({ id: worktree.id, digest: handoff.digest })).resolves.toBe(true);
       expect(commands.snapshot()).toEqual({ phase: "committed", operation: "apply" });
       expect((await git("show", `:${file}`)).stdout).toBe(change);

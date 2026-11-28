@@ -380,6 +380,7 @@
   "workspace.tasks.recover": "恢復原命令",
   "workspace.tasks.open": "開啟任務",
   "workspace.tasks.preview": "預覽交接",
+  "workspace.tasks.detachedHead": "分離的 HEAD",
   "workspace.tasks.release": "回收工作樹",
   "workspace.tasks.apply": "在本機暫存變更",
   "workspace.tasks.applied": "變更已暫存至原始檢出目錄。",

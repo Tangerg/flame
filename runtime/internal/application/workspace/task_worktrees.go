@@ -39,7 +39,7 @@ type TaskWorktreeSetup struct {
 
 type WorktreeHandoff struct {
 	Worktree TaskWorktree
-	Branch   string
+	Branch   *string
 	Head     string
 	Digest   string
 	Patch    string

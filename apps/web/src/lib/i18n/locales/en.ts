@@ -438,6 +438,7 @@ export const en = {
   "workspace.tasks.recover": "Recover original command",
   "workspace.tasks.open": "Open task",
   "workspace.tasks.preview": "Preview handoff",
+  "workspace.tasks.detachedHead": "Detached HEAD",
   "workspace.tasks.release": "Release worktree",
   "workspace.tasks.apply": "Stage changes locally",
   "workspace.tasks.applied": "Changes staged in the original checkout.",

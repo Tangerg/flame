@@ -60,7 +60,7 @@ type TaskWorktreeRequest struct {
 
 type WorktreeHandoff struct {
 	Worktree TaskWorktree `json:"worktree"`
-	Branch   string       `json:"branch"`
+	Branch   *string      `json:"branch,omitzero"`
 	Head     string       `json:"head"`
 	Digest   string       `json:"digest"`
 	Patch    string       `json:"patch"`

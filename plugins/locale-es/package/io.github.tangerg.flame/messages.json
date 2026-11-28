@@ -671,6 +671,7 @@
   "workspace.tasks.recover": "Recuperar el comando original",
   "workspace.tasks.open": "Abrir tarea",
   "workspace.tasks.preview": "Previsualizar traspaso",
+  "workspace.tasks.detachedHead": "HEAD separado",
   "workspace.tasks.release": "Liberar árbol de trabajo",
   "workspace.tasks.apply": "Preparar cambios localmente",
   "workspace.tasks.applied": "Los cambios se prepararon en la copia original.",

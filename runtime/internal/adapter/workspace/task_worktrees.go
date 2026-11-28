@@ -1,10 +1,8 @@
 package workspace
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/hex"
 	json "encoding/json/v2"
 	"errors"
@@ -33,7 +31,6 @@ const (
 	taskIDBytes          = 16
 	taskSetupTimeout     = 90 * time.Second
 	taskSetupOutputLimit = 4096
-	maxHandoff           = 512 << 10
 	maxTaskRecord        = 16 << 10
 )
 
@@ -270,60 +267,6 @@ func (b *TaskWorktrees) inspect(ctx context.Context, record taskRecord) (work.Ta
 	return task, nil
 }
 
-func (b *TaskWorktrees) Preview(ctx context.Context, task work.TaskWorktree) (work.WorktreeHandoff, error) {
-	branch, err := taskGitValue(ctx, task.Source, "symbolic-ref", "--quiet", "--short", "HEAD")
-	if err != nil {
-		return work.WorktreeHandoff{}, errors.Join(work.ErrTaskWorktreeChanged, err)
-	}
-	head, err := taskGitValue(ctx, task.Source, "rev-parse", "--verify", "HEAD")
-	if err != nil {
-		return work.WorktreeHandoff{}, err
-	}
-	if head != task.Base {
-		return work.WorktreeHandoff{}, work.ErrTaskWorktreeChanged
-	}
-	record, err := b.load(task.ID)
-	if err != nil {
-		return work.WorktreeHandoff{}, err
-	}
-	current, err := taskCommonDir(ctx, task.Source)
-	if err != nil {
-		return work.WorktreeHandoff{}, err
-	}
-	if current != record.Common {
-		return work.WorktreeHandoff{}, work.ErrTaskWorktreeChanged
-	}
-	status, err := taskGitBytes(ctx, task.Source, 0, "status", "--porcelain=v1", "-z", "--untracked-files=all")
-	if err != nil {
-		return work.WorktreeHandoff{}, err
-	}
-	if len(status) > 0 {
-		return work.WorktreeHandoff{}, fmt.Errorf("%w: destination has local changes", work.ErrTaskWorktreeChanged)
-	}
-	patch, err := taskPatch(ctx, task)
-	if err != nil {
-		return work.WorktreeHandoff{}, err
-	}
-	digest := sha256.New()
-	fmt.Fprintf(digest, "%q\n%q\n%q\n%q\n", task.ID, task.Source, branch, head)
-	_, _ = digest.Write(patch)
-	return work.WorktreeHandoff{Worktree: task, Branch: branch, Head: head, Digest: hex.EncodeToString(digest.Sum(nil)), Patch: string(patch)}, nil
-}
-
-func (b *TaskWorktrees) Apply(ctx context.Context, preview work.WorktreeHandoff) error {
-	if preview.Patch == "" {
-		return nil
-	}
-	result, err := process.ApplyIndexPatch(ctx, preview.Worktree.Source, preview.Patch)
-	if err != nil {
-		return err
-	}
-	if result.ExitCode != 0 {
-		return fmt.Errorf("%w: git apply exited %d: %s", work.ErrTaskWorktreeChanged, result.ExitCode, strings.TrimSpace(result.Stderr))
-	}
-	return nil
-}
-
 func (b *TaskWorktrees) Release(ctx context.Context, task work.TaskWorktree, complete operation.Reply[struct{}]) error {
 	var commonDir string
 	if task.Available {
@@ -362,37 +305,6 @@ func (b *TaskWorktrees) removeTask(ctx context.Context, task work.TaskWorktree, 
 		return err
 	}
 	return root.Remove(task.ID)
-}
-
-func taskPatch(ctx context.Context, task work.TaskWorktree) ([]byte, error) {
-	patch, err := taskGitBytes(ctx, task.Path, 0, "diff", "--binary", "--no-ext-diff", "--no-textconv", "--no-color", task.Base, "--")
-	if err != nil {
-		return nil, err
-	}
-	if len(patch) > maxHandoff {
-		return nil, work.ErrVCSResultTooLarge
-	}
-	untracked, err := taskGitBytes(ctx, task.Path, 0, "ls-files", "--others", "--exclude-standard", "-z")
-	if err != nil {
-		return nil, err
-	}
-	for name := range bytes.SplitSeq(untracked, []byte{0}) {
-		if len(name) == 0 {
-			continue
-		}
-		if !filepath.IsLocal(string(name)) {
-			return nil, work.ErrPathOutsideRoot
-		}
-		delta, err := taskGitBytes(ctx, task.Path, 1, "diff", "--no-index", "--binary", "--no-ext-diff", "--no-textconv", "--no-color", "--", os.DevNull, string(name))
-		if err != nil {
-			return nil, err
-		}
-		if len(delta) > maxHandoff-len(patch) {
-			return nil, work.ErrVCSResultTooLarge
-		}
-		patch = append(patch, delta...)
-	}
-	return patch, nil
 }
 
 func taskCommonDir(ctx context.Context, path string) (string, error) {

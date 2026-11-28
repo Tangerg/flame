@@ -253,7 +253,7 @@ operation=
 previous=
 for argument do
   case "$argument" in
-    symbolic-ref) operation=before-preview ;;
+    list) if [ "$previous" = worktree ]; then operation=before-preview; fi ;;
     apply) operation=after-apply ;;
     *'^{commit}') operation=before-create ;;
     add) if [ "$previous" = worktree ]; then operation=after-create; fi ;;

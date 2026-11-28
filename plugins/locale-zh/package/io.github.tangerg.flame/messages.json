@@ -406,6 +406,7 @@
   "workspace.tasks.recover": "恢复原命令",
   "workspace.tasks.open": "打开任务",
   "workspace.tasks.preview": "预览交接",
+  "workspace.tasks.detachedHead": "分离的 HEAD",
   "workspace.tasks.release": "回收工作树",
   "workspace.tasks.apply": "在本地暂存改动",
   "workspace.tasks.applied": "改动已暂存到原检出目录。",

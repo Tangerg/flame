@@ -651,6 +651,7 @@
   "workspace.tasks.recover": "元のコマンドを復元",
   "workspace.tasks.open": "タスクを開く",
   "workspace.tasks.preview": "引き継ぎをプレビュー",
+  "workspace.tasks.detachedHead": "切り離された HEAD",
   "workspace.tasks.release": "作業ツリーを解放",
   "workspace.tasks.apply": "ローカルに変更をステージ",
   "workspace.tasks.applied": "元のチェックアウトに変更をステージしました。",
