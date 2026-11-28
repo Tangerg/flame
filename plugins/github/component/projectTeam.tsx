@@ -269,6 +269,7 @@ function ProjectTeam({
             </FormField>
             <FormField label={t.delivery}>
               <Select
+                label={t.delivery}
                 value={delivery}
                 onValueChange={setDelivery}
                 options={[
@@ -282,6 +283,7 @@ function ProjectTeam({
             </FormField>
             <FormField label={t.role}>
               <Select
+                label={t.role}
                 value={role}
                 onValueChange={setRole}
                 options={[

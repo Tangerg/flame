@@ -193,9 +193,12 @@ it("reconnects Web and Desktop to the same registered Runtime and original appro
         keys: () => [...preferences.keys()],
       },
     });
+    let closed = false;
     return {
       ...connection,
       async close() {
+        if (closed) return;
+        closed = true;
         binding.dispose();
         for (const close of finalizers) await close();
         await connection.dispose();
@@ -265,6 +268,7 @@ it("reconnects Web and Desktop to the same registered Runtime and original appro
       ?.interrupts[0];
     if (original?.type !== "approval")
       throw new Error("Runtime did not retain an original approval");
+    await web.close();
     expect(
       (await desktop.access.endpoint.trustRuntime(endpoint, "Shared Runtime", store, token)).kind,
     ).toBe("applied");
@@ -279,13 +283,21 @@ it("reconnects Web and Desktop to the same registered Runtime and original appro
       responses: [{ itemId: original.itemId, response: { type: "approval", decision: "approve" } }],
     });
     await collectRunEvents(originalOpeningEvents(resumed));
-    await expect(web.client().interrupts.list({ rootRunId: runId })).resolves.toMatchObject({
-      data: [],
-    });
-    await expect(web.client().runs.get(runId)).resolves.toMatchObject({
-      id: runId,
-      status: "finished",
-    });
+    const browserAgain = await connect("web", webPreferences);
+    try {
+      expect(browserAgain.access.endpoint.applyRuntimeEndpoint(endpoint, token).kind).toBe(
+        "applied",
+      );
+      await expect(
+        browserAgain.client().interrupts.list({ rootRunId: runId }),
+      ).resolves.toMatchObject({ data: [] });
+      await expect(browserAgain.client().runs.get(runId)).resolves.toMatchObject({
+        id: runId,
+        status: "finished",
+      });
+    } finally {
+      await browserAgain.close();
+    }
 
     const reopened = await connect("desktop", desktopPreferences);
     try {
