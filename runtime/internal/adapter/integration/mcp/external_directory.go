@@ -154,13 +154,9 @@ func (c *ExternalConnector) settleDirectory(ctx context.Context, u *connectorUse
 					slog.ErrorContext(ctx, "mcp: release directory connector", telemetry.MCPServer(server.String()), telemetry.Error(err))
 				}
 			}()
-			var payload []byte
-			if pending.Receipt.Key != "" {
-				var err error
-				payload, err = c.receipts.Directory(refusal)
-				if err != nil {
-					return errors.Join(operation.ErrOutcomePending, err)
-				}
+			payload, err := c.receipts.Directory(refusal)
+			if err != nil {
+				return errors.Join(operation.ErrOutcomePending, err)
 			}
 			if err := c.vault.CompleteDirectoryChange(ctx, pending, refusal == nil, payload); err != nil {
 				return errors.Join(operation.ErrOutcomePending, err)

@@ -2,11 +2,71 @@ package bootstrap
 
 import (
 	"errors"
+	"path/filepath"
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
+
+func TestMCPExternalWritesRequireCallerIdentity(t *testing.T) {
+	url := poMCPRemote(t, "record")
+	cfg := poMCPConfig(t)
+	host := poMCPOpen(t, cfg)
+	connector := installExternalConnector(host)
+	candidate := protocol.MCPServerCandidate{
+		Name: "managed-transport", Enabled: true,
+		Connection:       protocol.MCPConnectionInput{Type: protocol.MCPTransportStreamableHTTP, URL: url},
+		HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded},
+	}
+	server := host.createUserServer(candidate, "create-managed-transport")
+	host.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
+	withoutKey := func(method delivery.Name, request any) {
+		t.Helper()
+		result := host.endpoint.Invoke(t.Context(), method, request, protocol.CallMetadata{})
+		if result.Failure == nil || !errors.Is(result.Failure, protocol.ErrInvalidParams) {
+			t.Errorf("%s without a key = %+v, %v; want invalid params", method, result.Value, result.Failure)
+		}
+	}
+	exists := func(name string) bool {
+		t.Helper()
+		page := host.must(delivery.MCPServersList, struct{}{}, "").(*protocol.Page[protocol.MCPServer])
+		for _, entry := range page.Data {
+			if entry.ID.Origin.Type == protocol.MCPOriginUser && entry.ID.Name == name {
+				return true
+			}
+		}
+		return false
+	}
+
+	candidate.Name = "unkeyed-server"
+	withoutKey(delivery.MCPServersCreate, candidate)
+	if exists(candidate.Name) {
+		t.Error("creation without a key changed the connector directory")
+	}
+	target := host.userServerTarget(server)
+	withoutKey(delivery.MCPServersUpdate, protocol.UpdateMCPServerRequest{
+		MCPDirectoryTarget: target, Description: new("unkeyed description"),
+	})
+	if updated := host.userServerTarget(server); updated.ExpectedRevision != target.ExpectedRevision {
+		t.Error("update without a key changed the directory revision")
+	}
+
+	withoutKey(delivery.MCPAuthorizationAttemptsCreate, protocol.CreateMCPAuthorizationAttemptRequest{Server: server})
+	store := authorizationCrashStore(t, filepath.Join(cfg.stores.DataDirectory, "plugins", "data", connector.ID, "external-servers.db"))
+	var attempts int
+	if err := store.QueryRowContext(t.Context(), `SELECT count(*) FROM attempts WHERE name=?`, server.Name).Scan(&attempts); err != nil {
+		t.Fatal(err)
+	}
+	if attempts != 0 {
+		t.Errorf("authorization without a key recorded %d connector attempts", attempts)
+	}
+
+	withoutKey(delivery.MCPServersDelete, host.userServerTarget(server))
+	if !exists(server.Name) {
+		t.Error("deletion without a key withdrew the server")
+	}
+}
 
 func TestCommittedMCPWithdrawalDetachesToolsEvenIfLocalSettlementFails(t *testing.T) {
 	scenarios := []struct {

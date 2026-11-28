@@ -460,10 +460,8 @@ func TestExternalConnectorKeepsLaunchSecretsOutOfPluginAndRestoresAuthorizationR
 	case <-time.After(10 * time.Second):
 		t.Fatal("approved transport did not receive its header")
 	}
-	ref, err := r.api.CreateMCPAuthorizationAttempt(t.Context(), serverID)
-	if err != nil {
-		t.Fatal(err)
-	}
+	ref := r.must(delivery.MCPAuthorizationAttemptsCreate, protocol.CreateMCPAuthorizationAttemptRequest{Server: serverID},
+		"authorize-protected-remote").(*protocol.MCPAuthorizationAttemptRef)
 	attempt, err := r.api.GetMCPAuthorizationAttempt(t.Context(), ref.AttemptID)
 	if err != nil {
 		t.Fatal(err)

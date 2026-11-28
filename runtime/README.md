@@ -2185,6 +2185,12 @@ Inspection distinguishes invalid names (`invalid_params`), absent skills (`skill
 
 ## MCP OAuth credentials
 
+Protocol 2026-11-28.6 requires caller-retained idempotency keys for creating,
+updating and deleting user MCP servers and for starting an authorization attempt.
+The connector owns its directory change and attempt. Runtime binds the caller's
+key to the captured connector invocation and records its response under that
+same key. Use a fresh Runtime data directory for the required receipt references.
+
 Loopback callbacks reject malformed form encoding, invalid UTF-8 and repeated code,
 state, error or issuer fields before consuming the pending authorization state.
 The admitted issuer value reaches the SDK unchanged; issuer matching and token

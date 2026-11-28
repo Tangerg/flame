@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-11-28.5",
+  "protocolVersion": "2026-11-28.6",
   "features": [
     "reasoning",
     "multimodal",
@@ -898,7 +898,7 @@
       "name": "mcp.servers.create",
       "kind": "unary",
       "operation": "command",
-      "idempotency": "replayResponse",
+      "idempotency": "requiredReplayResponse",
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
@@ -915,7 +915,7 @@
       "name": "mcp.servers.update",
       "kind": "unary",
       "operation": "command",
-      "idempotency": "replayResponse",
+      "idempotency": "requiredReplayResponse",
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
@@ -933,7 +933,7 @@
       "name": "mcp.servers.delete",
       "kind": "unary",
       "operation": "command",
-      "idempotency": "replayResponse",
+      "idempotency": "requiredReplayResponse",
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
@@ -999,7 +999,7 @@
       "name": "mcp.authorizationAttempts.create",
       "kind": "unary",
       "operation": "command",
-      "idempotency": "replayResponse",
+      "idempotency": "requiredReplayResponse",
       "replayCursor": "none",
       "pagination": "none",
       "errors": [

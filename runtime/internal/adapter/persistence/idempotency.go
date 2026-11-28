@@ -95,6 +95,9 @@ func readReplayRecord(row *framesqlite.Row, key, fingerprint string) (operation.
 // on wall time: releasing it could re-execute a mutation that committed before a
 // crash.
 func (i *idempotencyStore) Claim(ctx context.Context, claim operation.ReplayClaim) (record operation.ReplayRecord, claimed bool, err error) {
+	if claim.Key == "" || claim.Fingerprint == "" {
+		return operation.ReplayRecord{}, false, errors.New("sqlite: an idempotency claim requires its key and fingerprint")
+	}
 	now := time.Now().Unix()
 	err = i.db.write(ctx, func(ctx context.Context) error {
 		db := i.db.connection(ctx)

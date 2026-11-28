@@ -28,20 +28,12 @@ func (s *Handler) ListMCPServers(ctx context.Context) (*protocol.Page[protocol.M
 	return protocol.NewPage(out), nil
 }
 
-func (s *Handler) CreateMCPServer(ctx context.Context, in protocol.MCPServerCandidate) error {
-	return wireMCPError(s.createMCPServer(ctx, in, operation.ReplayClaim{}))
-}
-
 func (s *Handler) createMCPServer(ctx context.Context, in protocol.MCPServerCandidate, receipt operation.ReplayClaim) error {
 	input, err := mcpServerInputFromCandidate(in)
 	if err != nil {
 		return err
 	}
 	return s.mcp.CreateServer(ctx, input, receipt)
-}
-
-func (s *Handler) UpdateMCPServer(ctx context.Context, in protocol.UpdateMCPServerRequest) error {
-	return wireMCPError(s.updateMCPServer(ctx, in, operation.ReplayClaim{}))
 }
 
 func (s *Handler) updateMCPServer(ctx context.Context, in protocol.UpdateMCPServerRequest, receipt operation.ReplayClaim) error {
@@ -54,10 +46,6 @@ func (s *Handler) updateMCPServer(ctx context.Context, in protocol.UpdateMCPServ
 		return err
 	}
 	return s.mcp.UpdateServer(ctx, target, patch, receipt)
-}
-
-func (s *Handler) DeleteMCPServer(ctx context.Context, in protocol.MCPDirectoryTarget) error {
-	return wireMCPError(s.deleteMCPServer(ctx, in, operation.ReplayClaim{}))
 }
 
 func (s *Handler) deleteMCPServer(ctx context.Context, in protocol.MCPDirectoryTarget, receipt operation.ReplayClaim) error {
@@ -129,18 +117,6 @@ func (s *Handler) reconnectMCPServer(ctx context.Context, server protocol.MCPSer
 		return err
 	}
 	return wireMCPError(s.mcp.ReconnectServer(ctx, name, complete))
-}
-
-func (s *Handler) CreateMCPAuthorizationAttempt(ctx context.Context, server protocol.MCPServerID) (*protocol.MCPAuthorizationAttemptRef, error) {
-	name, err := mcpServerIDFromWire(server)
-	if err != nil {
-		return nil, err
-	}
-	id, err := s.mcp.StartAuthorization(ctx, name, operation.ReplayClaim{})
-	if err != nil {
-		return nil, wireMCPError(err)
-	}
-	return authorizationAttemptRef(id), nil
 }
 
 func (s *Handler) GetMCPAuthorizationAttempt(ctx context.Context, attemptID string) (*protocol.MCPAuthorizationAttempt, error) {

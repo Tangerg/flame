@@ -19,6 +19,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
 
 const externalAuthorizationCrashHome = "FLAME_TEST_MCP_AUTH_CRASH_HOME"
@@ -84,10 +85,8 @@ func TestExternalAuthorizationCrashChild(t *testing.T) {
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	ref, err := r.api.CreateMCPAuthorizationAttempt(t.Context(), serverID)
-	if err != nil {
-		t.Fatal(err)
-	}
+	ref := r.must(delivery.MCPAuthorizationAttemptsCreate, protocol.CreateMCPAuthorizationAttemptRequest{Server: serverID},
+		"authorize-before-crash").(*protocol.MCPAuthorizationAttemptRef)
 	attempt, err := r.api.GetMCPAuthorizationAttempt(t.Context(), ref.AttemptID)
 	if err != nil {
 		t.Fatal(err)

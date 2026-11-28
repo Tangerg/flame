@@ -166,9 +166,6 @@ func validateWorkspaceMutation(m sessions.WorkspaceMutation) error {
 	if m.CWD == "" {
 		return errors.New("sqlite: workspace mutation has no working tree")
 	}
-	if m.Receipt.Key == "" || m.Receipt.Fingerprint == "" {
-		return errors.New("sqlite: workspace mutation requires a receipt reservation")
-	}
 	return nil
 }
 

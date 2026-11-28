@@ -18,21 +18,16 @@ func (s *Handler) replayMCPAuthorization(ctx context.Context, input protocol.Cre
 		if err != nil {
 			return err
 		}
-		_, err = s.mcp.StartAuthorization(ctx, server, receipt)
-		return err
+		return s.mcp.StartAuthorization(ctx, server, receipt)
 	}, func(cause error) ([]byte, error) {
 		return encodeAcknowledgement(wireMCPError(cause))
 	})
 	return call.result(ctx, payload, err)
 }
 
-func authorizationAttemptRef(id mcpapp.AuthorizationAttemptID) *protocol.MCPAuthorizationAttemptRef {
-	return &protocol.MCPAuthorizationAttemptRef{AttemptID: id.String()}
-}
-
 func EncodeMCPAuthorizationReceipt(id mcpapp.AuthorizationAttemptID, cause error) ([]byte, error) {
 	if cause != nil {
 		return encodeAcknowledgement(wireMCPError(cause))
 	}
-	return encodeStoredOutcome(protocol.OperationResult{Value: authorizationAttemptRef(id)})
+	return encodeStoredOutcome(protocol.OperationResult{Value: &protocol.MCPAuthorizationAttemptRef{AttemptID: id.String()}})
 }

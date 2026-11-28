@@ -855,21 +855,21 @@ export const WIRE_METHOD_POLICY = {
   "mcp.servers.create": {
     operation: "command",
     response: "unary",
-    idempotency: "replayResponse",
+    idempotency: "requiredReplayResponse",
     replayCursor: "none",
     pagination: "none",
   },
   "mcp.servers.update": {
     operation: "command",
     response: "unary",
-    idempotency: "replayResponse",
+    idempotency: "requiredReplayResponse",
     replayCursor: "none",
     pagination: "none",
   },
   "mcp.servers.delete": {
     operation: "command",
     response: "unary",
-    idempotency: "replayResponse",
+    idempotency: "requiredReplayResponse",
     replayCursor: "none",
     pagination: "none",
   },
@@ -897,7 +897,7 @@ export const WIRE_METHOD_POLICY = {
   "mcp.authorizationAttempts.create": {
     operation: "command",
     response: "unary",
-    idempotency: "replayResponse",
+    idempotency: "requiredReplayResponse",
     replayCursor: "none",
     pagination: "none",
   },

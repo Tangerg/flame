@@ -42,14 +42,12 @@ func (m *MCPServerStore) PrepareDirectoryChange(ctx context.Context, pending mcp
 		if previous {
 			return fmt.Errorf("%w: a directory change for %q is awaiting settlement", operation.ErrInProgress, intent.Change.Name)
 		}
-		if pending.Receipt.Key != "" {
-			_, claimed, err := m.receipts.Claim(tx, pending.Receipt)
-			if err != nil {
-				return err
-			}
-			if !claimed {
-				return operation.ErrInProgress
-			}
+		_, claimed, err := m.receipts.Claim(tx, pending.Receipt)
+		if err != nil {
+			return err
+		}
+		if !claimed {
+			return operation.ErrInProgress
 		}
 		var newGrant string
 		if material != nil {
@@ -71,7 +69,7 @@ func (m *MCPServerStore) PrepareDirectoryChange(ctx context.Context, pending mcp
 		if err != nil {
 			return err
 		}
-		if _, err := db.ExecContext(tx, `INSERT INTO pending_mcp_directory_changes(intent,receipt_key) VALUES(?,NULLIF(?,''))`, string(data), pending.Receipt.Key); err != nil {
+		if _, err := db.ExecContext(tx, `INSERT INTO pending_mcp_directory_changes(intent,receipt_key) VALUES(?,?)`, string(data), pending.Receipt.Key); err != nil {
 			return err
 		}
 		if newGrant == "" {
@@ -113,7 +111,7 @@ func (m *MCPServerStore) PendingDirectoryChange(ctx context.Context, receipt ope
 func (m *MCPServerStore) PendingDirectoryChanges(ctx context.Context) ([]mcpapp.PendingDirectoryChange, error) {
 	return scopedValue(ctx, m.db.read, func(ctx context.Context) ([]mcpapp.PendingDirectoryChange, error) {
 		rows, err := m.db.connection(ctx).QueryContext(ctx, `SELECT pending.intent,
-			COALESCE(pending.receipt_key,''), COALESCE(receipt.fingerprint,'')
+			pending.receipt_key, receipt.fingerprint
 			FROM pending_mcp_directory_changes pending
 			LEFT JOIN idempotency_records receipt ON receipt.key=pending.receipt_key AND receipt.kind=?
 			ORDER BY pending.rowid`, idempotencyPendingResponse)
@@ -127,9 +125,6 @@ func (m *MCPServerStore) PendingDirectoryChanges(ctx context.Context) ([]mcpapp.
 			var change mcpapp.PendingDirectoryChange
 			if err := rows.Scan(&body, &change.Receipt.Key, &change.Receipt.Fingerprint); err != nil {
 				return nil, err
-			}
-			if change.Receipt.Key != "" && change.Receipt.Fingerprint == "" {
-				return nil, operation.ErrClaimLost
 			}
 			change.Intent, err = decodeDirectoryIntent(body)
 			if err != nil {
@@ -154,7 +149,7 @@ func (m *MCPServerStore) CompleteDirectoryChange(ctx context.Context, pending mc
 		if err := m.settleLaunchGrants(tx, pending.Intent, accepted); err != nil {
 			return err
 		}
-		result, err := m.db.connection(tx).ExecContext(tx, `DELETE FROM pending_mcp_directory_changes WHERE invocation=?`, pending.Intent.Invocation.ID)
+		result, err := m.db.connection(tx).ExecContext(tx, `DELETE FROM pending_mcp_directory_changes WHERE invocation=? AND receipt_key=?`, pending.Intent.Invocation.ID, pending.Receipt.Key)
 		if err != nil {
 			return err
 		}
@@ -164,9 +159,6 @@ func (m *MCPServerStore) CompleteDirectoryChange(ctx context.Context, pending mc
 		}
 		if deleted != 1 {
 			return operation.ErrClaimLost
-		}
-		if pending.Receipt.Key == "" {
-			return nil
 		}
 		_, err = m.receipts.Complete(tx, operation.ReplayRecord{
 			Key: pending.Receipt.Key, Fingerprint: pending.Receipt.Fingerprint, Payload: payload,

@@ -427,7 +427,7 @@ func currentSchema() []string {
 			invocation TEXT GENERATED ALWAYS AS (json_extract(intent, '$.invocation.id')) STORED NOT NULL UNIQUE,
 			connector TEXT GENERATED ALWAYS AS (json_extract(intent, '$.source.installationId')) STORED NOT NULL,
 			name TEXT GENERATED ALWAYS AS (json_extract(intent, '$.change.name')) STORED NOT NULL,
-			receipt_key TEXT UNIQUE REFERENCES idempotency_records(key) ON DELETE RESTRICT,
+			receipt_key TEXT NOT NULL UNIQUE REFERENCES idempotency_records(key) ON DELETE RESTRICT,
 			UNIQUE(connector,name)
 		)`,
 		`CREATE TABLE IF NOT EXISTS pending_mcp_authorization_starts (
@@ -436,7 +436,7 @@ func currentSchema() []string {
 			connector TEXT GENERATED ALWAYS AS (json_extract(intent, '$.source.installationId')) STORED NOT NULL,
 			epoch TEXT GENERATED ALWAYS AS (json_extract(intent, '$.start.epoch')) STORED NOT NULL,
 			name TEXT GENERATED ALWAYS AS (json_extract(intent, '$.start.name')) STORED NOT NULL,
-			receipt_key TEXT UNIQUE REFERENCES idempotency_records(key) ON DELETE RESTRICT,
+			receipt_key TEXT NOT NULL UNIQUE REFERENCES idempotency_records(key) ON DELETE RESTRICT,
 			UNIQUE(connector,epoch,name)
 		)`,
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS mcp_authorization_routes (

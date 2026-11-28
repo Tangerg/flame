@@ -2,6 +2,7 @@ package delivery
 
 import (
 	"context"
+	"reflect"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
@@ -43,35 +44,23 @@ func registerMCP(registry *Registry) {
 		return service.ListMCPServers(ctx)
 	})
 
-	registry.commandAck(MethodMeta{
+	registry.requiredReplayCommand(MethodMeta{
 		Name: MCPServersCreate, GoName: "CreateMCPServer",
 		Errors:          []string{protocol.ErrMCPServerAlreadyExists.Error(), protocol.ErrPluginUnavailable.Error()},
 		CapabilityRules: requires(protocol.FeatureMCP),
-	}, func(service interface {
-		CreateMCPServer(context.Context, protocol.MCPServerCandidate) error
-	}, ctx context.Context, request protocol.MCPServerCandidate) error {
-		return service.CreateMCPServer(ctx, request)
-	}).withOwnedReplay(directoryReplay((*Handler).createMCPServer))
+	}, directoryReplay((*Handler).createMCPServer))
 
-	registry.commandAck(MethodMeta{
+	registry.requiredReplayCommand(MethodMeta{
 		Name: MCPServersUpdate, GoName: "UpdateMCPServer",
 		Errors:          []string{protocol.ErrMCPServerNotFound.Error(), protocol.ErrMCPOwnedByInstallation.Error(), protocol.ErrRevisionConflict.Error()},
 		CapabilityRules: requires(protocol.FeatureMCP),
-	}, func(service interface {
-		UpdateMCPServer(context.Context, protocol.UpdateMCPServerRequest) error
-	}, ctx context.Context, request protocol.UpdateMCPServerRequest) error {
-		return service.UpdateMCPServer(ctx, request)
-	}).withOwnedReplay(directoryReplay((*Handler).updateMCPServer))
+	}, directoryReplay((*Handler).updateMCPServer))
 
-	registry.commandAck(MethodMeta{
+	registry.requiredReplayCommand(MethodMeta{
 		Name: MCPServersDelete, GoName: "DeleteMCPServer",
 		Errors:          []string{protocol.ErrMCPServerNotFound.Error(), protocol.ErrMCPOwnedByInstallation.Error(), protocol.ErrRevisionConflict.Error()},
 		CapabilityRules: requires(protocol.FeatureMCP),
-	}, func(service interface {
-		DeleteMCPServer(context.Context, protocol.MCPDirectoryTarget) error
-	}, ctx context.Context, request protocol.MCPDirectoryTarget) error {
-		return service.DeleteMCPServer(ctx, request)
-	}).withOwnedReplay(directoryReplay((*Handler).deleteMCPServer))
+	}, directoryReplay((*Handler).deleteMCPServer))
 
 	registry.query(MethodMeta{
 		Name: mcpServersTest, GoName: "TestMCPServer",
@@ -104,18 +93,15 @@ func registerMCP(registry *Registry) {
 		commitMCPReconnect(context.Context, protocol.MCPServerRequest, atomicOutcome) error
 	}).commitMCPReconnect))
 
-	registry.command(MethodMeta{
+	registry.requiredReplayCommand(MethodMeta{
 		Name: MCPAuthorizationAttemptsCreate, GoName: "CreateMCPAuthorizationAttempt",
+		Result: reflect.TypeFor[*protocol.MCPAuthorizationAttemptRef](),
 		Errors: []string{
 			protocol.ErrMCPServerNotFound.Error(), protocol.ErrMCPServerDisabled.Error(),
 			protocol.ErrPluginUnavailable.Error(), protocol.ErrPluginCommandRetired.Error(),
 		},
 		CapabilityRules: requires(protocol.FeatureMCP),
-	}, func(service interface {
-		CreateMCPAuthorizationAttempt(context.Context, protocol.MCPServerID) (*protocol.MCPAuthorizationAttemptRef, error)
-	}, ctx context.Context, request protocol.CreateMCPAuthorizationAttemptRequest) (*protocol.MCPAuthorizationAttemptRef, error) {
-		return service.CreateMCPAuthorizationAttempt(ctx, request.Server)
-	}).withOwnedReplay((*Handler).replayMCPAuthorization)
+	}, (*Handler).replayMCPAuthorization)
 
 	registry.query(MethodMeta{
 		Name: mcpAuthorizationAttemptsGet, GoName: "GetMCPAuthorizationAttempt",

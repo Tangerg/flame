@@ -30,16 +30,14 @@ func (m *MCPServerStore) PrepareAuthorizationStart(ctx context.Context, pending 
 		if existing {
 			return operation.ErrInProgress
 		}
-		if pending.Receipt.Key != "" {
-			_, claimed, err := m.receipts.Claim(tx, pending.Receipt)
-			if err != nil {
-				return err
-			}
-			if !claimed {
-				return operation.ErrInProgress
-			}
+		_, claimed, err := m.receipts.Claim(tx, pending.Receipt)
+		if err != nil {
+			return err
 		}
-		_, err := db.ExecContext(tx, `INSERT INTO pending_mcp_authorization_starts(intent,receipt_key) VALUES(?,NULLIF(?,''))`, string(intent), pending.Receipt.Key)
+		if !claimed {
+			return operation.ErrInProgress
+		}
+		_, err = db.ExecContext(tx, `INSERT INTO pending_mcp_authorization_starts(intent,receipt_key) VALUES(?,?)`, string(intent), pending.Receipt.Key)
 		return err
 	})
 }
@@ -63,7 +61,7 @@ func (m *MCPServerStore) PendingAuthorizationStart(ctx context.Context, receipt 
 
 func (m *MCPServerStore) PendingAuthorizationStarts(ctx context.Context) ([]mcpapp.PendingAuthorizationStart, error) {
 	return scopedValue(ctx, m.db.read, func(tx context.Context) ([]mcpapp.PendingAuthorizationStart, error) {
-		rows, err := m.db.connection(tx).QueryContext(tx, `SELECT start.intent, COALESCE(start.receipt_key,''), COALESCE(receipt.fingerprint,'')
+		rows, err := m.db.connection(tx).QueryContext(tx, `SELECT start.intent, start.receipt_key, receipt.fingerprint
 			FROM pending_mcp_authorization_starts start LEFT JOIN idempotency_records receipt ON receipt.key=start.receipt_key AND receipt.kind=?
 			ORDER BY start.rowid`, idempotencyPendingResponse)
 		if err != nil {
@@ -88,9 +86,6 @@ func (m *MCPServerStore) PendingAuthorizationStarts(ctx context.Context) ([]mcpa
 }
 
 func decodeAuthorizationStart(data string, receipt operation.ReplayClaim) (mcpapp.PendingAuthorizationStart, error) {
-	if receipt.Key != "" && receipt.Fingerprint == "" {
-		return mcpapp.PendingAuthorizationStart{}, operation.ErrClaimLost
-	}
 	var intent mcpapp.AuthorizationIntent
 	if err := json.Unmarshal([]byte(data), &intent, json.RejectUnknownMembers(true)); err != nil {
 		return mcpapp.PendingAuthorizationStart{}, err
@@ -100,7 +95,7 @@ func decodeAuthorizationStart(data string, receipt operation.ReplayClaim) (mcpap
 
 func (m *MCPServerStore) CompleteAuthorizationStart(ctx context.Context, pending mcpapp.PendingAuthorizationStart, accepted bool, payload []byte) error {
 	return m.db.independent(ctx, func(tx context.Context) error {
-		result, err := m.db.connection(tx).ExecContext(tx, `DELETE FROM pending_mcp_authorization_starts WHERE invocation=?`, pending.Intent.Invocation.ID)
+		result, err := m.db.connection(tx).ExecContext(tx, `DELETE FROM pending_mcp_authorization_starts WHERE invocation=? AND receipt_key=?`, pending.Intent.Invocation.ID, pending.Receipt.Key)
 		if err != nil {
 			return err
 		}
@@ -122,9 +117,6 @@ func (m *MCPServerStore) CompleteAuthorizationStart(ctx context.Context, pending
 			if err != nil {
 				return err
 			}
-		}
-		if pending.Receipt.Key == "" {
-			return nil
 		}
 		_, err = m.receipts.Complete(tx, operation.ReplayRecord{Key: pending.Receipt.Key, Fingerprint: pending.Receipt.Fingerprint, Payload: payload})
 		return err

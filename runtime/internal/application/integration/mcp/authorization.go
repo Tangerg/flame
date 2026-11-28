@@ -41,21 +41,21 @@ func (c *Coordinator) AuthorizationAttemptRetention() time.Duration {
 	return AuthorizationAttemptRetention
 }
 
-func (c *Coordinator) StartAuthorization(ctx context.Context, server mcpserver.ID, receipt operation.ReplayClaim) (AuthorizationAttemptID, error) {
+func (c *Coordinator) StartAuthorization(ctx context.Context, server mcpserver.ID, receipt operation.ReplayClaim) error {
 	write, err := c.beginMutation(ctx)
 	if err != nil {
-		return AuthorizationAttemptID{}, err
+		return err
 	}
 	defer write.close()
 	target, err := c.authorizationTarget(write.requestCtx, server)
 	if err != nil {
-		return AuthorizationAttemptID{}, err
+		return err
 	}
 	settlement, err := c.external.StartAuthorization(write.requestCtx, target, newAuthorizationAttemptID(), receipt)
 	if err != nil {
-		return AuthorizationAttemptID{}, err
+		return err
 	}
-	return settlement.AttemptID, c.completeAuthorizationStart(write, settlement)
+	return c.completeAuthorizationStart(write, settlement)
 }
 
 func (c *Coordinator) RecoverAuthorization(ctx context.Context, receipt operation.ReplayClaim) error {

@@ -82,13 +82,9 @@ func (c *ExternalConnector) settleAuthorizationStart(ctx context.Context, u *con
 				slog.ErrorContext(ctx, "mcp: release authorization connector", telemetry.MCPServer(settlement.Server.String()), telemetry.Error(err))
 			}
 		}()
-		var payload []byte
-		if pending.Receipt.Key != "" {
-			var err error
-			payload, err = c.receipts.Authorization(settlement.AttemptID, settlement.Refusal)
-			if err != nil {
-				return errors.Join(operation.ErrOutcomePending, err)
-			}
+		payload, err := c.receipts.Authorization(settlement.AttemptID, settlement.Refusal)
+		if err != nil {
+			return errors.Join(operation.ErrOutcomePending, err)
 		}
 		if err := c.vault.CompleteAuthorizationStart(ctx, pending, settlement.Refusal == nil, payload); err != nil {
 			return errors.Join(operation.ErrOutcomePending, err)
