@@ -69,7 +69,7 @@ require (
 
 require (
 	github.com/Tangerg/acp v0.4.0
-	github.com/Tangerg/flame/packages/go-sdk v0.1.103-dev.20261128.te2a94f77b7d8
+	github.com/Tangerg/flame/packages/go-sdk v0.1.104-dev.20261128.tdddcbd5829c9
 	github.com/Tangerg/frame v0.5.0
 	github.com/Tangerg/go-sdk v1.9.0-scope.1
 	github.com/Tangerg/scope/core v0.64.0

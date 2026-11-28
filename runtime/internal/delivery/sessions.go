@@ -112,8 +112,9 @@ func registerSessions(registry *Registry) {
 		return service.PreviewSessionFork(ctx, in)
 	})
 
-	registry.command(MethodMeta{
+	registry.requiredReplayCommand(MethodMeta{
 		Name: sessionsFork, GoName: "ForkSession",
+		Result:          reflect.TypeFor[*protocol.Session](),
 		CapabilityRules: []CapabilityRule{{When: []FieldCondition{{Field: "worktree", Operator: OperatorPresent}}, Requires: []string{protocol.FeatureGit}}},
 		Errors: pluginProviderErrors(
 			protocol.ErrSessionNotFound.Error(),
@@ -121,13 +122,7 @@ func registerSessions(registry *Registry) {
 			protocol.ErrRevisionConflict.Error(),
 			protocol.ErrSessionBusy.Error(), protocol.ErrWorkspaceUnavailable.Error(), protocol.ErrVcsUnavailable.Error(),
 		),
-	}, func(service interface {
-		ForkSession(context.Context, protocol.ForkSessionRequest) (*protocol.Session, error)
-	}, ctx context.Context, request protocol.ForkSessionRequest) (*protocol.Session, error) {
-		return service.ForkSession(ctx, request)
-	}).withOwnedReplay(atomicReplay((interface {
-		commitForkSession(context.Context, protocol.ForkSessionRequest, atomicOutcome) error
-	}).commitForkSession))
+	}, atomicReplay((*Handler).commitForkSession))
 
 	registry.requiredReplayCommand(MethodMeta{
 		Name: sessionsRollback, GoName: "RollbackSession",

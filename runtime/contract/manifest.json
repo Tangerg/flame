@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-11-28.8",
+  "protocolVersion": "2026-11-28.9",
   "features": [
     "reasoning",
     "multimodal",
@@ -193,7 +193,7 @@
       "name": "sessions.fork",
       "kind": "unary",
       "operation": "command",
-      "idempotency": "replayResponse",
+      "idempotency": "requiredReplayResponse",
       "replayCursor": "none",
       "pagination": "none",
       "errors": [

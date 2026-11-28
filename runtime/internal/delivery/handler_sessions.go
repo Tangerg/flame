@@ -285,12 +285,6 @@ func wireSessionMutationErr(err error, sessionID identity.SessionID) error {
 	return wireSessionErr(err)
 }
 
-func (s *Handler) ForkSession(ctx context.Context, in protocol.ForkSessionRequest) (*protocol.Session, error) {
-	return completeSessionView(func(complete operation.Reply[sessions.View]) error {
-		return s.forkSession(ctx, in, complete)
-	})
-}
-
 func (s *Handler) commitForkSession(ctx context.Context, in protocol.ForkSessionRequest, outcome atomicOutcome) error {
 	return outcome.settleRefusal(ctx, s.forkSession(ctx, in, outcome.sessionView()))
 }

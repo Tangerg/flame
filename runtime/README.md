@@ -128,6 +128,11 @@ those writes before admitting workspace activity and consumes each completed
 receipt through its original key. Loss of the writer itself can leave an
 admitted operation unconfirmed.
 
+Protocol 2026-11-28.9 requires a caller-retained idempotency key for
+`sessions.fork`. A fork into an independent worktree checks Git capability
+when it executes. The original committed Session receipt remains readable
+through that key when Git is unavailable.
+
 Project Home shows recent accepted background Runs and links to their original
 Sessions and PR reviews. A schedule or file watcher can capture a Project ID when
 configured. Claimed events freeze their source version and keep their original

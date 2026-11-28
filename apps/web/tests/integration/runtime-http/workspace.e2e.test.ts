@@ -137,6 +137,19 @@ describe("Go Runtime ↔ HTTP: Git command receipts", () => {
     expect(rolledBack).toMatchObject({ result: { session: { id }, droppedRuns: [] } });
     await expect(readFile(join(source, file), "utf8")).resolves.toBe(material);
 
+    const preview = await fixture.client.sessions.previewFork({ sessionId });
+    const fork = ["sessions.fork", { sessionId, worktree: preview.worktree }, "fork"] as const;
+    const unkeyed = await fixture.postRPC(fork[0], fork[1]);
+    await expect(unkeyed.json()).resolves.toMatchObject({
+      error: { data: { problem: { type: "invalid_params" } } },
+    });
+    await expect(stat(preview.destination.path)).rejects.toMatchObject({ code: "ENOENT" });
+    const forked = await send(...fork);
+    expect(forked).toMatchObject({ result: { workspace: { ref: preview.destination } } });
+    expect((await git("worktree", "list", "--porcelain")).stdout).toContain(
+      preview.destination.path,
+    );
+
     const restart = async (executableSearchPath?: string) => {
       await fixture.client.close();
       await fixture.stopRuntimeProcess();
@@ -154,8 +167,14 @@ describe("Go Runtime ↔ HTTP: Git command receipts", () => {
     const newKey = "create-after-restart";
     await expect(send(create[0], create[1], newKey)).resolves.toMatchObject(denied);
     await expect(
-      Promise.all([send(...create), send(...apply), send(...release), send(...rollback)]),
-    ).resolves.toEqual([created, applied, released, rolledBack]);
+      Promise.all([
+        send(...create),
+        send(...apply),
+        send(...release),
+        send(...rollback),
+        send(...fork),
+      ]),
+    ).resolves.toEqual([created, applied, released, rolledBack, forked]);
 
     const rebound = await send(apply[0], { id: "different-task", digest }, apply[2]);
     expect(rebound).toMatchObject({

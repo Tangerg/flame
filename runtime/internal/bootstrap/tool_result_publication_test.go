@@ -17,6 +17,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -120,7 +121,10 @@ func TestOffloadedToolResultCommitsWithItsItem(t *testing.T) {
 		}
 	}
 
-	forked, err := api.ForkSession(ctx, protocol.ForkSessionRequest{SessionID: session.ID})
+	forked, err := host.Endpoint().Call[protocol.ForkSessionRequest, *protocol.Session](
+		ctx, delivery.Name("sessions.fork"), protocol.ForkSessionRequest{SessionID: session.ID},
+		protocol.CallMetadata{IdempotencyKey: "fork-offloaded-tool-result"},
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
