@@ -6,12 +6,62 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
+
+func TestTaskWorktreeReleaseUsesItsOwnGitRegistration(t *testing.T) {
+	source, git := taskWorktreeTestRepository(t)
+	git("commit", "--quiet", "--allow-empty", "-m", "initial checkout")
+	cfg := poMCPConfig(t)
+	cfg.defaultWorkspacePath = source
+	r := poMCPOpen(t, cfg)
+	parent := r.must(delivery.TaskWorktreesCreate, protocol.CreateTaskWorktreeRequest{
+		Source: protocol.WorkspaceRef{Path: source}, Base: "target",
+	}, "registration-parent").(*protocol.TaskWorktree)
+	child := r.must(delivery.TaskWorktreesCreate, protocol.CreateTaskWorktreeRequest{
+		Source: parent.Workspace, Base: "HEAD",
+	}, "registration-child").(*protocol.TaskWorktree)
+	if child.Source != parent.Workspace {
+		t.Fatalf("child source = %+v, want %+v", child.Source, parent.Workspace)
+	}
+
+	r.must(delivery.TaskWorktreesRelease, protocol.TaskWorktreeRequest{ID: parent.ID}, "release-registration-parent")
+	if _, err := os.Stat(parent.Workspace.Path); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("parent checkout survived release: %v", err)
+	}
+	catalog := r.must(delivery.TaskWorktreesList, struct{}{}, "").(*protocol.Page[protocol.TaskWorktree])
+	if len(catalog.Data) != 1 || catalog.Data[0].ID != child.ID || !catalog.Data[0].Available {
+		t.Fatalf("child checkout lost its registration when its source was released: %+v", catalog.Data)
+	}
+	draft := filepath.Join(child.Workspace.Path, "draft.txt")
+	const content = "unfinished work"
+	if err := os.WriteFile(draft, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	dirty := r.endpoint.Invoke(protocolLifecycleContext(t.Context()), delivery.TaskWorktreesRelease,
+		protocol.TaskWorktreeRequest{ID: child.ID}, protocol.CallMetadata{IdempotencyKey: "release-registration-dirty-child"})
+	if dirty.Failure == nil || !errors.Is(dirty.Failure, protocol.ErrRevisionConflict) {
+		t.Fatalf("release with an untracked file = %+v, %v", dirty.Value, dirty.Failure)
+	}
+	if body, err := os.ReadFile(draft); err != nil || string(body) != content {
+		t.Fatalf("refused release changed the untracked file: %q, %v", body, err)
+	}
+	if err := os.Remove(draft); err != nil {
+		t.Fatal(err)
+	}
+	r.must(delivery.TaskWorktreesRelease, protocol.TaskWorktreeRequest{ID: child.ID}, "release-registration-child")
+	if _, err := os.Stat(child.Workspace.Path); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("child checkout survived release: %v", err)
+	}
+	if registrations := git("worktree", "list", "--porcelain"); strings.Count(registrations, "worktree ") != 1 {
+		t.Fatalf("Git retained a released checkout: %s", registrations)
+	}
+}
 
 func TestTaskWorktreeReleaseFencesNewSessionBinding(t *testing.T) {
 	if runtime.GOOS == "windows" {

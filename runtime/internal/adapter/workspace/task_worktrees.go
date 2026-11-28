@@ -325,6 +325,7 @@ func (b *TaskWorktrees) Apply(ctx context.Context, preview work.WorktreeHandoff)
 }
 
 func (b *TaskWorktrees) Release(ctx context.Context, task work.TaskWorktree, complete operation.Reply[struct{}]) error {
+	var commonDir string
 	if task.Available {
 		head, err := taskGitValue(ctx, task.Path, "rev-parse", "--verify", "HEAD")
 		if err != nil {
@@ -333,17 +334,22 @@ func (b *TaskWorktrees) Release(ctx context.Context, task work.TaskWorktree, com
 		if head != task.Base {
 			return fmt.Errorf("%w: the task worktree contains committed changes", work.ErrTaskWorktreeChanged)
 		}
+		// The task's registration survives removal of its handoff destination.
+		commonDir, err = taskCommonDir(ctx, task.Path)
+		if err != nil {
+			return err
+		}
 	} else if _, err := os.Lstat(task.Path); !errors.Is(err, os.ErrNotExist) {
 		return errors.Join(work.ErrTaskWorktreeChanged, err)
 	}
 	return complete(ctx, func(work context.Context) (struct{}, error) {
-		return struct{}{}, b.removeTask(work, task)
+		return struct{}{}, b.removeTask(work, task, commonDir)
 	})
 }
 
-func (b *TaskWorktrees) removeTask(ctx context.Context, task work.TaskWorktree) error {
-	if task.Available {
-		if _, err := taskGitValue(ctx, task.Source, "worktree", "remove", "--", task.Path); err != nil {
+func (b *TaskWorktrees) removeTask(ctx context.Context, task work.TaskWorktree, commonDir string) error {
+	if commonDir != "" {
+		if _, err := taskGitValue(ctx, commonDir, "worktree", "remove", "--", task.Path); err != nil {
 			return errors.Join(work.ErrTaskWorktreeChanged, err)
 		}
 	}
