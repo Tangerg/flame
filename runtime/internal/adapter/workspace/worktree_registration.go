@@ -106,43 +106,72 @@ func (r taskRecord) registrationForRelease(ctx context.Context, checkout string)
 	return registration, err
 }
 
-func (b *TaskWorktrees) PrepareRelease(ctx context.Context, task work.TaskWorktree) (func(context.Context) error, error) {
-	record, err := b.load(task.ID)
+func (t *taskCheckout) checkoutRegistration(ctx context.Context) (*taskRegistration, error) {
+	gitDir, err := checkoutGitDirectory(ctx, t.path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
 	}
-	registration, err := record.registrationForRelease(ctx, task.Path)
+	registration, err := t.record.registrationAt(gitDir)
+	if registration != nil && registration.checkout != t.path {
+		return nil, nil
+	}
+	return registration, err
+}
+
+func (t *taskCheckout) PrepareRelease(ctx context.Context) (func(context.Context) error, error) {
+	registration, err := t.record.registrationForRelease(ctx, t.path)
 	if err != nil {
 		return nil, err
 	}
 	if registration != nil {
-		if registration.checkout != task.Path {
+		if registration.checkout != t.path {
 			return nil, fmt.Errorf("%w: Git moved the task worktree to %q", work.ErrTaskWorktreeChanged, registration.checkout)
 		}
 		head, err := taskGitValue(ctx, registration.directory, "rev-parse", "--verify", "HEAD")
 		if err != nil {
 			return nil, err
 		}
-		if head != record.Base {
+		if head != t.record.Base {
 			return nil, fmt.Errorf("%w: the task worktree contains committed changes", work.ErrTaskWorktreeChanged)
 		}
 	}
 	return func(work context.Context) error {
-		return b.removeTask(work, record.ID, registration)
+		return t.release(work, registration)
 	}, nil
 }
 
-func (b *TaskWorktrees) removeTask(ctx context.Context, id string, registration *taskRegistration) error {
+func (t *taskCheckout) release(ctx context.Context, registration *taskRegistration) error {
 	if registration != nil {
 		common := filepath.Dir(filepath.Dir(registration.directory))
 		if err := git.RemoveWorktree(ctx, common, registration.checkout); err != nil {
 			return errors.Join(work.ErrTaskWorktreeChanged, err)
 		}
 	}
-	root, err := os.OpenRoot(b.root)
+	root, err := os.OpenRoot(filepath.Dir(t.path))
 	if err != nil {
 		return err
 	}
 	defer root.Close()
-	return root.Remove(taskRecordName(id))
+	return root.Remove(taskRecordName(t.record.ID))
+}
+
+func checkoutGitDirectory(ctx context.Context, checkout string) (string, error) {
+	info, err := os.Lstat(checkout)
+	if err != nil {
+		return "", err
+	}
+	if !info.IsDir() {
+		return "", nil
+	}
+	if repository, err := git.IsRepo(ctx, checkout); err != nil || !repository {
+		return "", err
+	}
+	top, err := taskGitValue(ctx, checkout, "rev-parse", "--show-toplevel")
+	if err != nil || top != checkout {
+		return "", err
+	}
+	return taskGitValue(ctx, checkout, "rev-parse", "--absolute-git-dir")
 }

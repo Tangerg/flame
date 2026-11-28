@@ -48,10 +48,17 @@ type WorktreeHandoff struct {
 type taskWorktreeBackend interface {
 	PrepareCreate(context.Context, string, string, string) (func(context.Context) (TaskWorktree, error), error)
 	List(context.Context) ([]TaskWorktree, error)
-	Get(context.Context, string) (TaskWorktree, error)
-	Preview(context.Context, TaskWorktree) (WorktreeHandoff, error)
-	Apply(context.Context, WorktreeHandoff) error
-	PrepareRelease(context.Context, TaskWorktree) (func(context.Context) error, error)
+	CheckoutPath(string) (string, error)
+	OpenCheckout(string) (TaskCheckout, error)
+}
+
+// The checkout admission must stay live from opening through an admitted write.
+type TaskCheckout interface {
+	SourcePath() string
+	Inspect(context.Context) (TaskWorktree, error)
+	PreviewHandoff(context.Context) (WorktreeHandoff, error)
+	PrepareHandoff(context.Context, string) (func(context.Context) (WorktreeHandoff, error), error)
+	PrepareRelease(context.Context) (func(context.Context) error, error)
 }
 
 type worktreeMutationGate interface {
@@ -91,46 +98,45 @@ func (w *TaskWorktrees) List(ctx context.Context) ([]TaskWorktree, error) {
 }
 
 func (w *TaskWorktrees) Preview(ctx context.Context, id string) (WorktreeHandoff, error) {
-	task, err := w.availableTask(ctx, id)
+	task, err := w.backend.OpenCheckout(id)
 	if err != nil {
 		return WorktreeHandoff{}, err
 	}
-	return w.backend.Preview(ctx, task)
+	return task.PreviewHandoff(ctx)
 }
 
 func (w *TaskWorktrees) ApplyHandoff(ctx context.Context, id, digest string, complete operation.Reply[WorktreeHandoff]) error {
-	task, err := w.availableTask(ctx, id)
+	path, err := w.backend.CheckoutPath(id)
 	if err != nil {
 		return err
 	}
-	release, err := w.claim(task.Path)
+	release, err := w.claim(path)
 	if err != nil {
 		return err
 	}
 	defer release()
-	releaseSource, err := w.claim(task.Source)
+	task, err := w.backend.OpenCheckout(id)
+	if err != nil {
+		return err
+	}
+	releaseSource, err := w.claim(task.SourcePath())
 	if err != nil {
 		return err
 	}
 	defer releaseSource()
-	preview, err := w.backend.Preview(ctx, task)
+	apply, err := task.PrepareHandoff(ctx, digest)
 	if err != nil {
 		return err
 	}
-	if digest != preview.Digest {
-		return ErrTaskWorktreeChanged
-	}
-	return complete(ctx, func(work context.Context) (WorktreeHandoff, error) {
-		return preview, w.backend.Apply(work, preview)
-	})
+	return complete(ctx, apply)
 }
 
 func (w *TaskWorktrees) Release(ctx context.Context, id string, complete operation.Reply[struct{}]) error {
-	task, err := w.backend.Get(ctx, id)
+	path, err := w.backend.CheckoutPath(id)
 	if err != nil {
 		return err
 	}
-	release, ok, err := w.gate.AcquireWorkingTreeRemoval(task.Path)
+	release, ok, err := w.gate.AcquireWorkingTreeRemoval(path)
 	if err != nil {
 		return err
 	}
@@ -138,12 +144,16 @@ func (w *TaskWorktrees) Release(ctx context.Context, id string, complete operati
 		return ErrTaskWorktreeBusy
 	}
 	defer release()
+	task, err := w.backend.OpenCheckout(id)
+	if err != nil {
+		return err
+	}
 	sessions, err := w.sessions.List(ctx)
 	if err != nil {
 		return err
 	}
 	for _, session := range sessions {
-		affected, err := w.scope.paths.RemovalAffectsDirectory(task.Path, session.Workspace().Path())
+		affected, err := w.scope.paths.RemovalAffectsDirectory(path, session.Workspace().Path())
 		if err != nil {
 			return err
 		}
@@ -151,7 +161,7 @@ func (w *TaskWorktrees) Release(ctx context.Context, id string, complete operati
 			return ErrTaskWorktreeBusy
 		}
 	}
-	remove, err := w.backend.PrepareRelease(ctx, task)
+	remove, err := task.PrepareRelease(ctx)
 	if err != nil {
 		return err
 	}
@@ -169,17 +179,6 @@ func commitTaskCatalogChange[T any](ctx context.Context, complete operation.Repl
 		}
 		return value, err
 	})
-}
-
-func (w *TaskWorktrees) availableTask(ctx context.Context, id string) (TaskWorktree, error) {
-	task, err := w.backend.Get(ctx, id)
-	if err != nil {
-		return TaskWorktree{}, err
-	}
-	if !task.Available {
-		return TaskWorktree{}, ErrTaskWorktreeNotFound
-	}
-	return task, nil
 }
 
 func (w *TaskWorktrees) claim(path string) (func(), error) {

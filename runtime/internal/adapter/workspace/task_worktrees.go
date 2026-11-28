@@ -17,7 +17,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
 	work "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/infra/git"
 	"github.com/Tangerg/flame/runtime/internal/infra/git/process"
 	toolshell "github.com/Tangerg/scope/tools/shell"
 )
@@ -53,9 +52,21 @@ type taskRecord struct {
 	Setup     *work.TaskWorktreeSetup `json:"setup,omitzero"`
 }
 
+type taskCheckout struct {
+	path   string
+	record taskRecord
+}
+
 func taskRecordName(id string) string { return id + taskRecordSuffix }
 
 func (b *TaskWorktrees) checkoutPath(id string) string { return filepath.Join(b.root, id) }
+
+func (b *TaskWorktrees) CheckoutPath(id string) (string, error) {
+	if !isTaskID(id) {
+		return "", work.ErrTaskWorktreeNotFound
+	}
+	return b.checkoutPath(id), nil
+}
 
 func (b *TaskWorktrees) PrepareCreate(ctx context.Context, path, base, setup string) (func(context.Context) (work.TaskWorktree, error), error) {
 	source, err := taskGitValue(ctx, path, "rev-parse", "--show-toplevel")
@@ -133,7 +144,7 @@ func (b *TaskWorktrees) registerTask(ctx, setupCtx context.Context, record taskR
 			return work.TaskWorktree{}, err
 		}
 	}
-	return b.inspect(ctx, record)
+	return (&taskCheckout{path: checkout, record: record}).Inspect(ctx)
 }
 
 func (b *TaskWorktrees) runSetup(ctx context.Context, checkout string, setup *work.TaskWorktreeSetup) {
@@ -171,10 +182,14 @@ func (b *TaskWorktrees) List(ctx context.Context) ([]work.TaskWorktree, error) {
 		if entry.IsDir() || !record {
 			continue
 		}
-		task, err := b.Get(ctx, id)
+		checkout, err := b.OpenCheckout(id)
 		if errors.Is(err, work.ErrTaskWorktreeNotFound) {
 			continue
 		}
+		if err != nil {
+			return nil, err
+		}
+		task, err := checkout.Inspect(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -183,65 +198,57 @@ func (b *TaskWorktrees) List(ctx context.Context) ([]work.TaskWorktree, error) {
 	return tasks, nil
 }
 
-func (b *TaskWorktrees) Get(ctx context.Context, id string) (work.TaskWorktree, error) {
-	record, err := b.load(id)
+func (b *TaskWorktrees) OpenCheckout(id string) (work.TaskCheckout, error) {
+	path, err := b.CheckoutPath(id)
 	if err != nil {
-		return work.TaskWorktree{}, err
-	}
-	return b.inspect(ctx, record)
-}
-
-func (b *TaskWorktrees) load(id string) (taskRecord, error) {
-	if !isTaskID(id) {
-		return taskRecord{}, work.ErrTaskWorktreeNotFound
+		return nil, err
 	}
 	b.creatingMu.RLock()
 	defer b.creatingMu.RUnlock()
 	if _, creating := b.creating[id]; creating {
-		return taskRecord{}, work.ErrTaskWorktreeNotFound
+		return nil, work.ErrTaskWorktreeNotFound
 	}
 	root, err := os.OpenRoot(b.root)
 	if errors.Is(err, os.ErrNotExist) {
-		return taskRecord{}, work.ErrTaskWorktreeNotFound
+		return nil, work.ErrTaskWorktreeNotFound
 	}
 	if err != nil {
-		return taskRecord{}, err
+		return nil, err
 	}
 	defer root.Close()
 	file, err := root.Open(taskRecordName(id))
 	if errors.Is(err, os.ErrNotExist) {
-		return taskRecord{}, work.ErrTaskWorktreeNotFound
+		return nil, work.ErrTaskWorktreeNotFound
 	}
 	if err != nil {
-		return taskRecord{}, err
+		return nil, err
 	}
 	defer file.Close()
 	record := taskRecord{ID: id}
 	if err := json.UnmarshalRead(file, &record, json.RejectUnknownMembers(true)); err != nil {
-		return taskRecord{}, fmt.Errorf("workspace: decode task worktree record: %w", err)
+		return nil, fmt.Errorf("workspace: decode task worktree record: %w", err)
 	}
 	if !filepath.IsAbs(record.Source) || !filepath.IsAbs(record.CommonDir) || !validTaskSHA(record.Base) {
-		return taskRecord{}, errors.New("workspace: invalid task worktree record")
+		return nil, errors.New("workspace: invalid task worktree record")
 	}
-	return record, nil
+	return &taskCheckout{path: path, record: record}, nil
 }
 
-func (b *TaskWorktrees) inspect(ctx context.Context, record taskRecord) (work.TaskWorktree, error) {
-	checkout := b.checkoutPath(record.ID)
-	task := work.TaskWorktree{ID: record.ID, Path: checkout, Source: record.Source, Base: record.Base, Setup: record.Setup}
-	gitDir, err := checkoutGitDirectory(ctx, checkout)
-	if errors.Is(err, os.ErrNotExist) {
-		return task, nil
-	}
+func (t *taskCheckout) SourcePath() string { return t.record.Source }
+
+func (t *taskCheckout) Inspect(ctx context.Context) (work.TaskWorktree, error) {
+	registration, err := t.checkoutRegistration(ctx)
 	if err != nil {
 		return work.TaskWorktree{}, err
 	}
-	registration, err := record.registrationAt(gitDir)
-	if err != nil {
-		return work.TaskWorktree{}, err
+	return t.view(registration), nil
+}
+
+func (t *taskCheckout) view(registration *taskRegistration) work.TaskWorktree {
+	return work.TaskWorktree{
+		ID: t.record.ID, Path: t.path, Source: t.record.Source, Base: t.record.Base,
+		Setup: t.record.Setup, Available: registration != nil,
 	}
-	task.Available = registration != nil && registration.checkout == checkout
-	return task, nil
 }
 
 func taskCommonDir(ctx context.Context, path string) (string, error) {
@@ -250,24 +257,6 @@ func taskCommonDir(ctx context.Context, path string) (string, error) {
 		return "", err
 	}
 	return (filesystem.DirectoryResolver{}).ResolveExistingDir(common)
-}
-
-func checkoutGitDirectory(ctx context.Context, checkout string) (string, error) {
-	info, err := os.Lstat(checkout)
-	if err != nil {
-		return "", err
-	}
-	if !info.IsDir() {
-		return "", nil
-	}
-	if repository, err := git.IsRepo(ctx, checkout); err != nil || !repository {
-		return "", err
-	}
-	top, err := taskGitValue(ctx, checkout, "rev-parse", "--show-toplevel")
-	if err != nil || top != checkout {
-		return "", err
-	}
-	return taskGitValue(ctx, checkout, "rev-parse", "--absolute-git-dir")
 }
 
 func taskGitValue(ctx context.Context, path string, args ...string) (string, error) {

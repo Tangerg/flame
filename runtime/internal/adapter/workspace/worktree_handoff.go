@@ -17,33 +17,37 @@ import (
 
 const maxHandoffPatchBytes = 512 << 10
 
-func (b *TaskWorktrees) Preview(ctx context.Context, task work.TaskWorktree) (work.WorktreeHandoff, error) {
-	head, err := readHandoffHead(ctx, task.Source)
+func (t *taskCheckout) PreviewHandoff(ctx context.Context) (work.WorktreeHandoff, error) {
+	registration, err := t.checkoutRegistration(ctx)
 	if err != nil {
 		return work.WorktreeHandoff{}, err
 	}
-	if head.commit != task.Base {
+	if registration == nil {
+		return work.WorktreeHandoff{}, work.ErrTaskWorktreeNotFound
+	}
+	source := t.record.Source
+	head, err := readHandoffHead(ctx, source)
+	if err != nil {
+		return work.WorktreeHandoff{}, err
+	}
+	if head.commit != t.record.Base {
 		return work.WorktreeHandoff{}, work.ErrTaskWorktreeChanged
 	}
-	record, err := b.load(task.ID)
+	current, err := taskCommonDir(ctx, source)
 	if err != nil {
 		return work.WorktreeHandoff{}, err
 	}
-	current, err := taskCommonDir(ctx, task.Source)
-	if err != nil {
-		return work.WorktreeHandoff{}, err
-	}
-	if current != record.CommonDir {
+	if current != t.record.CommonDir {
 		return work.WorktreeHandoff{}, work.ErrTaskWorktreeChanged
 	}
-	status, err := taskGitBytes(ctx, task.Source, "status", "--porcelain=v1", "-z", "--untracked-files=all")
+	status, err := taskGitBytes(ctx, source, "status", "--porcelain=v1", "-z", "--untracked-files=all")
 	if err != nil {
 		return work.WorktreeHandoff{}, err
 	}
 	if len(status) > 0 {
 		return work.WorktreeHandoff{}, fmt.Errorf("%w: destination has local changes", work.ErrTaskWorktreeChanged)
 	}
-	patch, err := git.WorktreePatch(ctx, task.Path, task.Base, maxHandoffPatchBytes)
+	patch, err := git.WorktreePatch(ctx, t.path, t.record.Base, maxHandoffPatchBytes)
 	if err != nil {
 		return work.WorktreeHandoff{}, vcsError(err)
 	}
@@ -51,10 +55,10 @@ func (b *TaskWorktrees) Preview(ctx context.Context, task work.TaskWorktree) (wo
 		return work.WorktreeHandoff{}, work.ErrHandoffPatchEncoding
 	}
 	digest := sha256.New()
-	fmt.Fprintf(digest, "%q\n%q\n%q\n%q\n", task.ID, task.Source, head.reference, head.commit)
+	fmt.Fprintf(digest, "%q\n%q\n%q\n%q\n", t.record.ID, source, head.reference, head.commit)
 	_, _ = digest.Write(patch)
 	return work.WorktreeHandoff{
-		Worktree: task, Branch: head.branch(), Head: head.commit, Digest: hex.EncodeToString(digest.Sum(nil)), Patch: string(patch),
+		Worktree: t.view(registration), Branch: head.branch(), Head: head.commit, Digest: hex.EncodeToString(digest.Sum(nil)), Patch: string(patch),
 	}, nil
 }
 
@@ -96,16 +100,25 @@ func readHandoffHead(ctx context.Context, checkout string) (handoffHead, error) 
 	return handoffHead{}, fmt.Errorf("%w: the destination is missing from Git's worktree list", work.ErrTaskWorktreeChanged)
 }
 
-func (b *TaskWorktrees) Apply(ctx context.Context, preview work.WorktreeHandoff) error {
-	if preview.Patch == "" {
-		return nil
-	}
-	result, err := process.ApplyIndexPatch(ctx, preview.Worktree.Source, preview.Patch)
+func (t *taskCheckout) PrepareHandoff(ctx context.Context, digest string) (func(context.Context) (work.WorktreeHandoff, error), error) {
+	preview, err := t.PreviewHandoff(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if result.ExitCode != 0 {
-		return fmt.Errorf("%w: git apply exited %d: %s", work.ErrTaskWorktreeChanged, result.ExitCode, strings.TrimSpace(result.Stderr))
+	if preview.Digest != digest {
+		return nil, work.ErrTaskWorktreeChanged
 	}
-	return nil
+	return func(write context.Context) (work.WorktreeHandoff, error) {
+		if preview.Patch == "" {
+			return preview, nil
+		}
+		result, err := process.ApplyIndexPatch(write, t.record.Source, preview.Patch)
+		if err != nil {
+			return work.WorktreeHandoff{}, err
+		}
+		if result.ExitCode != 0 {
+			return work.WorktreeHandoff{}, fmt.Errorf("%w: git apply exited %d: %s", work.ErrTaskWorktreeChanged, result.ExitCode, strings.TrimSpace(result.Stderr))
+		}
+		return preview, nil
+	}, nil
 }
