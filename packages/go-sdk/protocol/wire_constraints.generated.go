@@ -149,6 +149,22 @@ func (d DeleteSessionRequest) validateWire(object wireObject) []FieldError {
 	return violations
 }
 
+func (p PreviewSessionForkRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("sessionId", p.SessionID),
+		identity("sessionId", p.SessionID),
+		maxLength("sessionId", p.SessionID, 256),
+	)
+	if object.present("fromRunId") {
+		violations.add(
+			identity("fromRunId", p.FromRunID),
+			maxLength("fromRunId", p.FromRunID, 256),
+		)
+	}
+	return violations
+}
+
 func (f ForkSessionRequest) validateWire(object wireObject) []FieldError {
 	var violations wireViolations
 	violations.add(
@@ -3326,6 +3342,15 @@ func (p PageQuery) validateWire(object wireObject) []FieldError {
 			maxLength("cursor", p.Cursor, 65536),
 		)
 	}
+	return violations
+}
+
+func (f ForkWorktreeConfirmation) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("id", f.ID, "^[0-9a-f]{32}$"),
+		textPattern("digest", f.Digest, "^[0-9a-f]{64}$"),
+	)
 	return violations
 }
 

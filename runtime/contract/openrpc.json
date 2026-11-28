@@ -753,6 +753,98 @@
       }
     },
     {
+      "name": "sessions.fork.preview",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
+          }
+        },
+        {
+          "name": "fromRunId",
+          "schema": {
+            "type": "string",
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
+          }
+        },
+        {
+          "name": "_meta",
+          "schema": {
+            "$ref": "#/components/schemas/RequestMeta"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "schema.json#/$defs/SessionForkPreview"
+        }
+      },
+      "errors": [
+        {
+          "code": -32002,
+          "message": "session_not_found"
+        },
+        {
+          "code": -32003,
+          "message": "run_not_found"
+        },
+        {
+          "code": -32005,
+          "message": "workspace_unavailable"
+        },
+        {
+          "code": -32019,
+          "message": "revision_conflict"
+        },
+        {
+          "code": -32017,
+          "message": "vcs_unavailable"
+        },
+        {
+          "code": -32006,
+          "message": "capability_not_negotiated"
+        }
+      ],
+      "x-flame-kind": "unary",
+      "x-flame-operation": "query",
+      "x-flame-idempotency": "none",
+      "x-flame-replayCursor": "none",
+      "x-flame-pagination": "none",
+      "x-flame-features": [
+        "git"
+      ],
+      "x-flame-capabilityRules": [
+        {
+          "requires": [
+            "git"
+          ]
+        }
+      ],
+      "x-flame-requestFrame": {
+        "properties": {
+          "_meta": {
+            "$ref": "#/components/schemas/RequestMeta"
+          },
+          "fromRunId": {},
+          "sessionId": {}
+        },
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "$ref": "schema.json#/$defs/PreviewSessionForkRequest"
+          }
+        ]
+      }
+    },
+    {
       "name": "sessions.fork",
       "paramStructure": "by-name",
       "params": [
@@ -778,6 +870,12 @@
           "name": "title",
           "schema": {
             "type": "string"
+          }
+        },
+        {
+          "name": "worktree",
+          "schema": {
+            "$ref": "#/components/schemas/ForkWorktreeConfirmation"
           }
         },
         {
@@ -813,6 +911,22 @@
         {
           "code": -32019,
           "message": "revision_conflict"
+        },
+        {
+          "code": -32018,
+          "message": "session_busy"
+        },
+        {
+          "code": -32005,
+          "message": "workspace_unavailable"
+        },
+        {
+          "code": -32017,
+          "message": "vcs_unavailable"
+        },
+        {
+          "code": -32006,
+          "message": "capability_not_negotiated"
         }
       ],
       "x-flame-kind": "unary",
@@ -820,6 +934,22 @@
       "x-flame-idempotency": "replayResponse",
       "x-flame-replayCursor": "none",
       "x-flame-pagination": "none",
+      "x-flame-features": [
+        "git"
+      ],
+      "x-flame-capabilityRules": [
+        {
+          "when": [
+            {
+              "field": "worktree",
+              "operator": "present"
+            }
+          ],
+          "requires": [
+            "git"
+          ]
+        }
+      ],
       "x-flame-requestFrame": {
         "properties": {
           "_meta": {
@@ -827,7 +957,10 @@
           },
           "fromRunId": {},
           "sessionId": {},
-          "title": {}
+          "title": {},
+          "worktree": {
+            "$ref": "#/components/schemas/ForkWorktreeConfirmation"
+          }
         },
         "unevaluatedProperties": false,
         "allOf": [
@@ -9541,6 +9674,18 @@
         "allOf": [
           {
             "$ref": "schema.json#/$defs/FeaturePreference"
+          }
+        ]
+      },
+      "ForkWorktreeConfirmation": {
+        "properties": {
+          "digest": {},
+          "id": {}
+        },
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "$ref": "schema.json#/$defs/ForkWorktreeConfirmation"
           }
         ]
       },

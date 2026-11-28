@@ -43,6 +43,8 @@ type taskWorktreeBackend interface {
 	Create(context.Context, string, string, string) (TaskWorktree, error)
 	List(context.Context) ([]TaskWorktree, error)
 	Get(context.Context, string) (TaskWorktree, error)
+	PreviewFork(context.Context, string, string) (WorktreeFork, error)
+	CloneFork(context.Context, WorktreeFork, string) (TaskWorktree, error)
 	Preview(context.Context, TaskWorktree) (WorktreeHandoff, error)
 	Apply(context.Context, WorktreeHandoff) error
 	Release(context.Context, TaskWorktree) error

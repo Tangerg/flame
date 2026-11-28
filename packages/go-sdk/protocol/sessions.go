@@ -84,9 +84,31 @@ type UpdateSessionRequest struct {
 }
 
 type ForkSessionRequest struct {
+	SessionID string                    `json:"sessionId"`
+	FromRunID string                    `json:"fromRunId,omitempty"`
+	Title     string                    `json:"title,omitempty"`
+	Worktree  *ForkWorktreeConfirmation `json:"worktree,omitzero"`
+}
+
+type PreviewSessionForkRequest struct {
 	SessionID string `json:"sessionId"`
 	FromRunID string `json:"fromRunId,omitempty"`
-	Title     string `json:"title,omitempty"`
+}
+
+type ForkWorktreeConfirmation struct {
+	ID     string `json:"id"`
+	Digest string `json:"digest"`
+}
+
+type SessionForkPreview struct {
+	Worktree    ForkWorktreeConfirmation `json:"worktree"`
+	FromRunID   string                   `json:"fromRunId,omitempty"`
+	Messages    int                      `json:"messages"`
+	Runs        int                      `json:"runs"`
+	Source      WorkspaceRef             `json:"source"`
+	Destination WorkspaceRef             `json:"destination"`
+	Head        string                   `json:"head"`
+	Patch       string                   `json:"patch"`
 }
 
 type RollbackSessionRequest struct {

@@ -23,7 +23,10 @@ export { useCreateSession } from "@/features/agent/application/session/createSes
 export { sessionDisplayTitle } from "@/features/agent/presentation/sessionTitle";
 export { useDeleteSession } from "@/features/agent/application/session/deleteSession";
 export { useToggleFavorite } from "@/features/agent/application/session/favoriteSession";
-export { useForkSession } from "@/features/agent/application/session/forkSession";
+export {
+  useForkSession,
+  useSessionWorktreeFork,
+} from "@/features/agent/application/session/forkSession";
 
 export type { RestoreType } from "@/features/agent/application/runtimeGateway";
 

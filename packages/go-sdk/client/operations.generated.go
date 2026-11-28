@@ -34,6 +34,9 @@ func (r *Client) UpdateSession(ctx context.Context, request protocol.UpdateSessi
 func (r *Client) DeleteSession(ctx context.Context, request protocol.DeleteSessionRequest, options protocol.CommandOptions) error {
 	return r.invokeAck[protocol.DeleteSessionRequest](ctx, "sessions.delete", request, options.Metadata())
 }
+func (r *Client) PreviewSessionFork(ctx context.Context, request protocol.PreviewSessionForkRequest, options protocol.CallOptions) (*protocol.SessionForkPreview, error) {
+	return r.invoke[protocol.PreviewSessionForkRequest, *protocol.SessionForkPreview](ctx, "sessions.fork.preview", request, options.Metadata())
+}
 func (r *Client) ForkSession(ctx context.Context, request protocol.ForkSessionRequest, options protocol.CommandOptions) (*protocol.Session, error) {
 	return r.invoke[protocol.ForkSessionRequest, *protocol.Session](ctx, "sessions.fork", request, options.Metadata())
 }

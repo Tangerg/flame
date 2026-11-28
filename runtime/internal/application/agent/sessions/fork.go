@@ -8,14 +8,39 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	"github.com/Tangerg/scope/core/chat"
 )
 
 type ForkSpec struct {
-	ParentID  identity.SessionID
-	FromRunID identity.RunID
-	Title     string
+	ParentID         identity.SessionID
+	FromRunID        identity.RunID
+	Title            string
+	ChildID          identity.SessionID
+	PrepareWorkspace func(context.Context, ForkSource) (string, func(), error)
+}
+
+type ForkSource struct {
+	Path     string
+	Revision uint64
+	RunID    identity.RunID
+	Runs     int
+	Messages int
+}
+
+func forkSource(source session.Session, boundary ForkBoundary) ForkSource {
+	return ForkSource{Path: source.Workspace().Path(), Revision: source.Revision(),
+		RunID: boundary.RunID, Runs: len(boundary.RunIDs), Messages: len(boundary.Messages)}
+}
+
+func (c *Coordinator) InspectFork(ctx context.Context, id identity.SessionID, from identity.RunID) (ForkSource, error) {
+	material, err := c.snapshots.ReadForkMaterial(ctx, id)
+	if err != nil {
+		return ForkSource{}, err
+	}
+	boundary, err := resolveForkBoundary(material.Messages, material.Runs, from)
+	return forkSource(material.Session, boundary), err
 }
 
 type RunPlanBoundary struct {
@@ -74,6 +99,13 @@ func (c *Coordinator) Fork(ctx context.Context, spec ForkSpec, complete operatio
 	if err := spec.ParentID.Validate(); err != nil {
 		return fmt.Errorf("sessions: fork: %w", err)
 	}
+	if spec.PrepareWorkspace != nil {
+		claim, err := c.ClaimSessionMutation(ctx, spec.ParentID)
+		if err != nil {
+			return err
+		}
+		defer claim.Release()
+	}
 	source, err := c.snapshots.ReadForkMaterial(ctx, spec.ParentID)
 	if err != nil {
 		return err
@@ -86,15 +118,37 @@ func (c *Coordinator) Fork(ctx context.Context, spec ForkSpec, complete operatio
 	if err != nil {
 		return err
 	}
-	child, err := source.Session.Fork(c.newID(), spec.Title, c.now())
+	childID := spec.ChildID
+	if childID.IsZero() {
+		childID = c.newID()
+	}
+	child, err := source.Session.Fork(childID, spec.Title, c.now())
 	if err != nil {
 		return err
+	}
+	var expectedRevision uint64
+	if spec.PrepareWorkspace != nil {
+		path, release, err := spec.PrepareWorkspace(ctx, forkSource(source.Session, boundary))
+		if err != nil {
+			return err
+		}
+		defer release()
+		workspace, releaseBinding, err := c.bindWorkspace(path)
+		if err != nil {
+			return err
+		}
+		defer releaseBinding()
+		child, err = child.InstallRestoredWorkspace(workspace)
+		if err != nil {
+			return err
+		}
+		expectedRevision = source.Session.Revision()
 	}
 	forked, err := c.copyForkMaterial(source, child, boundary)
 	if err != nil {
 		return err
 	}
-	fork, err := newForkPlan(spec.ParentID, forked, planReplacement)
+	fork, err := newForkPlan(source.Session, expectedRevision, forked, planReplacement)
 	if err != nil {
 		return err
 	}

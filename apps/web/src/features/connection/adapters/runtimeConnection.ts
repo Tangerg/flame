@@ -9,7 +9,7 @@ import {
 } from "@flame/runtime-client";
 import {
   createRuntimeEndpoint,
-  type RuntimeEndpointConfiguration,
+  type RuntimeEndpointTarget,
 } from "@/features/connection/application/runtimeEndpoint";
 import { bindRuntimeEndpointConfiguration } from "@/features/connection/adapters/runtimeEndpointConfiguration";
 import { createRuntimeConnectionProjection } from "@/features/connection/adapters/runtimeConnectionProjection";
@@ -23,21 +23,54 @@ export function createRuntimeConnection(
   storage: MutationJournalStorage,
 ) {
   const projection = createRuntimeConnectionProjection();
-  let configuration: RuntimeEndpointConfiguration | null = null;
-  const endpoint = createRuntimeEndpoint({
-    read: () => configuration?.read() ?? bootstrap().runtime,
-    defaultTarget: () => configuration?.defaultTarget() ?? bootstrap().runtime,
-    replace: (target) => {
-      assertOpen();
-      if (!configuration) throw new Error("Runtime endpoint is not ready");
-      return configuration.replace(target);
+  let configuration: ReturnType<typeof bindRuntimeEndpointConfiguration> | null = null;
+  const endpoint = createRuntimeEndpoint(
+    {
+      read: () => configuration?.read() ?? bootstrap().runtime,
+      defaultTarget: () => configuration?.defaultTarget() ?? bootstrap().runtime,
+      replace: (target) => {
+        assertOpen();
+        if (!configuration) throw new Error("Runtime endpoint is not ready");
+        return configuration.replace(target);
+      },
+      reset: () => {
+        assertOpen();
+        if (!configuration) throw new Error("Runtime endpoint is not ready");
+        return configuration.reset();
+      },
     },
-    reset: () => {
-      assertOpen();
-      if (!configuration) throw new Error("Runtime endpoint is not ready");
-      return configuration.reset();
+    {
+      read: () => configuration?.profile(),
+      save: (profile, target) => {
+        assertOpen();
+        if (!configuration) throw new Error("Runtime endpoint is not ready");
+        return configuration.register(profile, target);
+      },
+      forget: () => configuration?.forget(),
+      async probe(target, signal) {
+        const discover = async (selected: RuntimeEndpointTarget) => {
+          const client = createFlameClient(
+            createHttpTransport({
+              baseUrl: selected.endpoint,
+              localToken: selected.localToken,
+              expectedRuntimeStore: selected.expectedRuntimeStore,
+            }),
+            { requestMeta: () => requestMeta(host.kind) },
+          );
+          try {
+            return (await client.runtime.discover(signal)).capabilities.limits.idempotency
+              .namespace;
+          } finally {
+            await client.close();
+          }
+        };
+        if (target.expectedRuntimeStore) return discover(target);
+        const store = await discover(target);
+        if (!store) throw new Error("Runtime did not report its store");
+        return discover({ ...target, expectedRuntimeStore: store });
+      },
     },
-  });
+  );
   const access: RuntimeAccess = {
     capabilities: projection.capabilities,
     status: projection.status,
@@ -79,18 +112,21 @@ export function createRuntimeConnection(
     hostBootstrap = observation;
     return true;
   };
-  const target = () => configuration?.read() ?? bootstrap().runtime;
+  const target = (): RuntimeEndpointTarget => configuration?.read() ?? bootstrap().runtime;
   const client = () => {
     assertOpen();
-    const { endpoint: baseUrl, localToken } = target();
-    const signature = tupleKey(baseUrl, localToken ?? "");
+    const { endpoint: baseUrl, localToken, expectedRuntimeStore } = target();
+    const signature = tupleKey(baseUrl, localToken ?? "", expectedRuntimeStore ?? "");
     if (shared?.signature === signature) return shared.client;
     if (shared) retire(shared.client);
-    const client = createFlameClient(createHttpTransport({ baseUrl, localToken }), {
-      requestMeta: () => requestMeta(host.kind),
-      capabilities: projection.capabilities.negotiated,
-      mutationStorage: storage,
-    });
+    const client = createFlameClient(
+      createHttpTransport({ baseUrl, localToken, expectedRuntimeStore }),
+      {
+        requestMeta: () => requestMeta(host.kind),
+        capabilities: projection.capabilities.negotiated,
+        mutationStorage: storage,
+      },
+    );
     shared = { signature, client };
     return client;
   };

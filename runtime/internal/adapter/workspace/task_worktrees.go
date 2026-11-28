@@ -3,7 +3,6 @@ package workspace
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	json "encoding/json/v2"
@@ -47,11 +46,12 @@ func NewTaskWorktrees(root string, toolDirs []string) *TaskWorktrees {
 }
 
 type taskRecord struct {
-	ID     string                  `json:"id"`
-	Source string                  `json:"source"`
-	Common string                  `json:"common"`
-	Base   string                  `json:"base"`
-	Setup  *work.TaskWorktreeSetup `json:"setup,omitzero"`
+	ID         string                  `json:"id"`
+	Source     string                  `json:"source"`
+	Common     string                  `json:"common"`
+	Base       string                  `json:"base"`
+	Setup      *work.TaskWorktreeSetup `json:"setup,omitzero"`
+	ForkDigest string                  `json:"forkDigest,omitempty"`
 }
 
 func (b *TaskWorktrees) Create(ctx context.Context, path, base, setup string) (work.TaskWorktree, error) {
@@ -74,6 +74,14 @@ func (b *TaskWorktrees) Create(ctx context.Context, path, base, setup string) (w
 	if err != nil {
 		return work.TaskWorktree{}, errors.Join(work.ErrTaskWorktreeInput, err)
 	}
+	record := taskRecord{ID: newTaskID(), Source: source, Common: common, Base: commit}
+	if setup != "" {
+		record.Setup = &work.TaskWorktreeSetup{Command: setup}
+	}
+	return b.createTaskRecord(ctx, record, "")
+}
+
+func (b *TaskWorktrees) createTaskRecord(ctx context.Context, record taskRecord, patch string) (work.TaskWorktree, error) {
 	if err := os.MkdirAll(b.root, filesystem.PrivateDirectoryMode); err != nil {
 		return work.TaskWorktree{}, err
 	}
@@ -82,14 +90,6 @@ func (b *TaskWorktrees) Create(ctx context.Context, path, base, setup string) (w
 		return work.TaskWorktree{}, err
 	}
 	defer root.Close()
-	var key [16]byte
-	if _, err := rand.Read(key[:]); err != nil {
-		return work.TaskWorktree{}, err
-	}
-	record := taskRecord{ID: hex.EncodeToString(key[:]), Source: source, Common: common, Base: commit}
-	if setup != "" {
-		record.Setup = &work.TaskWorktreeSetup{Command: setup}
-	}
 	if err := root.Mkdir(record.ID, filesystem.PrivateDirectoryMode); err != nil {
 		return work.TaskWorktree{}, err
 	}
@@ -107,7 +107,7 @@ func (b *TaskWorktrees) Create(ctx context.Context, path, base, setup string) (w
 		return work.TaskWorktree{}, err
 	}
 	checkout := filepath.Join(b.root, record.ID, taskCheckout)
-	if _, err := taskGitValue(ctx, source, "worktree", "add", "--detach", "--quiet", "--", checkout, commit); err != nil {
+	if _, err := taskGitValue(ctx, record.Source, "worktree", "add", "--detach", "--quiet", "--", checkout, record.Base); err != nil {
 		return work.TaskWorktree{}, err
 	}
 	custody, err := taskCustodyPath(ctx, checkout)
@@ -119,9 +119,12 @@ func (b *TaskWorktrees) Create(ctx context.Context, path, base, setup string) (w
 	if err := os.WriteFile(custody, []byte(record.ID), filesystem.PrivateFileMode); err != nil {
 		return work.TaskWorktree{}, fmt.Errorf("workspace: record task worktree custody: %w", err)
 	}
+	if err := b.applyPatch(ctx, checkout, patch); err != nil {
+		return work.TaskWorktree{}, err
+	}
 	if record.Setup != nil {
 		limited, cancel := context.WithTimeout(ctx, 90*time.Second)
-		output, runErr := sandbox.RunInPlace(limited, sandbox.Config{RestrictReads: true, ReadOnlyPaths: b.toolDirs}, checkout, toolshell.Input{Cmd: setup})
+		output, runErr := sandbox.RunInPlace(limited, sandbox.Config{RestrictReads: true, ReadOnlyPaths: b.toolDirs}, checkout, toolshell.Input{Cmd: record.Setup.Command})
 		cancel()
 		log := capture.NewWriter(4096)
 		_, _ = log.Write(output.Stdout)
@@ -300,8 +303,12 @@ func (b *TaskWorktrees) Preview(ctx context.Context, task work.TaskWorktree) (wo
 	return work.WorktreeHandoff{Worktree: task, Branch: branch, Head: head, Digest: hex.EncodeToString(digest.Sum(nil)), Patch: string(patch)}, nil
 }
 
-func (b *TaskWorktrees) Apply(ctx context.Context, preview work.WorktreeHandoff) (err error) {
-	if preview.Patch == "" {
+func (b *TaskWorktrees) Apply(ctx context.Context, preview work.WorktreeHandoff) error {
+	return b.applyPatch(ctx, preview.Worktree.Source, preview.Patch)
+}
+
+func (b *TaskWorktrees) applyPatch(ctx context.Context, destination, patch string) (err error) {
+	if patch == "" {
 		return nil
 	}
 	file, err := os.CreateTemp(b.root, "handoff-*.patch")
@@ -309,14 +316,14 @@ func (b *TaskWorktrees) Apply(ctx context.Context, preview work.WorktreeHandoff)
 		return err
 	}
 	defer func() { err = errors.Join(err, os.Remove(file.Name())) }()
-	_, writeErr := file.WriteString(preview.Patch)
+	_, writeErr := file.WriteString(patch)
 	if err := errors.Join(writeErr, file.Close()); err != nil {
 		return err
 	}
-	if _, err := taskGitValue(ctx, preview.Worktree.Source, "apply", "--check", "--index", "--binary", "--", file.Name()); err != nil {
+	if _, err := taskGitValue(ctx, destination, "apply", "--check", "--index", "--binary", "--", file.Name()); err != nil {
 		return errors.Join(work.ErrTaskWorktreeChanged, err)
 	}
-	_, err = taskGitValue(ctx, preview.Worktree.Source, "apply", "--index", "--binary", "--", file.Name())
+	_, err = taskGitValue(ctx, destination, "apply", "--index", "--binary", "--", file.Name())
 	return err
 }
 

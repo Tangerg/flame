@@ -105,11 +105,19 @@ export class RuntimeAgentGateway implements AgentRuntimeGateway {
     });
   }
 
+  previewSessionFork(sessionId: string, signal?: AbortSignal) {
+    return this.runtimeClient().sessions.previewFork({ sessionId: asSessionId(sessionId) }, signal);
+  }
+
   async forkSession(input: Parameters<AgentRuntimeGateway["forkSession"]>[0]) {
-    const fork = await this.runtimeClient().sessions.fork({
-      sessionId: asSessionId(input.sessionId),
-      ...(input.fromRunId ? { fromRunId: asRunId(input.fromRunId) } : {}),
-    });
+    const client = this.runtimeClient();
+    const fork = await this.#sessionMutations.settle(() =>
+      client.sessions.fork({
+        sessionId: asSessionId(input.sessionId),
+        ...(input.fromRunId ? { fromRunId: asRunId(input.fromRunId) } : {}),
+        ...(input.worktree ? { worktree: input.worktree } : {}),
+      }),
+    );
     return fork.id;
   }
 

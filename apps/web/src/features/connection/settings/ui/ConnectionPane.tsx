@@ -84,6 +84,8 @@ function rejectionMessage(reason: RuntimeEndpointRejection, translate: Translate
       return translate("connection.error.storage");
     case "invalid_token":
       return translate("connection.error.token");
+    case "trust_failed":
+      return translate("connection.error.trust");
   }
 }
 
@@ -160,6 +162,9 @@ export function ConnectionPane() {
     resetRuntimeEndpoint,
     defaultRuntimeEndpoint,
     hasRuntimeAccessToken,
+    trustedRuntime,
+    trustRuntime,
+    forgetTrustedRuntime,
   } = runtime.endpoint;
   const t = useT();
   const initial = currentRuntimeEndpoint();
@@ -171,6 +176,37 @@ export function ConnectionPane() {
   const [error, setError] = useState<RuntimeEndpointRejection | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const tokenField = useRef<HTMLInputElement>(null);
+  const profile = trustedRuntime();
+  const [name, setName] = useState(profile?.name ?? "");
+  const [knownStore, setKnownStore] = useState("");
+  const [registering, setRegistering] = useState(false);
+  const register = async () => {
+    setRegistering(true);
+    try {
+      const result = await trustRuntime(url, name, knownStore, tokenDraft ?? undefined);
+      if (result.kind === "rejected") {
+        setError(result.reason);
+      } else {
+        setUrl(result.endpoint);
+        setTokenDraft(null);
+        setKnownStore("");
+        setError(null);
+      }
+    } finally {
+      setRegistering(false);
+    }
+  };
+  const forget = () => {
+    const result = forgetTrustedRuntime();
+    if (result.kind === "rejected") {
+      setError(result.reason);
+    } else {
+      setUrl(result.endpoint);
+      setTokenDraft(null);
+      setName("");
+      setError(null);
+    }
+  };
 
   const trimmed = url.trim();
   const dirty = trimmed !== initial.trim() || tokenDraft !== null;
@@ -325,6 +361,54 @@ export function ConnectionPane() {
             {t("settings.connection.apply")}
           </Button>
         </FormActions>
+        <FormField label={t("settings.connection.remoteName")}>
+          <TextField
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            maxLength={80}
+          />
+        </FormField>
+        <FormField label={t("settings.connection.knownStore")}>
+          <TextField
+            font="mono"
+            value={knownStore}
+            onChange={(event) => setKnownStore(event.target.value)}
+          />
+        </FormField>
+        <FormActions label={t("settings.connection.trust")}>
+          <Button
+            type="button"
+            disabled={registering || !name.trim()}
+            onClick={() => void register()}
+          >
+            {t("settings.connection.trust")}
+          </Button>
+          {profile && (
+            <>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={registering}
+                onClick={() => {
+                  setUrl(profile.endpoint);
+                  setName(profile.name);
+                  setTokenDraft(null);
+                  setError(null);
+                }}
+              >
+                {t("settings.connection.savedRemote", { name: profile.name })}
+              </Button>
+              <Button type="button" variant="ghost" disabled={registering} onClick={forget}>
+                {t("settings.connection.forgetRemote")}
+              </Button>
+            </>
+          )}
+        </FormActions>
+        {profile && (
+          <FormField label={t("settings.connection.store")}>
+            <TextField font="mono" value={profile.store} readOnly />
+          </FormField>
+        )}
         {error ? (
           <div
             id="runtime-connection-error"

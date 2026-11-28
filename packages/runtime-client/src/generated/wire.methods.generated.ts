@@ -109,6 +109,7 @@ import type {
   PluginReleaseRef,
   PluginRequest,
   PluginResource,
+  PreviewSessionForkRequest,
   Project,
   ProjectBackgroundActivity,
   ProjectBackgroundPolicy,
@@ -131,6 +132,7 @@ import type {
   RuntimeSubscribeResponse,
   SelectPluginProviderRequest,
   Session,
+  SessionForkPreview,
   SessionSnapshot,
   SessionUsage,
   SessionUsageRequest,
@@ -204,6 +206,7 @@ const METHOD_NAMES = [
   "sessions.create",
   "sessions.update",
   "sessions.delete",
+  "sessions.fork.preview",
   "sessions.fork",
   "sessions.rollback",
   "sessions.export",
@@ -342,6 +345,7 @@ const VALUE_METHOD_NAMES = [
   "sessions.snapshot",
   "sessions.create",
   "sessions.update",
+  "sessions.fork.preview",
   "sessions.fork",
   "sessions.rollback",
   "sessions.export",
@@ -513,6 +517,13 @@ export const WIRE_METHOD_POLICY = {
     operation: "command",
     response: "unary",
     idempotency: "replayResponse",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "sessions.fork.preview": {
+    operation: "query",
+    response: "unary",
+    idempotency: "none",
     replayCursor: "none",
     pagination: "none",
   },
@@ -1366,6 +1377,12 @@ export const WIRE_CAPABILITY_POLICY: {
     { when: [{ field: "workspace", operator: "present" }], requires: ["relocate"] },
     { when: [{ field: "isolated", operator: "present" }], requires: ["isolation"] },
   ],
+  "sessions.fork.preview": [
+    { requires: ["git"] },
+  ],
+  "sessions.fork": [
+    { when: [{ field: "worktree", operator: "present" }], requires: ["git"] },
+  ],
   "sessions.rollback": [
     { when: [{ field: "restoreType", operator: "equals", value: "files" }], requires: ["checkpoints"] },
     { when: [{ field: "restoreType", operator: "equals", value: "both" }], requires: ["checkpoints"] },
@@ -1569,6 +1586,7 @@ export interface WireShapes {
   "sessions.create": { params: CreateSessionRequest; result: Session };
   "sessions.update": { params: UpdateSessionRequest; result: Session };
   "sessions.delete": { params: DeleteSessionRequest };
+  "sessions.fork.preview": { params: PreviewSessionForkRequest; result: SessionForkPreview };
   "sessions.fork": { params: ForkSessionRequest; result: Session };
   "sessions.rollback": { params: RollbackSessionRequest; result: RollbackSessionResponse };
   "sessions.export": { params: ExportSessionRequest; result: ExportSessionResponse };

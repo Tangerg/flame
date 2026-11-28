@@ -7,21 +7,26 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 )
 
 type ForkPlan struct {
 	parentID        identity.SessionID
+	parentWorkspace session.Workspace
+	parentRevision  uint64
 	history         HistorySnapshot
 	planBoundaries  []RunPlanBoundary
 	planReplacement *plan.Replacement
 }
 
 func newForkPlan(
-	parentID identity.SessionID,
+	parent session.Session,
+	expectedRevision uint64,
 	material ForkMaterial,
 	planReplacement *plan.Replacement,
 ) (ForkPlan, error) {
+	parentID := parent.ID()
 	if err := parentID.Validate(); err != nil {
 		return ForkPlan{}, fmt.Errorf("sessions: fork plan parent: %w", err)
 	}
@@ -49,7 +54,7 @@ func newForkPlan(
 		planReplacement = new(*planReplacement)
 	}
 	return ForkPlan{
-		parentID: parentID, history: owned, planBoundaries: boundaries, planReplacement: planReplacement,
+		parentID: parentID, parentWorkspace: parent.Workspace(), parentRevision: expectedRevision, history: owned, planBoundaries: boundaries, planReplacement: planReplacement,
 	}, nil
 }
 
@@ -73,6 +78,10 @@ func ownForkPlanBoundaries(runs []run.Run, captures []RunPlanBoundary) ([]RunPla
 }
 
 func (f ForkPlan) ParentID() identity.SessionID { return f.parentID }
+
+func (f ForkPlan) ParentMatches(parent session.Session) bool {
+	return parent.Workspace() == f.parentWorkspace && (f.parentRevision == 0 || parent.Revision() == f.parentRevision)
+}
 
 func (f ForkPlan) History() HistorySnapshot { return f.history.clone() }
 

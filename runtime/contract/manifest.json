@@ -169,6 +169,26 @@
       ]
     },
     {
+      "goName": "PreviewSessionFork",
+      "name": "sessions.fork.preview",
+      "kind": "unary",
+      "operation": "query",
+      "idempotency": "none",
+      "replayCursor": "none",
+      "pagination": "none",
+      "errors": [
+        "session_not_found",
+        "run_not_found",
+        "workspace_unavailable",
+        "revision_conflict",
+        "vcs_unavailable",
+        "capability_not_negotiated"
+      ],
+      "features": [
+        "git"
+      ]
+    },
+    {
       "goName": "ForkSession",
       "name": "sessions.fork",
       "kind": "unary",
@@ -181,7 +201,14 @@
         "plugin_stale",
         "session_not_found",
         "run_not_found",
-        "revision_conflict"
+        "revision_conflict",
+        "session_busy",
+        "workspace_unavailable",
+        "vcs_unavailable",
+        "capability_not_negotiated"
+      ],
+      "features": [
+        "git"
       ]
     },
     {
@@ -2010,6 +2037,8 @@
           "runtime.subscribe",
           "sessions.export",
           "sessions.exportTrajectory",
+          "sessions.fork",
+          "sessions.fork.preview",
           "sessions.import",
           "sessions.rollback",
           "sessions.snapshot",
@@ -2468,6 +2497,7 @@
           "projects.background.setPolicy",
           "projects.update",
           "sessions.fork",
+          "sessions.fork.preview",
           "sessions.rollback",
           "sessions.update",
           "skills.proposals.approve",
@@ -2500,6 +2530,7 @@
           "runs.steer",
           "runs.subscribe",
           "sessions.fork",
+          "sessions.fork.preview",
           "sessions.rollback"
         ]
       },
@@ -2531,6 +2562,7 @@
           "runs.start",
           "sessions.export",
           "sessions.exportTrajectory",
+          "sessions.fork",
           "sessions.import",
           "sessions.rollback",
           "sessions.update",
@@ -2566,6 +2598,7 @@
           "sessions.export",
           "sessions.exportTrajectory",
           "sessions.fork",
+          "sessions.fork.preview",
           "sessions.get",
           "sessions.rollback",
           "sessions.snapshot",
@@ -2615,6 +2648,8 @@
         "code": -32017,
         "recoveryAction": "promptUser",
         "methods": [
+          "sessions.fork",
+          "sessions.fork.preview",
           "workspace.changes.list",
           "workspace.diff.get",
           "workspaces.tasks.create"
@@ -2638,6 +2673,8 @@
           "hooks.setTrust",
           "runs.start",
           "sessions.create",
+          "sessions.fork",
+          "sessions.fork.preview",
           "sessions.import",
           "sessions.update",
           "skills.discovered.get",
@@ -2779,6 +2816,32 @@
           ],
           "requires": [
             "isolation"
+          ]
+        }
+      ]
+    },
+    {
+      "method": "sessions.fork.preview",
+      "rules": [
+        {
+          "requires": [
+            "git"
+          ]
+        }
+      ]
+    },
+    {
+      "method": "sessions.fork",
+      "rules": [
+        {
+          "when": [
+            {
+              "field": "worktree",
+              "operator": "present"
+            }
+          ],
+          "requires": [
+            "git"
           ]
         }
       ]
@@ -7696,6 +7759,44 @@
         {
           "field": "sessionId",
           "constraint": "maxLength(256)"
+        }
+      ]
+    },
+    {
+      "type": "PreviewSessionForkRequest",
+      "rules": [
+        {
+          "field": "sessionId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "identity"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "fromRunId",
+          "constraint": "identity"
+        },
+        {
+          "field": "fromRunId",
+          "constraint": "maxLength(256)"
+        }
+      ]
+    },
+    {
+      "type": "ForkWorktreeConfirmation",
+      "rules": [
+        {
+          "field": "id",
+          "constraint": "pattern(\"^[0-9a-f]{32}$\")"
+        },
+        {
+          "field": "digest",
+          "constraint": "pattern(\"^[0-9a-f]{64}$\")"
         }
       ]
     },

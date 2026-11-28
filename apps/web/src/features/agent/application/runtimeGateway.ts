@@ -1,3 +1,4 @@
+import type { ForkWorktreeConfirmation, SessionForkPreview } from "@flame/runtime-client/wire";
 import { type ApprovalRuleDecision, type RestoreType } from "@/foundation/protocolValues.generated";
 export type { RestoreType };
 import {
@@ -106,7 +107,12 @@ export interface AgentRuntimeGateway {
     cwd?: string;
     project?: AgentSessionProjectChange;
   }): Promise<void>;
-  forkSession(input: { sessionId: string; fromRunId?: string }): Promise<string>;
+  previewSessionFork(sessionId: string, signal?: AbortSignal): Promise<SessionForkPreview>;
+  forkSession(input: {
+    sessionId: string;
+    fromRunId?: string;
+    worktree?: ForkWorktreeConfirmation;
+  }): Promise<string>;
   loadSessionSnapshot(
     sessionId: string,
     signal?: AbortSignal,

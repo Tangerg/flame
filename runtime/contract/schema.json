@@ -2687,10 +2687,30 @@
         },
         "title": {
           "type": "string"
+        },
+        "worktree": {
+          "$ref": "#/$defs/ForkWorktreeConfirmation"
         }
       },
       "required": [
         "sessionId"
+      ]
+    },
+    "ForkWorktreeConfirmation": {
+      "type": "object",
+      "properties": {
+        "digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        }
+      },
+      "required": [
+        "digest",
+        "id"
       ]
     },
     "GenerationParams": {
@@ -8993,6 +9013,25 @@
         "clear"
       ]
     },
+    "PreviewSessionForkRequest": {
+      "type": "object",
+      "properties": {
+        "fromRunId": {
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
+        "sessionId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        }
+      },
+      "required": [
+        "sessionId"
+      ]
+    },
     "ProblemData": {
       "type": "object",
       "properties": {
@@ -12420,6 +12459,44 @@
         "session",
         "toolResults",
         "version"
+      ]
+    },
+    "SessionForkPreview": {
+      "type": "object",
+      "properties": {
+        "destination": {
+          "$ref": "#/$defs/WorkspaceRef"
+        },
+        "fromRunId": {
+          "type": "string"
+        },
+        "head": {
+          "type": "string"
+        },
+        "messages": {
+          "type": "integer"
+        },
+        "patch": {
+          "type": "string"
+        },
+        "runs": {
+          "type": "integer"
+        },
+        "source": {
+          "$ref": "#/$defs/WorkspaceRef"
+        },
+        "worktree": {
+          "$ref": "#/$defs/ForkWorktreeConfirmation"
+        }
+      },
+      "required": [
+        "destination",
+        "head",
+        "messages",
+        "patch",
+        "runs",
+        "source",
+        "worktree"
       ]
     },
     "SessionProjectChange": {

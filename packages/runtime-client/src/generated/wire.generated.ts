@@ -103,6 +103,7 @@ export const HTTP_HEADERS = {
   requestId: "Request-Id",
   server: "X-Server",
   method: "X-Method",
+  runtimeStore: "X-Flame-Runtime-Store",
 } as const;
 
 // RPC error codes and problem types describe one operation failure.
@@ -670,6 +671,12 @@ export interface ForkSessionRequest {
   fromRunId?: string;
   sessionId: string;
   title?: string;
+  worktree?: ForkWorktreeConfirmation;
+}
+
+export interface ForkWorktreeConfirmation {
+  digest: string;
+  id: string;
 }
 
 export interface GenerationParams {
@@ -1705,6 +1712,11 @@ export type PluginValueChange =
 
 export type PluginValueChangeType = "set" | "clear";
 
+export interface PreviewSessionForkRequest {
+  fromRunId?: string;
+  sessionId: string;
+}
+
 export type ProblemData =
   | { type: "agent_stuck"; detail?: string; docUrl?: string }
   | { type: "capability_not_negotiated"; detail?: string; docUrl?: string; requiredCapabilities: CapabilityRequirement[] }
@@ -2225,6 +2237,17 @@ export interface SessionArtifact {
   session: ArtifactSession;
   toolResults: ArtifactToolResult[];
   version: number;
+}
+
+export interface SessionForkPreview {
+  destination: WorkspaceRef;
+  fromRunId?: string;
+  head: string;
+  messages: number;
+  patch: string;
+  runs: number;
+  source: WorkspaceRef;
+  worktree: ForkWorktreeConfirmation;
 }
 
 export type SessionProjectChange =

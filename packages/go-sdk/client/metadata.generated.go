@@ -16,6 +16,7 @@ var methodMetadata = map[string]methodMeta{
 	"sessions.create":                  {Name: "sessions.create", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[*protocol.Session](), Event: nil, ResultNullable: false},
 	"sessions.update":                  {Name: "sessions.update", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[*protocol.Session](), Event: nil, ResultNullable: false},
 	"sessions.delete":                  {Name: "sessions.delete", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[struct{}](), Event: nil, ResultNullable: false},
+	"sessions.fork.preview":            {Name: "sessions.fork.preview", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.SessionForkPreview](), Event: nil, ResultNullable: false},
 	"sessions.fork":                    {Name: "sessions.fork", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[*protocol.Session](), Event: nil, ResultNullable: false},
 	"sessions.rollback":                {Name: "sessions.rollback", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[*protocol.RollbackSessionResponse](), Event: nil, ResultNullable: false},
 	"sessions.export":                  {Name: "sessions.export", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.ExportSessionResponse](), Event: nil, ResultNullable: false},
@@ -206,6 +207,7 @@ var refusalProblems = map[string]int{
 	"urn:flame:transport:forbidden_origin":       403,
 	"urn:flame:transport:invalid_request":        400,
 	"urn:flame:transport:request_too_large":      413,
+	"urn:flame:transport:runtime_store_mismatch": 409,
 	"urn:flame:transport:unauthorized":           401,
 	"urn:flame:transport:unsupported_media_type": 415,
 }
