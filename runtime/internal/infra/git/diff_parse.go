@@ -79,7 +79,7 @@ func (parser *unifiedDiffParser) consume(encoded []byte, offset int) (bool, erro
 	}
 	line := string(encoded)
 	if strings.HasPrefix(line, diffFileHeader) {
-		return parser.startFile(strings.TrimPrefix(line, diffFileHeader), offset)
+		return parser.startFragment(strings.TrimPrefix(line, diffFileHeader), offset)
 	}
 	if parser.current == nil {
 		return false, nil
@@ -106,13 +106,19 @@ func (parser *unifiedDiffParser) markNoNewline() error {
 	return nil
 }
 
-func (parser *unifiedDiffParser) startFile(header string, offset int) (bool, error) {
+func (parser *unifiedDiffParser) startFragment(header string, offset int) (bool, error) {
+	path := sameFilePatchPath(header)
+	// Git emits both sides of a type change as consecutive fragments of the same file.
+	if path != "" && parser.current != nil && path == parser.current.Path {
+		parser.lastRow = nil
+		return false, nil
+	}
 	flushed, err := parser.flush(offset)
 	if err != nil || !flushed || len(parser.files) >= parser.maxFiles {
 		return true, err
 	}
 	parser.current = &DiffFile{
-		Path:   sameFilePatchPath(header),
+		Path:   path,
 		Status: StatusModified,
 	}
 	parser.left = hunkRange{}
@@ -145,7 +151,11 @@ func (parser *unifiedDiffParser) flush(end int) (bool, error) {
 func (parser *unifiedDiffParser) applyMetadata(line string) bool {
 	switch {
 	case strings.HasPrefix(line, newFileModeHeader):
-		parser.current.Status = StatusAdded
+		if parser.current.Status == StatusDeleted {
+			parser.current.Status = StatusModified
+		} else {
+			parser.current.Status = StatusAdded
+		}
 	case strings.HasPrefix(line, deletedFileModeHeader):
 		parser.current.Status = StatusDeleted
 	case strings.HasPrefix(line, renameFromHeader):

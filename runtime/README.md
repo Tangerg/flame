@@ -1926,11 +1926,12 @@ accepted complete-file prefix and computes metadata without retaining rows.
 Rows use that same grammar and retain their real CLI behavior. Visual and rows
 share the 5,000-file / 5,000-row budgets (hunks count as rows); explicit row limits
 are positive and clamped to that maximum. Both return their actual budgets and
-whole-file truncation. All projections retain the 64 MiB capture safety bound;
-complete raw refuses row limits and fails on byte overflow. An oversized first
-file yields an empty visual patch and manifest with `truncated: true`, never a
-clean comparison. Raw, rows and visual wire payloads are mutually exclusive and
-all clients must migrate with the Runtime; there is no old-shape reader.
+whole-file truncation. A type change keeps both Git patch fragments together
+under one file and one budget decision. All projections retain the 64 MiB
+capture safety bound. Complete raw refuses row limits and fails on byte overflow.
+An oversized first file yields an empty visual patch and manifest with
+`truncated: true`. Raw, rows and visual wire payloads are mutually exclusive and
+all clients must migrate with the Runtime.
 Worktree comparisons and handoffs reject untracked directory entries such as
 embedded Git repositories. Every selected untracked file must produce a patch.
 

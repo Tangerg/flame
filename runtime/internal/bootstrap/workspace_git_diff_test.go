@@ -71,3 +71,47 @@ func TestWorkspaceGitDiffPreservesFileIdentities(t *testing.T) {
 		}
 	}
 }
+
+func TestWorkspaceGitDiffProjectsTypeChangesAsOneFile(t *testing.T) {
+	source, git := taskWorktreeTestRepository(t)
+	const name, target = "material.txt", "target.txt"
+	for _, file := range []string{name, target} {
+		if err := os.WriteFile(filepath.Join(source, file), []byte("original\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	git("config", "core.symlinks", "true")
+	git("add", "--", name, target)
+	git("commit", "--quiet", "-m", "regular files")
+	file := filepath.Join(source, name)
+	if err := os.Remove(file); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(target, file); err != nil {
+		t.Fatal(err)
+	}
+	if got := git("diff", "--name-status", "HEAD"); got != "T\t"+name {
+		t.Fatalf("Git changes = %q; want one type change for %q", got, name)
+	}
+
+	cfg := poMCPConfig(t)
+	cfg.defaultWorkspacePath = source
+	r := poMCPOpen(t, cfg)
+	request := protocol.GetDiffRequest{Workspace: protocol.WorkspaceRef{Path: source}, Format: protocol.DiffFormatRows}
+	read := r.must(delivery.WorkspaceDiffGet, request, "").(*protocol.Diff)
+	if read.Rows == nil || read.Rows.Truncated || len(read.Rows.Files) != 1 {
+		t.Errorf("type change should be one complete file: %+v", read.Rows)
+	} else {
+		change := read.Rows.Files[0]
+		if change.Path != name || change.Status != protocol.FileStatusModified || change.Added == nil || *change.Added != 1 || change.Removed == nil || *change.Removed != 1 {
+			t.Errorf("type change lost evidence from one of its fragments: %+v", change)
+		}
+	}
+
+	request.Format = protocol.DiffFormatVisual
+	request.Limit = new(2)
+	bounded := r.must(delivery.WorkspaceDiffGet, request, "").(*protocol.Diff)
+	if bounded.Visual == nil || !bounded.Visual.Truncated || len(bounded.Visual.Manifest) != 0 || bounded.Visual.Patch != "" {
+		t.Errorf("row limit exposed a partial file type change: %+v", bounded.Visual)
+	}
+}
