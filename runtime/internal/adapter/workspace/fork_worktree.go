@@ -1,19 +1,21 @@
 package workspace
 
 import (
+	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
 
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	work "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/infra/git"
+	"github.com/Tangerg/flame/runtime/internal/infra/git/process"
+	"github.com/google/uuid"
 )
 
-type forkRegistration struct {
-	Approval string `json:"approval"`
-	Checkout string `json:"checkout"`
-}
+const forkCheckoutCommitted = "checkout_registered"
 
 func (b *TaskWorktrees) PreviewFork(ctx context.Context, path, id string) (work.WorktreeFork, error) {
 	var err error
@@ -46,54 +48,69 @@ func (b *TaskWorktrees) PreviewFork(ctx context.Context, path, id string) (work.
 	}, nil
 }
 
-func (b *TaskWorktrees) CloneFork(ctx context.Context, preview work.WorktreeFork, digest string) (work.TaskWorktree, bool, error) {
-	checkout, err := b.openCheckout(preview.ID)
-	switch {
-	case errors.Is(err, work.ErrTaskWorktreeNotFound):
-		record := taskRecord{
-			ID: preview.ID, Source: preview.Source, CommonDir: preview.Repository, Base: preview.Head,
-			Fork: &forkRegistration{Approval: digest},
+func (b *TaskWorktrees) RequireVacantCheckout(id string) error {
+	for _, path := range []string{b.checkoutPath(id), filepath.Join(b.root, taskRecordName(id))} {
+		if _, err := os.Lstat(path); err == nil {
+			return work.ErrTaskWorktreeChanged
+		} else if !errors.Is(err, os.ErrNotExist) {
+			return err
 		}
-		task, err := b.registerTask(ctx, ctx, record, preview.Patch)
-		return task, err == nil, err
-	case err != nil:
-		return work.TaskWorktree{}, false, err
 	}
-	saved := checkout.record
-	if saved.Fork == nil || saved.Fork.Approval != digest || saved.Source != preview.Source ||
-		saved.CommonDir != preview.Repository || saved.Base != preview.Head {
-		return work.TaskWorktree{}, false, work.ErrTaskWorktreeChanged
-	}
-	task, err := checkout.Inspect(ctx)
-	if err != nil {
-		return work.TaskWorktree{}, false, err
-	}
-	if !task.Available || task.Path != preview.Path {
-		return work.TaskWorktree{}, false, work.ErrTaskWorktreeChanged
-	}
-	head, err := taskGitValue(ctx, task.Path, "rev-parse", "--verify", "HEAD")
-	if err != nil {
-		return work.TaskWorktree{}, false, err
-	}
-	if head != saved.Base {
-		return work.TaskWorktree{}, false, work.ErrTaskWorktreeChanged
-	}
-	current, err := forkCheckoutDigest(ctx, task.Path, task.Base)
-	if err != nil {
-		return work.TaskWorktree{}, false, err
-	}
-	if current != saved.Fork.Checkout {
-		return work.TaskWorktree{}, false, work.ErrTaskWorktreeChanged
-	}
-	return task, false, nil
+	return nil
 }
 
-func forkCheckoutDigest(ctx context.Context, path, base string) (string, error) {
-	// Git can infer a rename after an untracked file becomes staged.
-	patch, err := git.WorktreePatch(ctx, path, base, maxHandoffPatchBytes)
+func (b *TaskWorktrees) WriteFork(ctx context.Context, id uuid.UUID, fork work.WorktreeFork) error {
+	start, err := b.prepare(writeFork, fork)
 	if err != nil {
-		return "", vcsError(err)
+		return err
 	}
-	digest := sha256.Sum256(patch)
-	return hex.EncodeToString(digest[:]), nil
+	return start(ctx, id, []byte(forkCheckoutCommitted))
+}
+
+func (b *TaskWorktrees) ReadForkReceipt(id uuid.UUID) (work.ForkWriteReceipt, bool, error) {
+	payload, err := b.ReadReceipt(id)
+	if err != nil {
+		return work.ForkWriteReceipt{}, false, err
+	}
+	if bytes.Equal(payload, []byte(forkCheckoutCommitted)) {
+		return work.ForkWriteReceipt{}, true, nil
+	}
+	return work.ForkWriteReceipt{Refusal: payload}, len(payload) != 0, nil
+}
+
+func writeForkCheckout(ctx context.Context, fork work.WorktreeFork, index string) error {
+	if !isTaskID(fork.ID) || !validTaskSHA(fork.Head) || filepath.Base(fork.Path) != fork.ID ||
+		!filepath.IsAbs(fork.Path) || !filepath.IsAbs(fork.Repository) || !filepath.IsAbs(fork.Source) {
+		return work.ErrTaskWorktreeInput
+	}
+	// An inapplicable patch must fail before Git registers a checkout.
+	tree, err := process.PrepareCheckoutTree(ctx, fork.Repository, fork.Head, fork.Patch, index)
+	if err != nil {
+		return errors.Join(work.ErrTaskWorktreeChanged, err)
+	}
+	directory := filepath.Dir(fork.Path)
+	if err := os.MkdirAll(directory, filesystem.PrivateDirectoryMode); err != nil {
+		return err
+	}
+	root, err := os.OpenRoot(directory)
+	if err != nil {
+		return err
+	}
+	defer root.Close()
+	if _, err := taskGitValue(ctx, fork.Repository, "worktree", "add", "--detach", "--quiet", "--no-checkout", "--", fork.Path, fork.Head); err != nil {
+		return errors.Join(work.ErrVCSUnavailable, err)
+	}
+	// Keep the approved HEAD while Git populates the index and working tree
+	// from the prepared tree. A later failure leaves the admitted write unconfirmed.
+	if _, err := taskGitValue(ctx, fork.Path, "read-tree", "--reset", "-u", tree); err != nil {
+		return errors.Join(operation.ErrOutcomePending, err)
+	}
+	if err := stampTaskCustody(ctx, fork.Path, fork.ID); err != nil {
+		return errors.Join(operation.ErrOutcomePending, err)
+	}
+	record := taskRecord{ID: fork.ID, Source: fork.Source, CommonDir: fork.Repository, Base: fork.Head}
+	if err := writeTaskRecord(root, record); err != nil {
+		return fmt.Errorf("workspace: publish fork checkout: %w", errors.Join(operation.ErrOutcomePending, err))
+	}
+	return nil
 }

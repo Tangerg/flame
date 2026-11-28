@@ -91,8 +91,10 @@ func (r *Replay) InvokeRecoverable(ctx context.Context, key, fingerprint string,
 	if found && record.Settled() {
 		return settledPayload(record)
 	}
-	if err := admit.check(ctx); err != nil {
-		return nil, err
+	if !found {
+		if err := admit.check(ctx); err != nil {
+			return nil, err
+		}
 	}
 	workErr := execute(found)
 	// The workflow can commit after the caller stops observing it. Only its

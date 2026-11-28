@@ -52,7 +52,7 @@ type taskWorktreeBackend interface {
 	CheckoutPath(string) (string, error)
 	OpenCheckout(string) (TaskCheckout, error)
 	PreviewFork(context.Context, string, string) (WorktreeFork, error)
-	CloneFork(context.Context, WorktreeFork, string) (TaskWorktree, bool, error)
+	RequireVacantCheckout(string) error
 }
 
 // The checkout admission must stay live from opening through an admitted write.
@@ -74,11 +74,12 @@ type TaskWorktrees struct {
 	backend       taskWorktreeBackend
 	gate          worktreeMutationGate
 	sessions      sessionLister
+	forkPending   func(context.Context, string) (bool, error)
 	invalidations invalidation.Publish
 }
 
-func NewTaskWorktrees(scope *Scope, backend taskWorktreeBackend, gate worktreeMutationGate, sessions sessionLister, invalidations invalidation.Publish) *TaskWorktrees {
-	return &TaskWorktrees{scope: scope, backend: backend, gate: gate, sessions: sessions, invalidations: invalidations}
+func NewTaskWorktrees(scope *Scope, backend taskWorktreeBackend, gate worktreeMutationGate, sessions sessionLister, forkPending func(context.Context, string) (bool, error), invalidations invalidation.Publish) *TaskWorktrees {
+	return &TaskWorktrees{scope: scope, backend: backend, gate: gate, sessions: sessions, forkPending: forkPending, invalidations: invalidations}
 }
 
 func (w *TaskWorktrees) Create(ctx context.Context, source, base, setup string, complete operation.Reply[TaskWorktree]) error {
@@ -150,6 +151,13 @@ func (w *TaskWorktrees) Release(ctx context.Context, id string, complete operati
 		return ErrTaskWorktreeBusy
 	}
 	defer release()
+	pending, err := w.forkPending(ctx, id)
+	if err != nil {
+		return err
+	}
+	if pending {
+		return ErrTaskWorktreeBusy
+	}
 	task, err := w.backend.OpenCheckout(id)
 	if err != nil {
 		return err

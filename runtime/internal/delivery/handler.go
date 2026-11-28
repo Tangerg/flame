@@ -58,6 +58,7 @@ type HandlerConfig struct {
 	WorkspaceVCS           *workspaceapp.VCS
 	WorkspaceDiscovery     *workspaceapp.Discovery
 	TaskWorktrees          *workspaceapp.TaskWorktrees
+	WorktreeForks          *sessions.WorktreeForks
 	WorkspaceSkills        *workspaceapp.Skills
 	Hooks                  *apphooks.Catalog
 	WorkspaceWatch         *workspaceapp.Watch
@@ -98,6 +99,7 @@ type Handler struct {
 	workspaceVCS           *workspaceapp.VCS
 	workspaceDiscovery     *workspaceapp.Discovery
 	taskWorktrees          *workspaceapp.TaskWorktrees
+	worktreeForks          *sessions.WorktreeForks
 	workspaceSkills        *workspaceapp.Skills
 	hooks                  *apphooks.Catalog
 	workspaceWatch         *workspaceapp.Watch
@@ -163,6 +165,7 @@ func (c HandlerConfig) validate() error {
 		{name: "WorkspaceVCS", value: c.WorkspaceVCS},
 		{name: "WorkspaceDiscovery", value: c.WorkspaceDiscovery},
 		{name: "TaskWorktrees", value: c.TaskWorktrees},
+		{name: "WorktreeForks", value: c.WorktreeForks},
 		{name: "WorkspaceSkills", value: c.WorkspaceSkills},
 		{name: "Hooks", value: c.Hooks},
 		{name: "WorkspaceWatch", value: c.WorkspaceWatch},
@@ -255,6 +258,7 @@ func newHandler(cfg HandlerConfig, facts contractFacts) *Handler {
 		workspaceVCS:             cfg.WorkspaceVCS,
 		workspaceDiscovery:       cfg.WorkspaceDiscovery,
 		taskWorktrees:            cfg.TaskWorktrees,
+		worktreeForks:            cfg.WorktreeForks,
 		workspaceSkills:          cfg.WorkspaceSkills,
 		hooks:                    cfg.Hooks,
 		workspaceWatch:           cfg.WorkspaceWatch,

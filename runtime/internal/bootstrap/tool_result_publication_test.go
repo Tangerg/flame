@@ -24,8 +24,10 @@ import (
 func TestOffloadedToolResultCommitsWithItsItem(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("FLAME_HOME", home)
+	source, git := taskWorktreeTestRepository(t)
+	git("commit", "--quiet", "--allow-empty", "-m", "original checkout")
 	body := strings.Repeat("Retain this original Tool output. ", 128)
-	if err := os.WriteFile(filepath.Join(home, "large.txt"), []byte(body), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(source, "large.txt"), []byte(body), 0600); err != nil {
 		t.Fatal(err)
 	}
 	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
@@ -77,7 +79,7 @@ func TestOffloadedToolResultCommitsWithItsItem(t *testing.T) {
 	})
 	ctx := protocolLifecycleContext(t.Context())
 	session, err := api.CreateSession(ctx, protocol.CreateSessionRequest{
-		Workspace: &protocol.WorkspaceRef{Path: home}, Title: "Offloaded Tool result",
+		Workspace: &protocol.WorkspaceRef{Path: source}, Title: "Offloaded Tool result",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -121,8 +123,12 @@ func TestOffloadedToolResultCommitsWithItsItem(t *testing.T) {
 		}
 	}
 
+	preview, err := api.PreviewSessionFork(ctx, protocol.PreviewSessionForkRequest{SessionID: session.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
 	forked, err := host.Endpoint().Call[protocol.ForkSessionRequest, *protocol.Session](
-		ctx, delivery.Name("sessions.fork"), protocol.ForkSessionRequest{SessionID: session.ID},
+		ctx, delivery.Name("sessions.fork"), protocol.ForkSessionRequest{SessionID: session.ID, Worktree: &preview.Worktree},
 		protocol.CallMetadata{IdempotencyKey: "fork-offloaded-tool-result"},
 	)
 	if err != nil {

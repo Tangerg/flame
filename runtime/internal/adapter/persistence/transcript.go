@@ -232,7 +232,7 @@ func (t *TranscriptStore) ListStored(ctx context.Context, sessionID identity.Ses
 			}
 			item, err := transcript.RestoreItem(snapshot)
 			if err != nil {
-				return nil, fmt.Errorf("sqlite: decoded history item %q: %w", stored.itemID, err)
+				return nil, fmt.Errorf("sqlite: decoded history item %q: %w", stored.ItemID, err)
 			}
 			out = append(out, item)
 		}

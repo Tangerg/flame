@@ -14,11 +14,9 @@ import (
 )
 
 type ForkSpec struct {
-	ParentID         identity.SessionID
-	FromRunID        identity.RunID
-	Title            string
-	ChildID          identity.SessionID
-	PrepareWorkspace func(context.Context, ForkSource) (string, func(), error)
+	ParentID  identity.SessionID
+	FromRunID identity.RunID
+	Title     string
 }
 
 type ForkSource struct {
@@ -29,18 +27,24 @@ type ForkSource struct {
 	Messages int
 }
 
-func forkSource(source session.Session, boundary ForkBoundary) ForkSource {
-	return ForkSource{Path: source.Workspace().Path(), Revision: source.Revision(),
-		RunID: boundary.RunID, Runs: len(boundary.RunIDs), Messages: len(boundary.Messages)}
+type forkBasis struct {
+	material ForkMaterial
+	boundary ForkBoundary
 }
 
-func (c *Coordinator) InspectFork(ctx context.Context, id identity.SessionID, from identity.RunID) (ForkSource, error) {
+func (b forkBasis) source() ForkSource {
+	source := b.material.Session
+	return ForkSource{Path: source.Workspace().Path(), Revision: source.Revision(),
+		RunID: b.boundary.RunID, Runs: len(b.boundary.RunIDs), Messages: len(b.boundary.Messages)}
+}
+
+func (c *Coordinator) readForkBasis(ctx context.Context, id identity.SessionID, from identity.RunID) (forkBasis, error) {
 	material, err := c.snapshots.ReadForkMaterial(ctx, id)
 	if err != nil {
-		return ForkSource{}, err
+		return forkBasis{}, err
 	}
 	boundary, err := resolveForkBoundary(material.Messages, material.Runs, from)
-	return forkSource(material.Session, boundary), err
+	return forkBasis{material: material, boundary: boundary}, err
 }
 
 type RunPlanBoundary struct {
@@ -96,63 +100,15 @@ func resolveForkBoundary(msgs []chat.Message, runs []run.Run, fromRunID identity
 }
 
 func (c *Coordinator) Fork(ctx context.Context, spec ForkSpec, complete operation.Reply[View]) error {
-	if err := spec.ParentID.Validate(); err != nil {
-		return fmt.Errorf("sessions: fork: %w", err)
-	}
-	if spec.PrepareWorkspace != nil {
-		claim, err := c.ClaimSessionMutation(ctx, spec.ParentID)
-		if err != nil {
-			return err
-		}
-		defer claim.Release()
-	}
-	source, err := c.snapshots.ReadForkMaterial(ctx, spec.ParentID)
+	basis, err := c.readForkBasis(ctx, spec.ParentID, spec.FromRunID)
 	if err != nil {
 		return err
 	}
-	boundary, err := resolveForkBoundary(source.Messages, source.Runs, spec.FromRunID)
+	fork, err := c.prepareFork(spec, basis, "")
 	if err != nil {
 		return err
 	}
-	planReplacement, err := c.prepareInitialPlanReplacement(source.planAt(boundary.RunID))
-	if err != nil {
-		return err
-	}
-	childID := spec.ChildID
-	if childID.IsZero() {
-		childID = c.newID()
-	}
-	child, err := source.Session.Fork(childID, spec.Title, c.now())
-	if err != nil {
-		return err
-	}
-	var expectedRevision uint64
-	if spec.PrepareWorkspace != nil {
-		path, release, err := spec.PrepareWorkspace(ctx, forkSource(source.Session, boundary))
-		if err != nil {
-			return err
-		}
-		defer release()
-		workspace, releaseBinding, err := c.bindWorkspace(path)
-		if err != nil {
-			return err
-		}
-		defer releaseBinding()
-		child, err = child.InstallRestoredWorkspace(workspace)
-		if err != nil {
-			return err
-		}
-		expectedRevision = source.Session.Revision()
-	}
-	forked, err := c.copyForkMaterial(source, child, boundary)
-	if err != nil {
-		return err
-	}
-	fork, err := newForkPlan(source.Session, expectedRevision, forked, planReplacement)
-	if err != nil {
-		return err
-	}
-	view, err := c.view(child, activityIdle)
+	view, err := c.view(fork.history.Session, activityIdle)
 	if err != nil {
 		return err
 	}
@@ -161,12 +117,46 @@ func (c *Coordinator) Fork(ctx context.Context, spec ForkSpec, complete operatio
 	}); err != nil {
 		return err
 	}
-	c.publishSessionMoved(child.ID())
-	if len(forked.Runs) > 0 {
-		c.publishRunsMoved(child.ID(), forked.Runs)
-	}
-	if planReplacement != nil {
-		c.publishPlanMoved(child.ID())
-	}
+	c.publishFork(fork.history, fork.planReplacement != nil)
 	return nil
+}
+
+func (c *Coordinator) prepareFork(spec ForkSpec, basis forkBasis, checkout string) (ForkPlan, error) {
+	source, boundary := basis.material, basis.boundary
+	planReplacement, err := c.prepareInitialPlanReplacement(source.planAt(boundary.RunID))
+	if err != nil {
+		return ForkPlan{}, err
+	}
+	child, err := source.Session.Fork(c.newID(), spec.Title, c.now())
+	if err != nil {
+		return ForkPlan{}, err
+	}
+	var expectedRevision uint64
+	if checkout != "" {
+		workspace, err := session.NewWorkspace(checkout)
+		if err != nil {
+			return ForkPlan{}, err
+		}
+		child, err = child.InstallRestoredWorkspace(workspace)
+		if err != nil {
+			return ForkPlan{}, err
+		}
+		expectedRevision = source.Session.Revision()
+	}
+	forked, err := c.copyForkMaterial(source, child, boundary)
+	if err != nil {
+		return ForkPlan{}, err
+	}
+	return newForkPlan(source.Session, expectedRevision, forked, planReplacement)
+}
+
+func (c *Coordinator) publishFork(forked HistorySnapshot, hasPlan bool) {
+	child := forked.Session.ID()
+	c.publishSessionMoved(child)
+	if len(forked.Runs) > 0 {
+		c.publishRunsMoved(child, forked.Runs)
+	}
+	if hasPlan {
+		c.publishPlanMoved(child)
+	}
 }

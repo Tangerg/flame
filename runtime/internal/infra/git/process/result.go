@@ -153,6 +153,31 @@ func ApplyIndexPatch(ctx context.Context, dir string, patch string) (Result, err
 	return Run(ctx, env, strings.NewReader(patch), args...)
 }
 
+func PrepareCheckoutTree(ctx context.Context, repository, head, patch, index string) (string, error) {
+	if patch == "" {
+		return head, nil
+	}
+	prefix, env := worktreeInvocation(repository)
+	env = append(env, "GIT_INDEX_FILE="+index)
+	run := func(input io.Reader, args ...string) (string, error) {
+		result, err := Run(ctx, env, input, append(prefix, args...)...)
+		if err != nil {
+			return "", err
+		}
+		if result.ExitCode != 0 {
+			return "", fmt.Errorf("git %s exited %d: %s", args[0], result.ExitCode, strings.TrimSpace(result.Stderr))
+		}
+		return strings.TrimSuffix(string(result.Stdout), "\n"), nil
+	}
+	if _, err := run(nil, "read-tree", head); err != nil {
+		return "", err
+	}
+	if _, err := run(strings.NewReader(patch), "apply", "--cached", "--whitespace=nowarn", "-"); err != nil {
+		return "", err
+	}
+	return run(nil, "write-tree")
+}
+
 func worktreeInvocation(dir string) (prefix, env []string) {
 	prefix = []string{"--no-pager", "--no-optional-locks", "-C", dir, "-c", "core.quotepath=false", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=" + os.DevNull, "-c", "diff.ignoreSubmodules=dirty", "-c", "submodule.recurse=false"}
 	env = append([]string{"GIT_NO_LAZY_FETCH=1", "GIT_ALLOW_PROTOCOL=", "GIT_NO_REPLACE_OBJECTS=1"}, parsingLocale...)

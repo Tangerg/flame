@@ -2,15 +2,14 @@ package workspace
 
 import (
 	"context"
-	"errors"
-
-	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 )
 
 type WorktreeFork struct {
 	ID, Source, Head, Path, Patch string
 	Repository                    string
 }
+
+type ForkWriteReceipt struct{ Refusal []byte }
 
 func (w *TaskWorktrees) PreviewFork(ctx context.Context, source, id string) (WorktreeFork, error) {
 	path, err := w.scope.ResolveRoot(source)
@@ -20,37 +19,33 @@ func (w *TaskWorktrees) PreviewFork(ctx context.Context, source, id string) (Wor
 	return w.backend.PreviewFork(ctx, path, id)
 }
 
-func (w *TaskWorktrees) PrepareFork(ctx context.Context, source, id, digest string, matches func(WorktreeFork) bool) (string, func(), error) {
+func (w *TaskWorktrees) PrepareFork(ctx context.Context, source, id string, approve func(WorktreeFork) error) (WorktreeFork, func(), error) {
 	path, err := w.scope.ResolveRoot(source)
 	if err != nil {
-		return "", nil, err
+		return WorktreeFork{}, nil, err
 	}
 	release, err := w.claim(path)
 	if err != nil {
-		return "", nil, err
+		return WorktreeFork{}, nil, err
 	}
 	preview, err := w.backend.PreviewFork(ctx, path, id)
-	if err != nil || !matches(preview) {
+	if err != nil {
 		release()
-		return "", nil, errors.Join(ErrTaskWorktreeChanged, err)
+		return WorktreeFork{}, nil, err
+	}
+	if err := approve(preview); err != nil {
+		release()
+		return WorktreeFork{}, nil, err
 	}
 	releaseTarget, err := w.claim(preview.Path)
 	if err != nil {
 		release()
-		return "", nil, err
+		return WorktreeFork{}, nil, err
 	}
 	done := func() { releaseTarget(); release() }
-	target, registered, err := w.backend.CloneFork(ctx, preview, digest)
-	if err != nil {
+	if err := w.backend.RequireVacantCheckout(preview.ID); err != nil {
 		done()
-		return "", nil, err
+		return WorktreeFork{}, nil, err
 	}
-	if target.Path != preview.Path {
-		done()
-		return "", nil, ErrTaskWorktreeChanged
-	}
-	if registered {
-		w.invalidations.Notify(invalidation.Notice{Resource: invalidation.TaskWorktrees})
-	}
-	return target.Path, done, nil
+	return preview, done, nil
 }

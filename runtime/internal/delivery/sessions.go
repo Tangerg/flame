@@ -122,7 +122,7 @@ func registerSessions(registry *Registry) {
 			protocol.ErrRevisionConflict.Error(),
 			protocol.ErrSessionBusy.Error(), protocol.ErrWorkspaceUnavailable.Error(), protocol.ErrVcsUnavailable.Error(),
 		),
-	}, atomicReplay((*Handler).commitForkSession))
+	}, (*Handler).replayFork)
 
 	registry.requiredReplayCommand(MethodMeta{
 		Name: sessionsRollback, GoName: "RollbackSession",

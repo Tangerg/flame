@@ -583,6 +583,17 @@ func currentSchema() []string {
 			ON idempotency_records(expires_at) WHERE expires_at IS NOT NULL`,
 		`CREATE INDEX IF NOT EXISTS idx_idempotency_records_material_run
 			ON idempotency_records(material_run_id) WHERE material_run_id IS NOT NULL`,
+		`CREATE TABLE IF NOT EXISTS pending_worktree_forks (
+			checkout_id   TEXT PRIMARY KEY,
+			checkout_path TEXT NOT NULL,
+			source_path   TEXT NOT NULL,
+			repository    TEXT NOT NULL,
+			base          TEXT NOT NULL,
+			patch         TEXT NOT NULL,
+			writer_id     TEXT NOT NULL UNIQUE,
+			receipt_key   TEXT NOT NULL UNIQUE REFERENCES idempotency_records(key),
+			history       BLOB NOT NULL
+		)`,
 		`CREATE TABLE IF NOT EXISTS embedding_role (
 			id        INTEGER PRIMARY KEY CHECK (id = 1),
 			provider  TEXT NOT NULL DEFAULT '',

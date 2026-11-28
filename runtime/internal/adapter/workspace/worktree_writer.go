@@ -57,6 +57,8 @@ type taskWriteKind string
 const (
 	writeHandoff taskWriteKind = "handoff"
 	writeRelease taskWriteKind = "release"
+	writeFork    taskWriteKind = "fork"
+	forkIndex                  = "index"
 )
 
 type taskWriteRequest struct {
@@ -181,7 +183,7 @@ func RunTaskWriter(ctx context.Context, directory string, input io.Reader, refus
 	if err := json.UnmarshalRead(input, &request, json.RejectUnknownMembers(true)); err != nil {
 		return err
 	}
-	run, err := request.execution()
+	run, err := request.execution(filepath.Join(directory, request.ID.String()))
 	if err != nil {
 		return err
 	}
@@ -198,6 +200,9 @@ func RunTaskWriter(ctx context.Context, directory string, input io.Reader, refus
 	defer accepted.Close()
 	payload := request.Success
 	if cause := run(ctx); cause != nil {
+		if errors.Is(cause, operation.ErrOutcomePending) {
+			return cause
+		}
 		payload, err = refuse(cause)
 		if err != nil {
 			return err
@@ -206,7 +211,7 @@ func RunTaskWriter(ctx context.Context, directory string, input io.Reader, refus
 	return publishTaskFile(accepted, taskWriteReceipt, payload)
 }
 
-func (request taskWriteRequest) execution() (func(context.Context) error, error) {
+func (request taskWriteRequest) execution(scratch string) (func(context.Context) error, error) {
 	if request.ID == uuid.Nil || len(request.Success) == 0 {
 		return nil, errors.New("workspace: a task write requires its receipt identity and response")
 	}
@@ -230,6 +235,14 @@ func (request taskWriteRequest) execution() (func(context.Context) error, error)
 			return nil, errors.New("workspace: release requires absolute paths")
 		}
 		return write.run, nil
+	case writeFork:
+		var fork work.WorktreeFork
+		if err := json.Unmarshal(request.Plan, &fork, json.RejectUnknownMembers(true)); err != nil {
+			return nil, err
+		}
+		return func(ctx context.Context) error {
+			return writeForkCheckout(ctx, fork, filepath.Join(scratch, forkIndex))
+		}, nil
 	default:
 		return nil, errors.New("workspace: unknown task write")
 	}

@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	work "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
@@ -18,6 +19,19 @@ const (
 	gitWorktreeBacklink      = "gitdir"
 	taskCustody              = "flame-task-id"
 )
+
+func stampTaskCustody(ctx context.Context, checkout, id string) error {
+	gitDir, err := taskGitValue(ctx, checkout, "rev-parse", "--absolute-git-dir")
+	if err != nil {
+		return err
+	}
+	// Git removes the registration and its custody stamp together. A new
+	// checkout can reuse both the working path and Git's registration name.
+	if err := os.WriteFile(filepath.Join(gitDir, taskCustody), []byte(id), filesystem.PrivateFileMode); err != nil {
+		return fmt.Errorf("workspace: record task worktree custody: %w", err)
+	}
+	return nil
+}
 
 type taskRegistration struct {
 	directory string

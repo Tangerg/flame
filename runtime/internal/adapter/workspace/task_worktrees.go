@@ -17,7 +17,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
 	work "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/infra/git"
 	"github.com/Tangerg/flame/runtime/internal/infra/git/process"
 	toolshell "github.com/Tangerg/scope/tools/shell"
 )
@@ -57,7 +56,6 @@ type taskRecord struct {
 	CommonDir string                  `json:"common"`
 	Base      string                  `json:"base"`
 	Setup     *work.TaskWorktreeSetup `json:"setup,omitzero"`
-	Fork      *forkRegistration       `json:"fork,omitzero"`
 }
 
 type taskCheckout struct {
@@ -120,11 +118,11 @@ func (b *TaskWorktrees) PrepareCreate(ctx context.Context, path, base, setup str
 	}
 	return func(registration context.Context) (work.TaskWorktree, error) {
 		// Setup remains cancellable after the caller has authorized registration.
-		return b.registerTask(registration, ctx, record, "")
+		return b.registerTask(registration, ctx, record)
 	}, nil
 }
 
-func (b *TaskWorktrees) registerTask(ctx, setupCtx context.Context, record taskRecord, patch string) (work.TaskWorktree, error) {
+func (b *TaskWorktrees) registerTask(ctx, setupCtx context.Context, record taskRecord) (work.TaskWorktree, error) {
 	if err := os.MkdirAll(b.root, filesystem.PrivateDirectoryMode); err != nil {
 		return work.TaskWorktree{}, err
 	}
@@ -148,28 +146,11 @@ func (b *TaskWorktrees) registerTask(ctx, setupCtx context.Context, record taskR
 	if _, err := taskGitValue(ctx, record.CommonDir, "worktree", "add", "--detach", "--quiet", "--", checkout, record.Base); err != nil {
 		return work.TaskWorktree{}, errors.Join(work.ErrVCSUnavailable, err)
 	}
-	if record.Fork != nil {
-		if err := applyWorktreePatch(ctx, checkout, patch); err != nil {
-			cleanupErr := git.RemoveWorktree(context.WithoutCancel(ctx), record.CommonDir, checkout)
-			return work.TaskWorktree{}, errors.Join(err, cleanupErr)
-		}
-		digest, err := forkCheckoutDigest(ctx, checkout, record.Base)
-		if err != nil {
-			return work.TaskWorktree{}, err
-		}
-		record.Fork.Checkout = digest
-	}
 	if err := writeTaskRecord(root, record); err != nil {
 		return work.TaskWorktree{}, err
 	}
-	gitDir, err := taskGitValue(ctx, checkout, "rev-parse", "--absolute-git-dir")
-	if err != nil {
+	if err := stampTaskCustody(ctx, checkout, record.ID); err != nil {
 		return work.TaskWorktree{}, err
-	}
-	// Git removes the registration and its custody stamp together. A new
-	// checkout can reuse both the working path and Git's registration name.
-	if err := os.WriteFile(filepath.Join(gitDir, taskCustody), []byte(record.ID), filesystem.PrivateFileMode); err != nil {
-		return work.TaskWorktree{}, fmt.Errorf("workspace: record task worktree custody: %w", err)
 	}
 	if record.Setup != nil {
 		b.runSetup(setupCtx, checkout, record.Setup)

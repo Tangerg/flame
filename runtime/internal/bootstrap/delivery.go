@@ -41,6 +41,9 @@ type workerJoins struct {
 }
 
 func (h *runtimeApplication) recoverStartup(ctx context.Context) error {
+	if err := h.delivery.WorktreeForks.Recover(ctx); err != nil {
+		return err
+	}
 	if err := h.retirer.RecoverPending(ctx, h.admissions); err != nil {
 		return err
 	}

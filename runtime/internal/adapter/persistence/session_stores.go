@@ -18,6 +18,7 @@ import (
 )
 
 type SessionStores struct {
+	db                  *database
 	commandAcceptances  *commandAcceptanceStore
 	resourceRetirements *ResourceRetirementStore
 	sessions            *SessionStore
@@ -32,6 +33,7 @@ type SessionStores struct {
 	toolResults         *ToolResultStore
 	childRunStarts      *ChildRunStartReservationStore
 	goals               *GoalStore
+	replay              *idempotencyStore
 	tx                  Transactor
 	readSnapshot        Transactor
 }
@@ -41,6 +43,7 @@ func (b *Bundle) SessionStores(history *runsapp.ConversationHistory) (*SessionSt
 		return nil, errors.New("persistence: session conversation history is required")
 	}
 	return &SessionStores{
+		db:                  b.db,
 		commandAcceptances:  b.CommandAcceptances,
 		resourceRetirements: b.ResourceRetirements,
 		sessions:            b.Sessions,
@@ -55,6 +58,7 @@ func (b *Bundle) SessionStores(history *runsapp.ConversationHistory) (*SessionSt
 		toolResults:         b.ToolResults,
 		childRunStarts:      b.ChildRunStarts,
 		goals:               b.Goals,
+		replay:              b.Idempotency,
 		tx:                  b.Transactor,
 		readSnapshot:        b.ReadSnapshot,
 	}, nil
@@ -177,40 +181,43 @@ func (s *SessionStores) readHistory(ctx context.Context, sessionID identity.Sess
 }
 
 func (s *SessionStores) ApplyFork(ctx context.Context, fork sessions.ForkPlan) error {
-	snapshot := fork.History()
-	child := snapshot.Session
-	parentID := fork.ParentID()
-	planReplacement := fork.PlanReplacement()
 	return s.tx(ctx, func(ctx context.Context) error {
-		parent, err := s.sessions.Get(ctx, parentID)
-		if err != nil {
+		if err := s.requireForkParent(ctx, fork); err != nil {
 			return err
 		}
-		if !fork.ParentMatches(parent) {
-			return session.ErrRevisionConflict
-		}
-		if existing, err := s.sessions.Get(ctx, child.ID()); err == nil && !existing.ID().IsZero() {
-			return session.ErrRevisionConflict
-		} else if err != nil && !errors.Is(err, session.ErrNotFound) {
-			return err
-		}
-		if err := s.sessions.Insert(ctx, child); err != nil {
-			return err
-		}
-		if err := s.history.Seed(ctx, child.ID(), snapshot.Messages); err != nil {
-			return err
-		}
-		if err := s.savePlanReplacement(ctx, child.ID(), planReplacement); err != nil {
-			return err
-		}
-		if err := s.restoreRuns(ctx, snapshot.Runs); err != nil {
-			return err
-		}
-		if err := s.plan.RestoreBoundaries(ctx, fork.PlanBoundaries()); err != nil {
-			return err
-		}
-		return s.restoreTranscript(ctx, snapshot.Items, snapshot.ToolResults)
+		return s.insertFork(ctx, fork.History(), fork.PlanBoundaries(), fork.PlanReplacement())
 	})
+}
+
+func (s *SessionStores) requireForkParent(ctx context.Context, fork sessions.ForkPlan) error {
+	parent, err := s.sessions.Get(ctx, fork.ParentID())
+	if err != nil {
+		return err
+	}
+	if !fork.ParentMatches(parent) {
+		return session.ErrRevisionConflict
+	}
+	return nil
+}
+
+func (s *SessionStores) insertFork(ctx context.Context, snapshot sessions.HistorySnapshot, boundaries []sessions.RunPlanBoundary, replacement *plan.Replacement) error {
+	child := snapshot.Session
+	if err := s.sessions.Insert(ctx, child); err != nil {
+		if isPrimaryKeyViolation(err) {
+			return session.ErrRevisionConflict
+		}
+		return err
+	}
+	if err := s.restorePlanAndHistory(ctx, child.ID(), snapshot.Messages, replacement); err != nil {
+		return err
+	}
+	if err := s.restoreRuns(ctx, snapshot.Runs); err != nil {
+		return err
+	}
+	if err := s.plan.RestoreBoundaries(ctx, boundaries); err != nil {
+		return err
+	}
+	return s.restoreTranscript(ctx, snapshot.Items, snapshot.ToolResults)
 }
 
 func (s *SessionStores) ApplyRollback(ctx context.Context, rollback sessions.RollbackPlan) error {

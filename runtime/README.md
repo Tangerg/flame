@@ -129,9 +129,15 @@ receipt through its original key. Loss of the writer itself can leave an
 admitted operation unconfirmed.
 
 Protocol 2026-11-28.9 requires a caller-retained idempotency key for
-`sessions.fork`. A fork into an independent worktree checks Git capability
-when it executes. The original committed Session receipt remains readable
-through that key when Git is unavailable.
+`sessions.fork`. Confirming an independent worktree fork binds the key to the
+approved checkout recipe and copied Session history before Git registers a
+worktree. The worktree writer records its own result, and Runtime consumes
+that result in the SQLite transaction that publishes the child Session and
+its original receipt. A replacement Runtime publishes completed writes
+before admitting requests or modifying their checkouts. Replaying the key
+uses the admitted snapshot even if the source changes or Git is unavailable.
+Use a fresh Runtime data directory for development checkouts whose old fork
+catalog entries still contain the former approval and checkout digests.
 
 Project Home shows recent accepted background Runs and links to their original
 Sessions and PR reviews. A schedule or file watcher can capture a Project ID when

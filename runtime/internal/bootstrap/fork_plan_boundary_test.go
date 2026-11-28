@@ -19,6 +19,8 @@ func TestForkRetainsEveryCopiedRunPlanBoundary(t *testing.T) {
 	const forkMethod = delivery.Name("sessions.fork")
 	home := testsupport.TempDirectory(t)
 	t.Setenv("FLAME_HOME", home)
+	source, git := taskWorktreeTestRepository(t)
+	git("commit", "--quiet", "--allow-empty", "-m", "original checkout")
 
 	var nextPlan atomic.Pointer[string]
 	var calls atomic.Int32
@@ -49,7 +51,7 @@ func TestForkRetainsEveryCopiedRunPlanBoundary(t *testing.T) {
 	author := poMCPActivate(&poMCPRuntime{t: t, host: host, api: api, endpoint: host.Endpoint()}, filepath.Join(firstPartyPackages, "plans"))
 	ctx := protocolLifecycleContext(t.Context())
 	parent, err := api.CreateSession(ctx, protocol.CreateSessionRequest{
-		Workspace: &protocol.WorkspaceRef{Path: home}, Title: "Original Plans",
+		Workspace: &protocol.WorkspaceRef{Path: source}, Title: "Original Plans",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -104,11 +106,18 @@ func TestForkRetainsEveryCopiedRunPlanBoundary(t *testing.T) {
 		}
 	}
 	expectPlan(parent.ID, latestStep)
-	request := protocol.ForkSessionRequest{SessionID: parent.ID, FromRunID: latestRun, Title: "Copied Plans"}
+	preview, err := api.PreviewSessionFork(ctx, protocol.PreviewSessionForkRequest{SessionID: parent.ID, FromRunID: latestRun})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := protocol.ForkSessionRequest{SessionID: parent.ID, FromRunID: latestRun, Title: "Copied Plans", Worktree: &preview.Worktree}
 	meta := protocol.CallMetadata{IdempotencyKey: "copy-historical-plans"}
 	fork, err := host.Endpoint().Call[protocol.ForkSessionRequest, *protocol.Session](ctx, forkMethod, request, meta)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if fork.Workspace.Ref != preview.Destination {
+		t.Fatalf("fork workspace = %+v, want %+v", fork.Workspace.Ref, preview.Destination)
 	}
 	expectPlan(fork.ID, latestStep)
 	if err := api.DeleteSession(ctx, parent.ID); err != nil {

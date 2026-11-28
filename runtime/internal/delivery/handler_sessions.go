@@ -285,34 +285,6 @@ func wireSessionMutationErr(err error, sessionID identity.SessionID) error {
 	return wireSessionErr(err)
 }
 
-func (s *Handler) commitForkSession(ctx context.Context, in protocol.ForkSessionRequest, outcome atomicOutcome) error {
-	return outcome.settleRefusal(ctx, s.forkSession(ctx, in, outcome.sessionView()))
-}
-
-func (s *Handler) forkSession(ctx context.Context, in protocol.ForkSessionRequest, complete operation.Reply[sessions.View]) error {
-	sessionID, parseErr := sessionParameter(in.SessionID)
-	if parseErr != nil {
-		return parseErr
-	}
-	fromRunID, err := wireIdentity("fromRunId", in.FromRunID, identity.ParseOptionalRun)
-	if err != nil {
-		return err
-	}
-	spec := sessions.ForkSpec{ParentID: sessionID, FromRunID: fromRunID, Title: in.Title}
-	if in.Worktree != nil {
-		spec.ChildID, err = identity.NewSession(in.Worktree.ID)
-		if err != nil {
-			return protocol.NewFailure(protocol.ErrInvalidParams, "invalid fork worktree identity", err)
-		}
-		spec.PrepareWorkspace = s.prepareForkWorkspace(in)
-	}
-	err = s.sessions.Fork(ctx, spec, complete)
-	if !fromRunID.IsZero() {
-		err = wireBoundaryErr(err)
-	}
-	return wireSessionMutationErr(err, sessionID)
-}
-
 func presentSession(view sessions.View) protocol.Session {
 	return protocol.Session{
 		ID:              view.ID.String(),

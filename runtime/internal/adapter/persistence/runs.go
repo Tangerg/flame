@@ -455,45 +455,31 @@ func (r *RunStore) finish(ctx context.Context, op string, value rundomain.Run, m
 // An upsert would silently re-parent an existing Run, so an import that would do
 // so is refused.
 func (r *RunStore) Restore(ctx context.Context, value rundomain.Run) error {
+	row, err := encodeTerminalRun(value)
+	if err != nil {
+		return err
+	}
 	return r.db.write(ctx, func(ctx context.Context) error {
-		ending, finished := value.Ending()
-		if !finished {
-			return fmt.Errorf("sqlite: restore run %q: state is %s, want terminal", value.ID(), value.State())
-		}
-		lineage := value.Lineage()
-		if lineage.IsChild() {
-			if err := r.validateChildPlacement(ctx, restoreChild, value.ID(), value.SessionID(), lineage.ParentRunID(), lineage.RootRunID()); err != nil {
+		if value.Lineage().IsChild() {
+			if err := r.validateChildPlacement(ctx, restoreChild, row.ID, row.SessionID, row.ParentRunID, row.RootRunID); err != nil {
 				return err
 			}
 		}
-		metrics, err := runMetricsRow(value.Metrics())
-		if err != nil {
-			return fmt.Errorf("sqlite: restore run %q: %w", value.ID(), err)
-		}
-		encodedEffects, err := encodeUnresolvedEffects(value.UnresolvedEffects())
-		if err != nil {
-			return err
-		}
-		outcome, encodedEnding, err := encodeRunEnding(ending)
-		if err != nil {
-			return fmt.Errorf("sqlite: restore run %q: %w", value.ID(), err)
-		}
-		capabilities, err := encodeRunCapabilities(value.Capabilities())
-		if err != nil {
-			return fmt.Errorf("sqlite: restore run %q: %w", value.ID(), err)
-		}
-		selection := value.ModelSelection()
-		_, err = r.db.connection(ctx).ExecContext(ctx, `INSERT INTO runs(
+		_, err := r.db.connection(ctx).ExecContext(ctx, `INSERT INTO runs(
 		   run_id, session_id, spawned_by_item_id, parent_run_id, root_run_id,
 		   outcome, provider, model, reasoning_effort, goal_incarnation_id,
 		   ending, steps, active_duration_ns, usage, context_tokens, unresolved_effects,
 		   capabilities, message_mark, created_at, finished_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, value.ID(), value.SessionID(), lineage.SpawnedByItemID(), lineage.ParentRunID(), lineage.RootRunID(), outcome, selection.Provider(), selection.Model(), selection.ReasoningEffort(), value.GoalIncarnationID().String(), encodedEnding, metrics.steps, metrics.durationNs, metrics.usage, value.ContextTokens(), encodedEffects, capabilities, messageMarkValue(value.MessageMark()), value.CreatedAt().UTC().UnixNano(), value.FinishedAt().UTC().UnixNano(), value.UpdatedAt().UTC().UnixNano())
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			row.ID, row.SessionID, row.SpawnedByItemID, row.ParentRunID, row.RootRunID,
+			row.Outcome, row.Provider, row.Model, row.ReasoningEffort, row.GoalIncarnationID,
+			row.Ending, row.Steps, row.DurationNs, row.Usage, row.ContextTokens, row.UnresolvedEffects,
+			row.Capabilities, row.MessageMark, row.CreatedAt, row.FinishedAt, row.UpdatedAt)
 		if isPrimaryKeyViolation(err) {
-			return fmt.Errorf("%w: run %q already exists", rundomain.ErrIdentityConflict, value.ID())
+			return fmt.Errorf("%w: run %q already exists", rundomain.ErrIdentityConflict, row.ID)
 		}
 		if err != nil {
-			return fmt.Errorf("sqlite: restore run %q: %w", value.ID(), err)
+			return fmt.Errorf("sqlite: restore run %q: %w", row.ID, err)
 		}
 		return nil
 	})

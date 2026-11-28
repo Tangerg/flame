@@ -267,13 +267,13 @@ func scanRunForRecovery(row scanRow) (rundomain.Run, error) {
 func scanRunRow(row scanRow, pendingPolicy pendingReadPolicy) (rundomain.Run, error) {
 	var r runRow
 	if err := row.Scan(
-		&r.id, &r.sessionID,
-		&r.spawnedByItemID, &r.parentRunID, &r.rootRunID,
-		&r.activeSegmentID, &r.outcome,
-		&r.provider, &r.model, &r.reasoningEffort, &r.goalIncarnationID, &r.ending,
-		&r.steps, &r.durationNs, &r.usage, &r.contextTokens, &r.unresolvedEffects,
-		&r.capabilities,
-		&r.messageMark, &r.createdAt, &r.finishedAt, &r.updatedAt, &r.interruptsSuspended,
+		&r.ID, &r.SessionID,
+		&r.SpawnedByItemID, &r.ParentRunID, &r.RootRunID,
+		&r.ActiveSegmentID, &r.Outcome,
+		&r.Provider, &r.Model, &r.ReasoningEffort, &r.GoalIncarnationID, &r.Ending,
+		&r.Steps, &r.DurationNs, &r.Usage, &r.ContextTokens, &r.UnresolvedEffects,
+		&r.Capabilities,
+		&r.MessageMark, &r.CreatedAt, &r.FinishedAt, &r.UpdatedAt, &r.InterruptsSuspended,
 	); err != nil {
 		return rundomain.Run{}, fmt.Errorf("scan run row: %w", err)
 	}
@@ -288,107 +288,141 @@ func scanRunRow(row scanRow, pendingPolicy pendingReadPolicy) (rundomain.Run, er
 	}
 	value, err := rundomain.Restore(snapshot)
 	if err != nil {
-		return rundomain.Run{}, fmt.Errorf("run %q: %w", r.id, err)
+		return rundomain.Run{}, fmt.Errorf("run %q: %w", r.ID, err)
 	}
 	return value, nil
 }
 
 type runRow struct {
-	id                identity.RunID
-	sessionID         identity.SessionID
-	spawnedByItemID   identity.ItemID
-	parentRunID       identity.RunID
-	rootRunID         identity.RunID
-	activeSegmentID   identity.SegmentID
-	outcome           string
-	provider          string
-	model             string
-	reasoningEffort   string
-	goalIncarnationID string
-	ending            string
-	steps             int
-	usage             string
-	contextTokens     int64
-	unresolvedEffects string
+	ID                identity.RunID
+	SessionID         identity.SessionID
+	SpawnedByItemID   identity.ItemID
+	ParentRunID       identity.RunID
+	RootRunID         identity.RunID
+	ActiveSegmentID   identity.SegmentID
+	Outcome           string
+	Provider          string
+	Model             string
+	ReasoningEffort   string
+	GoalIncarnationID string
+	Ending            string
+	Steps             int
+	Usage             string
+	ContextTokens     int64
+	UnresolvedEffects string
 
-	messageMark         sql.NullInt64
-	capabilities        string
-	durationNs          int64
-	createdAt           int64
-	finishedAt          int64
-	updatedAt           int64
-	interruptsSuspended sql.NullString
+	MessageMark         sql.NullInt64
+	Capabilities        string
+	DurationNs          int64
+	CreatedAt           int64
+	FinishedAt          int64
+	UpdatedAt           int64
+	InterruptsSuspended sql.NullString
+}
+
+func encodeTerminalRun(value rundomain.Run) (runRow, error) {
+	ending, finished := value.Ending()
+	if !finished {
+		return runRow{}, fmt.Errorf("sqlite: restore run %q: state is %s, want terminal", value.ID(), value.State())
+	}
+	metrics, err := runMetricsRow(value.Metrics())
+	if err != nil {
+		return runRow{}, fmt.Errorf("sqlite: restore run %q: %w", value.ID(), err)
+	}
+	effects, err := encodeUnresolvedEffects(value.UnresolvedEffects())
+	if err != nil {
+		return runRow{}, err
+	}
+	outcome, encodedEnding, err := encodeRunEnding(ending)
+	if err != nil {
+		return runRow{}, err
+	}
+	capabilities, err := encodeRunCapabilities(value.Capabilities())
+	if err != nil {
+		return runRow{}, err
+	}
+	lineage, selection := value.Lineage(), value.ModelSelection()
+	return runRow{
+		ID: value.ID(), SessionID: value.SessionID(), SpawnedByItemID: lineage.SpawnedByItemID(),
+		ParentRunID: lineage.ParentRunID(), RootRunID: lineage.RootRunID(), Outcome: outcome,
+		Provider: selection.Provider(), Model: selection.Model(), ReasoningEffort: selection.ReasoningEffort(),
+		GoalIncarnationID: value.GoalIncarnationID().String(), Ending: encodedEnding,
+		Steps: metrics.steps, DurationNs: metrics.durationNs, Usage: metrics.usage,
+		ContextTokens: value.ContextTokens(), UnresolvedEffects: effects, Capabilities: capabilities,
+		MessageMark: messageMarkValue(value.MessageMark()),
+		CreatedAt:   value.CreatedAt().UnixNano(), FinishedAt: value.FinishedAt().UnixNano(), UpdatedAt: value.UpdatedAt().UnixNano(),
+	}, nil
 }
 
 func (r runRow) snapshot() (rundomain.Snapshot, error) {
-	lineage, err := rundomain.NewLineage(r.spawnedByItemID, r.parentRunID, r.rootRunID)
+	lineage, err := rundomain.NewLineage(r.SpawnedByItemID, r.ParentRunID, r.RootRunID)
 	if err != nil {
-		return rundomain.Snapshot{}, fmt.Errorf("run %q: %w", r.id, err)
+		return rundomain.Snapshot{}, fmt.Errorf("run %q: %w", r.ID, err)
 	}
-	capabilities, err := decodeRunCapabilities(r.capabilities)
+	capabilities, err := decodeRunCapabilities(r.Capabilities)
 	if err != nil {
-		return rundomain.Snapshot{}, fmt.Errorf("run %q: %w", r.id, err)
+		return rundomain.Snapshot{}, fmt.Errorf("run %q: %w", r.ID, err)
 	}
-	selection, err := flamemodel.NewWithReasoningEffort(r.provider, r.model, r.reasoningEffort)
+	selection, err := flamemodel.NewWithReasoningEffort(r.Provider, r.Model, r.ReasoningEffort)
 	if err != nil {
-		return rundomain.Snapshot{}, fmt.Errorf("decode run %q model selection: %w", r.id, err)
+		return rundomain.Snapshot{}, fmt.Errorf("decode run %q model selection: %w", r.ID, err)
 	}
-	metrics, err := decodeRunMetrics(r.usage, r.steps, time.Duration(r.durationNs))
+	metrics, err := decodeRunMetrics(r.Usage, r.Steps, time.Duration(r.DurationNs))
 	if err != nil {
-		return rundomain.Snapshot{}, fmt.Errorf("decode run %q metrics: %w", r.id, err)
+		return rundomain.Snapshot{}, fmt.Errorf("decode run %q metrics: %w", r.ID, err)
 	}
-	goalIncarnationID, _, err := goalref.ParseOptionalIncarnation(r.goalIncarnationID)
+	goalIncarnationID, _, err := goalref.ParseOptionalIncarnation(r.GoalIncarnationID)
 	if err != nil {
-		return rundomain.Snapshot{}, fmt.Errorf("decode run %q goal incarnation: %w", r.id, err)
+		return rundomain.Snapshot{}, fmt.Errorf("decode run %q goal incarnation: %w", r.ID, err)
 	}
 	lifecycle, err := r.lifecycle()
 	if err != nil {
-		return rundomain.Snapshot{}, fmt.Errorf("decode run %q lifecycle: %w", r.id, err)
+		return rundomain.Snapshot{}, fmt.Errorf("decode run %q lifecycle: %w", r.ID, err)
 	}
 	return rundomain.Snapshot{
-		SessionID: r.sessionID, ID: r.id, Lineage: lineage, ModelSelection: selection,
+		SessionID: r.SessionID, ID: r.ID, Lineage: lineage, ModelSelection: selection,
 		GoalIncarnationID: goalIncarnationID, Lifecycle: lifecycle,
-		Metrics: metrics, ContextTokens: r.contextTokens, Capabilities: capabilities,
-		CreatedAt: time.Unix(0, r.createdAt).UTC(), UpdatedAt: time.Unix(0, r.updatedAt).UTC(),
+		Metrics: metrics, ContextTokens: r.ContextTokens, Capabilities: capabilities,
+		CreatedAt: time.Unix(0, r.CreatedAt).UTC(), UpdatedAt: time.Unix(0, r.UpdatedAt).UTC(),
 	}, nil
 }
 
 func (r runRow) lifecycle() (rundomain.Lifecycle, error) {
-	effects, err := decodeUnresolvedEffects(r.unresolvedEffects)
+	effects, err := decodeUnresolvedEffects(r.UnresolvedEffects)
 	if err != nil {
 		return nil, fmt.Errorf("decode effects: %w", err)
 	}
-	if r.outcome != "" {
-		if !r.activeSegmentID.IsZero() {
+	if r.Outcome != "" {
+		if !r.ActiveSegmentID.IsZero() {
 			return nil, errors.New("a terminal Run stores an active Segment")
 		}
-		ending, err := decodeRunEnding(rundomain.Outcome(r.outcome), r.ending)
+		ending, err := decodeRunEnding(rundomain.Outcome(r.Outcome), r.Ending)
 		if err != nil {
 			return nil, fmt.Errorf("decode ending: %w", err)
 		}
 		return rundomain.Termination{
 			Ending: ending, UnresolvedEffects: effects,
-			FinishedAt: time.Unix(0, r.finishedAt).UTC(), MessageMark: decodeMessageMark(r.messageMark),
+			FinishedAt: time.Unix(0, r.FinishedAt).UTC(), MessageMark: decodeMessageMark(r.MessageMark),
 		}, nil
 	}
-	if r.ending != "" || len(effects) != 0 || r.finishedAt != 0 || r.messageMark.Valid {
+	if r.Ending != "" || len(effects) != 0 || r.FinishedAt != 0 || r.MessageMark.Valid {
 		return nil, errors.New("an open Run stores terminal facts")
 	}
-	if !r.activeSegmentID.IsZero() {
-		return rundomain.ActiveSegment{ID: r.activeSegmentID}, nil
+	if !r.ActiveSegmentID.IsZero() {
+		return rundomain.ActiveSegment{ID: r.ActiveSegmentID}, nil
 	}
 	return rundomain.Parked{}, nil
 }
 
 func (r runRow) validatePendingSet(policy pendingReadPolicy) error {
-	if !r.interruptsSuspended.Valid {
+	if !r.InterruptsSuspended.Valid {
 		if policy == requirePendingSet {
-			return fmt.Errorf("run %q is waiting with no root-owned Pending set", r.id)
+			return fmt.Errorf("run %q is waiting with no root-owned Pending set", r.ID)
 		}
 		return nil
 	}
-	if _, err := decodeInterrupts(r.interruptsSuspended.String); err != nil {
-		return fmt.Errorf("decode run %q interrupts: %w", r.id, err)
+	if _, err := decodeInterrupts(r.InterruptsSuspended.String); err != nil {
+		return fmt.Errorf("decode run %q interrupts: %w", r.ID, err)
 	}
 	return nil
 }
@@ -467,11 +501,9 @@ func (row runProblemRow) failure() (rundomain.Failure, error) {
 	return rundomain.Failure{Kind: row.Kind, Detail: row.Detail, DocURL: row.DocURL, RetryAfter: retryAfter}, nil
 }
 
-func messageMarkValue(mark rundomain.MessageMark) any {
-	if count, known := mark.Count(); known {
-		return count
-	}
-	return nil
+func messageMarkValue(mark rundomain.MessageMark) sql.NullInt64 {
+	count, known := mark.Count()
+	return sql.NullInt64{Int64: int64(count), Valid: known}
 }
 
 func decodeMessageMark(value sql.NullInt64) rundomain.MessageMark {

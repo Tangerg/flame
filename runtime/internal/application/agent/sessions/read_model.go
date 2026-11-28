@@ -203,11 +203,15 @@ func (c *Coordinator) view(value session.Session, activity Activity) (View, erro
 	if err != nil {
 		return View{}, fmt.Errorf("sessions: inspect workspace %q: %w", path, err)
 	}
+	return sessionView(value, inspection, activity), nil
+}
+
+func sessionView(value session.Session, inspection workspaceapp.DirectoryInspection, activity Activity) View {
 	selection := value.Selection()
 	return View{
 		ID:              value.ID(),
 		Title:           value.Title(),
-		Workspace:       workspaceapp.Info{Path: path, DirectoryInspection: inspection},
+		Workspace:       workspaceapp.Info{Path: value.Workspace().Path(), DirectoryInspection: inspection},
 		Project:         value.Project(),
 		Provider:        selection.Provider(),
 		Model:           selection.Model(),
@@ -215,5 +219,5 @@ func (c *Coordinator) view(value session.Session, activity Activity) (View, erro
 		Activity:        activity,
 		CreatedAt:       value.CreatedAt(), UpdatedAt: value.UpdatedAt(),
 		Favorite: value.Favorite(), Isolated: value.Isolated(), Revision: value.Revision(),
-	}, nil
+	}
 }

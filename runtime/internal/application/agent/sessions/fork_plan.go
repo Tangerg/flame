@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -37,7 +38,7 @@ func newForkPlan(
 	if owned.Session.ParentID() != parentID {
 		return ForkPlan{}, errors.New("sessions: fork plan child belongs to a different parent")
 	}
-	if owned.Session.Revision() != 1 {
+	if owned.Session.Revision() != exactint.First().Value() {
 		return ForkPlan{}, errors.New("sessions: fork plan child is not at its initial revision")
 	}
 	boundaries, err := ownForkPlanBoundaries(owned.Runs, material.PlanBoundaries)

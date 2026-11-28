@@ -147,7 +147,10 @@ func buildAssemblyCore(
 	if err != nil {
 		return nil, fmt.Errorf("runtime: prepare task worktree storage: %w", err)
 	}
-	taskWorktrees := workspace.NewTaskWorktrees(workspaceServices.scope, taskWorktreeBackend, admissionGate, cfg.stores.Sessions, policy.invalidations.publish)
+	taskWorktrees := workspace.NewTaskWorktrees(workspaceServices.scope, taskWorktreeBackend, admissionGate,
+		cfg.stores.Sessions, sessionStores.WorktreeForkPending, policy.invalidations.publish)
+	worktreeForks := sessions.NewWorktreeForks(sessionCoordinator, taskWorktrees, sessionStores,
+		taskWorktreeBackend, delivery.EncodeWorktreeForkReceipt)
 	recoverUncertain := startupRunRecovery(cfg.stores, pluginCoordinator, runCoordinator, recoveryPersistence, execution.executor, ownershipRecovery)
 	host := &Instance{
 		application: &runtimeApplication{
@@ -181,6 +184,7 @@ func buildAssemblyCore(
 				WorkspaceVCS:           readServices.workspaceVCS,
 				WorkspaceDiscovery:     readServices.workspaceDiscovery,
 				TaskWorktrees:          taskWorktrees,
+				WorktreeForks:          worktreeForks,
 				WorkspaceSkills:        execution.tools.skills,
 				Hooks:                  execution.hooks,
 				WorkspaceWatch:         readServices.workspaceWatch,
