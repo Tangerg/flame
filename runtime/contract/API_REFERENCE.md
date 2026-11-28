@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-11-28.6` · 115 methods
+Protocol `2026-11-28.7` · 115 methods
 
 ## Methods
 
@@ -59,8 +59,8 @@ Protocol `2026-11-28.6` · 115 methods
 | `skills.discovered.list` | query | unary | none | none | none | — | `skills` | `workspace_unavailable`, `capability_not_negotiated` |
 | `skills.discovered.get` | query | unary | none | none | none | — | `skills` | `workspace_unavailable`, `skill_not_found`, `skill_unavailable`, `capability_not_negotiated` |
 | `skills.library.list` | query | unary | none | none | none | — | `skills` | `capability_not_negotiated` |
-| `skills.library.archive` | command | unary | replayResponse | none | none | — | `skills` | `skill_not_found`, `capability_not_negotiated` |
-| `skills.library.restore` | command | unary | replayResponse | none | none | — | `skills` | `skill_not_found`, `capability_not_negotiated` |
+| `skills.library.archive` | command | unary | requiredReplayResponse | none | none | — | `skills` | `skill_not_found`, `capability_not_negotiated` |
+| `skills.library.restore` | command | unary | requiredReplayResponse | none | none | — | `skills` | `skill_not_found`, `capability_not_negotiated` |
 | `skills.proposals.list` | query | unary | none | none | none | — | `skills` | `workspace_unavailable`, `capability_not_negotiated` |
 | `skills.proposals.approve` | command | unary | replayResponse | none | none | — | `skills` | `workspace_unavailable`, `revision_conflict`, `capability_not_negotiated` |
 | `skills.proposals.reject` | command | unary | replayResponse | none | none | — | `skills` | `workspace_unavailable`, `revision_conflict`, `capability_not_negotiated` |

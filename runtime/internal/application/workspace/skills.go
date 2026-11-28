@@ -30,7 +30,8 @@ type SkillCatalog interface {
 type SkillCurator interface {
 	List(ctx context.Context) ([]skills.Entry, error)
 	Move(ctx context.Context, name string, destination skills.Lifecycle, receipt operation.ReplayClaim) ([]string, error)
-	RecoverMove(ctx context.Context) ([]string, error)
+	ResumeMove(ctx context.Context, receipt operation.ReplayClaim) ([]string, error)
+	RecoverPendingMove(ctx context.Context) ([]string, error)
 }
 
 type SkillProposals interface {
@@ -145,8 +146,14 @@ func (s *Skills) Move(ctx context.Context, name string, destination skills.Lifec
 	return err
 }
 
-func (s *Skills) RecoverMove(ctx context.Context) error {
-	identities, err := s.curator.RecoverMove(ctx)
+func (s *Skills) ResumeMove(ctx context.Context, receipt operation.ReplayClaim) error {
+	identities, err := s.curator.ResumeMove(ctx, receipt)
+	s.observations.PublishSkillChanges(identities)
+	return err
+}
+
+func (s *Skills) RecoverPendingMove(ctx context.Context) error {
+	identities, err := s.curator.RecoverPendingMove(ctx)
 	s.observations.PublishSkillChanges(identities)
 	return err
 }

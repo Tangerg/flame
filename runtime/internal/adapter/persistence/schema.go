@@ -338,7 +338,7 @@ func currentSchema() []string {
 			destination       TEXT NOT NULL,
 			directory_id      TEXT NOT NULL CHECK (length(directory_id) > 0),
 			document_revision TEXT NOT NULL CHECK (length(document_revision) > 0),
-			receipt_key       TEXT REFERENCES idempotency_records(key) ON DELETE RESTRICT
+			receipt_key       TEXT NOT NULL REFERENCES idempotency_records(key) ON DELETE RESTRICT
 		)`,
 		`CREATE TABLE IF NOT EXISTS committed_session_resource_retirements (
 			retirement_id TEXT PRIMARY KEY,

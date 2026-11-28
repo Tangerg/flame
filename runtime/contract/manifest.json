@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-11-28.6",
+  "protocolVersion": "2026-11-28.7",
   "features": [
     "reasoning",
     "multimodal",
@@ -758,7 +758,7 @@
       "name": "skills.library.archive",
       "kind": "unary",
       "operation": "command",
-      "idempotency": "replayResponse",
+      "idempotency": "requiredReplayResponse",
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
@@ -774,7 +774,7 @@
       "name": "skills.library.restore",
       "kind": "unary",
       "operation": "command",
-      "idempotency": "replayResponse",
+      "idempotency": "requiredReplayResponse",
       "replayCursor": "none",
       "pagination": "none",
       "errors": [

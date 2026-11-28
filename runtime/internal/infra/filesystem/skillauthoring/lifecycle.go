@@ -41,41 +41,45 @@ func (s *Store) Move(ctx context.Context, name string, to skills.Lifecycle, rece
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	root, release, err := s.openLeasedRoot(ctx, "move skill")
+	root, release, err := s.openWritableRoot(ctx, "move skill")
 	if err != nil {
 		return nil, err
 	}
 	defer release()
-	changed, err := s.settlePendingMove(ctx, root)
-	if err != nil {
-		return changed, err
-	}
 	source, destination := s.movePaths(name, to)
 	directory, revision, err := readMoveSource(ctx, root, name, source)
 	if err != nil {
-		return changed, err
+		return nil, err
 	}
 	if err := requireVacantDirectory(root, destination); err != nil {
-		return changed, err
+		return nil, err
 	}
 	usage, err := readUsage(ctx, root)
 	if err != nil {
-		return changed, err
+		return nil, err
 	}
 	move := LifecycleMove{Name: name, Destination: to, DirectoryID: directory, DocumentRevision: revision, Receipt: receipt}
 	if err := s.moves.Prepare(ctx, move); err != nil {
-		return changed, err
+		return nil, err
 	}
 	moved, refusal, err := s.completeMove(ctx, root, move, usage)
-	return distinctPaths(append(changed, moved...)), errors.Join(refusal, err)
+	return moved, errors.Join(refusal, err)
 }
 
-func (s *Store) RecoverMove(ctx context.Context) ([]string, error) {
+func (s *Store) RecoverPendingMove(ctx context.Context) ([]string, error) {
 	if s.moves == nil {
 		return nil, errUserLifecycleRequired
 	}
-	if _, pending, err := s.moves.Pending(ctx); err != nil || !pending {
+	move, pending, err := s.moves.Pending(ctx)
+	if err != nil || !pending {
 		return nil, err
+	}
+	return s.ResumeMove(ctx, move.Receipt)
+}
+
+func (s *Store) ResumeMove(ctx context.Context, receipt operation.ReplayClaim) ([]string, error) {
+	if s.moves == nil {
+		return nil, errUserLifecycleRequired
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -84,12 +88,8 @@ func (s *Store) RecoverMove(ctx context.Context) ([]string, error) {
 		return nil, err
 	}
 	defer release()
-	return s.settlePendingMove(ctx, root)
-}
-
-func (s *Store) settlePendingMove(ctx context.Context, root *os.Root) ([]string, error) {
 	move, pending, err := s.moves.Pending(ctx)
-	if err != nil || !pending {
+	if err != nil || !pending || move.Receipt != receipt {
 		return nil, err
 	}
 	usage, err := readUsage(ctx, root)

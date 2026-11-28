@@ -10,11 +10,11 @@ import (
 
 func skillMoveReplay(to skills.Lifecycle) func(*Handler, context.Context, protocol.SkillNameRequest, keyedCall) protocol.OperationResult {
 	return func(s *Handler, ctx context.Context, input protocol.SkillNameRequest, call keyedCall) protocol.OperationResult {
+		receipt := operation.ReplayClaim{Key: call.key, Fingerprint: call.fingerprint}
 		payload, err := call.replay.InvokeRecoverable(ctx, call.key, call.fingerprint, call.admit, func(retained bool) error {
 			if retained {
-				return s.workspaceSkills.RecoverMove(ctx)
+				return s.workspaceSkills.ResumeMove(ctx, receipt)
 			}
-			receipt := operation.ReplayClaim{Key: call.key, Fingerprint: call.fingerprint}
 			return s.workspaceSkills.Move(ctx, input.Name, to, receipt)
 		}, EncodeSkillMoveReceipt)
 		return call.result(ctx, payload, err)

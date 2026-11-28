@@ -19,7 +19,6 @@ import (
 
 const (
 	skillMoveCrashVariable = "FLAME_TEST_SKILL_MOVE_CRASH"
-	skillMoveKeyVariable   = "FLAME_TEST_SKILL_MOVE_KEY"
 	skillMoveCutVariable   = "FLAME_TEST_SKILL_MOVE_CUT"
 	skillMoveBeforeRename  = "before_rename"
 	skillMoveBeforeReceipt = "before_receipt"
@@ -48,18 +47,14 @@ func TestSkillMoveCrashHelper(t *testing.T) {
 	}
 	host, _ := openProtocolRuntime(t, newReplyStub("unused"))
 	defer host.Close()
-	key := os.Getenv(skillMoveKeyVariable)
 	cut := "BEFORE UPDATE OF payload ON idempotency_records"
-	switch {
-	case point == skillMoveBeforeRename:
+	if point == skillMoveBeforeRename {
 		cut = "AFTER INSERT ON pending_skill_move"
-	case key == "":
-		cut = "BEFORE DELETE ON pending_skill_move"
 	}
 	questionCrashDatabase(t, home, `CREATE TRIGGER interrupt_skill_move_settlement
 		`+cut+` BEGIN SELECT test_skill_lifecycle_crash(); END`)
-	result := callSkillMove(t.Context(), host.Endpoint(), method, key)
-	if point == skillMoveBeforeRename && errors.Is(result.Failure, protocol.ErrIdempotencyInProgress) {
+	result := callSkillMove(t.Context(), host.Endpoint(), method, skillMoveCrashKey)
+	if point == skillMoveBeforeRename && result.Failure != nil && errors.Is(result.Failure, protocol.ErrIdempotencyInProgress) {
 		os.Exit(commandCrashExit)
 	}
 	t.Fatalf("receipt cutpoint was not reached: %v", result.Failure)
@@ -67,23 +62,20 @@ func TestSkillMoveCrashHelper(t *testing.T) {
 
 func TestSkillLifecycleAcknowledgementSurvivesAbruptProcessExit(t *testing.T) {
 	for _, test := range []struct {
-		name, key       string
+		name            string
 		method, reverse delivery.Name
 	}{
-		{"archive", skillMoveCrashKey, delivery.SkillsLibraryArchive, delivery.SkillsLibraryRestore},
-		{"restore", skillMoveCrashKey, delivery.SkillsLibraryRestore, delivery.SkillsLibraryArchive},
-		{"unkeyed archive", "", delivery.SkillsLibraryArchive, delivery.SkillsLibraryRestore},
+		{"archive", delivery.SkillsLibraryArchive, delivery.SkillsLibraryRestore},
+		{"restore", delivery.SkillsLibraryRestore, delivery.SkillsLibraryArchive},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			source, destination := crashSkillMove(t, test.method, test.key, skillMoveBeforeReceipt)
+			source, destination := crashSkillMove(t, test.method, skillMoveBeforeReceipt)
 			endpoint := restartAfterSkillMove(t)
 			if result := callSkillMove(t.Context(), endpoint, test.reverse, "reverse-skill-move"); result.Failure != nil {
 				t.Fatalf("later move before replay: %v", result.Failure)
 			}
-			if test.key != "" {
-				if result := callSkillMove(t.Context(), endpoint, test.method, test.key); result.Failure != nil || result.Value != (struct{}{}) {
-					t.Fatalf("original %s acknowledgement: %+v, %v", test.method, result.Value, result.Failure)
-				}
+			if result := callSkillMove(t.Context(), endpoint, test.method, skillMoveCrashKey); result.Failure != nil || result.Value != (struct{}{}) {
+				t.Fatalf("original %s acknowledgement: %+v, %v", test.method, result.Value, result.Failure)
 			}
 			assertSkillMoveLocation(t, source, destination, skillMoveCrashResource)
 		})
@@ -91,7 +83,7 @@ func TestSkillLifecycleAcknowledgementSurvivesAbruptProcessExit(t *testing.T) {
 }
 
 func TestSkillMoveReceiptRefusesAnIdenticallyNamedReplacement(t *testing.T) {
-	source, destination := crashSkillMove(t, delivery.SkillsLibraryArchive, skillMoveCrashKey, skillMoveBeforeReceipt)
+	source, destination := crashSkillMove(t, delivery.SkillsLibraryArchive, skillMoveBeforeReceipt)
 	retained := filepath.Join(os.Getenv("FLAME_HOME"), "retained-original")
 	if err := os.Rename(destination, retained); err != nil {
 		t.Fatal(err)
@@ -120,7 +112,7 @@ func TestSkillMoveRecoversOnlyAnUnchangedSourceAfterAbruptProcessExit(t *testing
 		{name: "edited", change: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			source, destination := crashSkillMove(t, delivery.SkillsLibraryArchive, skillMoveCrashKey, skillMoveBeforeRename)
+			source, destination := crashSkillMove(t, delivery.SkillsLibraryArchive, skillMoveBeforeRename)
 			if test.change {
 				if err := os.WriteFile(filepath.Join(source, skills.SkillFile), []byte(skillMoveCrashDocument+"New revision.\n"), 0600); err != nil {
 					t.Fatal(err)
@@ -143,7 +135,27 @@ func TestSkillMoveRecoversOnlyAnUnchangedSourceAfterAbruptProcessExit(t *testing
 	}
 }
 
-func TestSkillMoveRepairsAnUnsettledReceiptBeforeAnotherMove(t *testing.T) {
+func TestSkillMoveRequiresCallerIdentity(t *testing.T) {
+	for _, method := range []delivery.Name{delivery.SkillsLibraryArchive, delivery.SkillsLibraryRestore} {
+		t.Run(method.String(), func(t *testing.T) {
+			home := testsupport.TempDirectory(t)
+			t.Setenv("FLAME_HOME", home)
+			source := filepath.Join(home, "skills", skillMoveCrashName)
+			destination := filepath.Join(home, "skills", "_archive", skillMoveCrashName)
+			if method == delivery.SkillsLibraryRestore {
+				source, destination = destination, source
+			}
+			writeSkillMoveFixture(t, source, skillMoveCrashResource)
+			result := callSkillMove(t.Context(), restartAfterSkillMove(t), method, "")
+			if result.Failure == nil || !errors.Is(result.Failure, protocol.ErrInvalidParams) {
+				t.Errorf("%s without a key = %+v, %v; want invalid params", method, result.Value, result.Failure)
+			}
+			assertSkillMoveLocation(t, source, destination, skillMoveCrashResource)
+		})
+	}
+}
+
+func TestSkillMoveSettlesOnlyItsOriginalRequest(t *testing.T) {
 	home := testsupport.TempDirectory(t)
 	t.Setenv("FLAME_HOME", home)
 	source := filepath.Join(home, "skills", skillMoveCrashName)
@@ -157,16 +169,21 @@ func TestSkillMoveRepairsAnUnsettledReceiptBeforeAnotherMove(t *testing.T) {
 		t.Fatalf("refused archive receipt: %v", result.Failure)
 	}
 	assertSkillMoveLocation(t, destination, source, skillMoveCrashResource)
-	if result := callSkillMove(t.Context(), endpoint, delivery.SkillsLibraryRestore, "restore-after-refusal"); result.Failure != nil {
-		t.Fatalf("later restore: %v", result.Failure)
+	const restoreKey = "restore-after-refusal"
+	if result := callSkillMove(t.Context(), endpoint, delivery.SkillsLibraryRestore, restoreKey); result.Failure == nil || !errors.Is(result.Failure, protocol.ErrIdempotencyInProgress) {
+		t.Fatalf("a different key advanced the unsettled move: %+v, %v", result.Value, result.Failure)
 	}
+	assertSkillMoveLocation(t, destination, source, skillMoveCrashResource)
 	if result := callSkillMove(t.Context(), endpoint, delivery.SkillsLibraryArchive, skillMoveCrashKey); result.Failure != nil {
 		t.Fatalf("original archive receipt: %v", result.Failure)
+	}
+	if result := callSkillMove(t.Context(), endpoint, delivery.SkillsLibraryRestore, restoreKey); result.Failure != nil {
+		t.Fatalf("later restore with its original key: %v", result.Failure)
 	}
 	assertSkillMoveLocation(t, source, destination, skillMoveCrashResource)
 }
 
-func crashSkillMove(t *testing.T, method delivery.Name, key, point string) (source, destination string) {
+func crashSkillMove(t *testing.T, method delivery.Name, point string) (source, destination string) {
 	t.Helper()
 	home := testsupport.TempDirectory(t)
 	t.Setenv("FLAME_HOME", home)
@@ -179,7 +196,7 @@ func crashSkillMove(t *testing.T, method delivery.Name, key, point string) (sour
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	command := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestSkillMoveCrashHelper$")
-	command.Env = append(os.Environ(), skillMoveCrashVariable+"="+method.String(), skillMoveKeyVariable+"="+key, skillMoveCutVariable+"="+point)
+	command.Env = append(os.Environ(), skillMoveCrashVariable+"="+method.String(), skillMoveCutVariable+"="+point)
 	output, err := command.CombinedOutput()
 	if exit, ok := errors.AsType[*exec.ExitError](err); !ok || exit.ExitCode() != commandCrashExit {
 		t.Fatalf("abrupt exit: %v\n%s", err, output)

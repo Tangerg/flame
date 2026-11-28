@@ -792,14 +792,14 @@ export const WIRE_METHOD_POLICY = {
   "skills.library.archive": {
     operation: "command",
     response: "unary",
-    idempotency: "replayResponse",
+    idempotency: "requiredReplayResponse",
     replayCursor: "none",
     pagination: "none",
   },
   "skills.library.restore": {
     operation: "command",
     response: "unary",
-    idempotency: "replayResponse",
+    idempotency: "requiredReplayResponse",
     replayCursor: "none",
     pagination: "none",
   },

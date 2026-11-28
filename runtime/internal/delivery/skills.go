@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 )
@@ -68,11 +67,9 @@ func registerSkills(registry *Registry) {
 }
 
 func registerSkillMove(registry *Registry, method Name, goName string, destination skills.Lifecycle) {
-	registry.commandAck(MethodMeta{
+	registry.requiredReplayCommand(MethodMeta{
 		Name: method, GoName: goName,
 		Errors:          []string{protocol.ErrSkillNotFound.Error()},
 		CapabilityRules: requires(protocol.FeatureSkills),
-	}, func(s *Handler, ctx context.Context, request protocol.SkillNameRequest) error {
-		return mapSkillError(s.workspaceSkills.Move(ctx, request.Name, destination, operation.ReplayClaim{}))
-	}).withOwnedReplay(skillMoveReplay(destination))
+	}, skillMoveReplay(destination))
 }

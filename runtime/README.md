@@ -2176,6 +2176,12 @@ No storage or protocol format changes are required.
 
 Managed catalogs, proposal review, approval, and idle curation load verified document bytes through the same Scope format and directory-name binding used by discovery and package admission. Idle curation leaves invalid documents in place. Archive and restore serialize directory moves and usage changes under one library lease. An admitted move retains the identity of its source directory and the revision of its document. Runtime can finish the original command after a process exit by moving that source or recognizing the same directory at its destination. A replay returns the stored acknowledgement even after subsequent moves. A new move requires the Skill in the requested source location and a vacant destination. Malformed usage metadata stops recording and curation before they change files. Repair the retained metadata before retrying.
 
+Protocol 2026-11-28.7 requires the caller's idempotency key for explicit Skill
+archive and restore. While a move awaits its receipt, new library writes wait
+for a retry of the original command or startup recovery. The move journal and
+its receipt reservation share a transaction. Use a fresh Runtime data directory
+for the required receipt reference.
+
 Automatic user-library revision reads use the same bounded document source as
 discovery and execution. Invalid or absent documents cannot enter revision
 generation; oversized documents retain the Runtime admission category and cause.
