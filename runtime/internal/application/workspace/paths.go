@@ -38,6 +38,7 @@ type paths interface {
 	ResolveExistingDir(path string) (string, error)
 	ResolveInRoot(root, path string) (string, error)
 	ResolveExistingInRoot(root, path string) (string, error)
+	RemovalAffectsDirectory(root, address string) (bool, error)
 }
 
 type Scope struct {

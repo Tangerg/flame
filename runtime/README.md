@@ -94,11 +94,12 @@ registration uses the shared Git repository. The selected checkout remains the
 handoff destination. Handoff previews bind tracked and untracked
 changes to the original checkout's branch and HEAD. Accepting a current preview
 stages its changes in that clean destination. Release uses Git's non-forced
-removal for an owned registration at its original base with no attached Session,
-even if the checkout directory is missing. A worktree moved with Git appears
-unavailable. Move it back to the managed path or remove its registration in Git
-before releasing the task. Worktrees created before Runtime recorded Git custody
-appear as unavailable and remain on disk.
+removal for an owned registration at its original base, even if the checkout
+directory is missing. Release is blocked if a Session's saved workspace path
+lies inside the checkout or currently resolves to a directory inside it. A
+worktree moved with Git appears unavailable. Move it back to the managed path
+or remove its registration in Git before releasing the task. Worktrees created
+before Runtime recorded Git custody appear as unavailable and remain on disk.
 
 Project Home shows recent accepted background Runs and links to their original
 Sessions and PR reviews. A schedule or file watcher can capture a Project ID when

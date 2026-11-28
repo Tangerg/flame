@@ -134,6 +134,53 @@ func TestTaskWorktreeReleaseProtectsSessionBoundThroughCaseAlias(t *testing.T) {
 	}
 }
 
+func TestTaskWorktreeReleaseProtectsSessionWhoseDirectoryWasRetargeted(t *testing.T) {
+	source, git := taskWorktreeTestRepository(t)
+	git("commit", "--quiet", "--allow-empty", "-m", "initial checkout")
+	cfg := poMCPConfig(t)
+	cfg.defaultWorkspacePath = source
+	r := poMCPOpen(t, cfg)
+	task := r.must(delivery.TaskWorktreesCreate, protocol.CreateTaskWorktreeRequest{
+		Source: protocol.WorkspaceRef{Path: source}, Base: "HEAD",
+	}, "create-worktree-for-retargeted-session").(*protocol.TaskWorktree)
+	root := t.TempDir()
+	workspace := protocol.WorkspaceRef{Path: filepath.Join(root, "workspace")}
+	if err := os.Mkdir(workspace.Path, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	bound := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Workspace: &workspace},
+		"bind-session-before-retargeting").(*protocol.Session)
+	if err := os.Rename(workspace.Path, filepath.Join(root, "moved")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(task.Workspace.Path, workspace.Path); err != nil {
+		t.Fatal(err)
+	}
+	saved := r.must(delivery.SessionsGet, protocol.GetSessionRequest{SessionID: bound.ID}, "").(*protocol.Session)
+	if saved.Workspace.Ref != bound.Workspace.Ref || saved.Workspace.RepositoryRoot != task.Workspace.Path {
+		t.Fatalf("retargeted workspace = %+v; want saved path %q and live checkout %q", saved.Workspace, bound.Workspace.Ref.Path, task.Workspace.Path)
+	}
+
+	request := protocol.TaskWorktreeRequest{ID: task.ID}
+	refused := r.endpoint.Invoke(protocolLifecycleContext(t.Context()), delivery.TaskWorktreesRelease, request,
+		protocol.CallMetadata{IdempotencyKey: "release-retargeted-session-worktree"})
+	if refused.Failure == nil || !errors.Is(refused.Failure, protocol.ErrSessionBusy) {
+		t.Errorf("release with a retargeted Session = %+v, %v; want workspace busy", refused.Value, refused.Failure)
+	}
+	registration := "worktree " + task.Workspace.Path + "\n"
+	if registrations := git("worktree", "list", "--porcelain"); !strings.Contains(registrations, registration) {
+		t.Fatalf("Git removed the retargeted Session's checkout: %s", registrations)
+	}
+
+	if err := os.Remove(workspace.Path); err != nil {
+		t.Fatal(err)
+	}
+	r.must(delivery.TaskWorktreesRelease, request, "release-worktree-after-removing-alias")
+	if registrations := git("worktree", "list", "--porcelain"); strings.Contains(registrations, registration) {
+		t.Fatalf("Git retained the checkout after the Session's external path disappeared: %s", registrations)
+	}
+}
+
 func TestTaskWorktreeReleaseFencesNewSessionBinding(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("the Git timing fixture uses a POSIX shell")

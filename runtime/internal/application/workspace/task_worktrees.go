@@ -3,7 +3,6 @@ package workspace
 import (
 	"context"
 	"errors"
-	"path/filepath"
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
@@ -143,7 +142,11 @@ func (w *TaskWorktrees) Release(ctx context.Context, id string, complete operati
 		return err
 	}
 	for _, session := range sessions {
-		if relative, err := filepath.Rel(task.Path, session.Workspace().Path()); err == nil && filepath.IsLocal(relative) {
+		affected, err := w.scope.paths.RemovalAffectsDirectory(task.Path, session.Workspace().Path())
+		if err != nil {
+			return err
+		}
+		if affected {
 			return ErrTaskWorktreeBusy
 		}
 	}
