@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/Tangerg/acp"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
@@ -28,6 +29,12 @@ func newServer(c *connector) (*sdk.Server, error) {
 	}
 	err = errors.Join(
 		pluginstorage.RegisterReceipts(backend, c.db),
+		methods.Agents.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, _ pluginmcp.Command[wire.AgentsRequest]) (wire.AgentsResponse, error) {
+			if err := requireHuman(ctx); err != nil {
+				return wire.AgentsResponse{}, err
+			}
+			return c.agents(), nil
+		}),
 		methods.List.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[wire.ListRequest]) (wire.Sessions, error) {
 			if err := requireHuman(ctx); err != nil {
 				return wire.Sessions{}, err
@@ -40,7 +47,11 @@ func newServer(c *connector) (*sdk.Server, error) {
 			}
 			return c.get(ctx, command.Input)
 		}),
-		registerExternal(backend, c, methods.Open, true, c.open),
+		registerExternal(backend, c, methods.Open, true, func(ctx context.Context, input wire.OpenRequest) (nativeCreation, error) {
+			value, err := c.open(ctx, input)
+			return nativeCreation{session: value}, err
+		}),
+		registerExternal(backend, c, methods.Create, false, c.create),
 		registerExternal(backend, c, methods.Fork, false, c.fork),
 		registerLocal(backend, c, methods.Prompt, c.prompt),
 		registerLocal(backend, c, methods.Cancel, c.cancel),
@@ -73,7 +84,7 @@ func registerLocal[P any](backend *pluginmcp.Backend, c *connector, method *plug
 	})
 }
 
-func registerExternal[P any](backend *pluginmcp.Backend, c *connector, method *pluginmcp.Method[P, wire.Session], replayable bool, dispatch func(context.Context, P) (wire.Session, error)) error {
+func registerExternal[P any](backend *pluginmcp.Backend, c *connector, method *pluginmcp.Method[P, wire.Session], replayable bool, dispatch func(context.Context, P) (nativeCreation, error)) error {
 	return method.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[P]) (wire.Session, error) {
 		if err := requireHuman(ctx); err != nil {
 			return wire.Session{}, err
@@ -95,11 +106,24 @@ func registerExternal[P any](backend *pluginmcp.Backend, c *connector, method *p
 			return wire.Session{}, pluginmcp.ErrOutcomeUnconfirmed
 		}
 		result, effectErr := dispatch(ctx, command.Input)
-		return pluginstorage.CompleteExternalCommand(ctx, prepared, classify, func(context.Context) (pluginstorage.CommandPlan[wire.Session], error) {
+		value, err := pluginstorage.CompleteExternalCommand(ctx, prepared, classify, func(context.Context) (pluginstorage.CommandPlan[wire.Session], error) {
 			if effectErr != nil {
 				return pluginstorage.CommandPlan[wire.Session]{}, effectErr
 			}
-			return pluginstorage.NewCommandPlan(result, nil)
+			if result.link == nil {
+				return pluginstorage.NewCommandPlan(result.session, nil)
+			}
+			return pluginstorage.NewCommandPlan(result.session, func(tx context.Context) error {
+				return c.save(tx, result.session)
+			})
 		})
+		if err == nil && result.handle != nil {
+			c.mu.Lock()
+			result.link.bound[result.handle.ID()] = &attachedSession{
+				id: value.ID, handle: result.handle, permissions: make(map[string]chan acp.RequestPermissionOutcome),
+			}
+			c.mu.Unlock()
+		}
+		return value, err
 	})
 }

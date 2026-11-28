@@ -8,6 +8,14 @@
       "key": "OPENCODE_EXECUTABLE",
       "secret": false,
       "required": false
+    },
+    {
+      "id": "agents",
+      "server": "opencode",
+      "target": "env",
+      "key": "FLAME_ACP_AGENTS",
+      "secret": false,
+      "required": false
     }
   ],
   "contributions": [
@@ -21,8 +29,8 @@
   "components": [
     {
       "id": "opencode-sessions",
-      "title": "OpenCode sessions",
-      "localizedTitles": {"zh": "OpenCode 会话", "zh-TW": "OpenCode 工作階段"},
+      "title": "ACP sessions",
+      "localizedTitles": {"zh": "ACP 会话", "zh-TW": "ACP 工作階段"},
       "scope": "client",
       "placement": "workspaceView",
       "entry": "io.github.tangerg.flame/components/component.js",

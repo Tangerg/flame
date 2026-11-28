@@ -187,14 +187,10 @@ func (c *connector) answer(ctx context.Context, in wire.AnswerRequest, _ string)
 
 func (c *connector) onPermission(ctx context.Context, connection *acp.ClientConn, request *acp.RequestPermissionRequest) (*acp.RequestPermissionResponse, error) {
 	c.mu.Lock()
-	link := c.link
-	var bound *attachedSession
-	if link != nil && link.conn == connection {
-		bound = link.bound[request.SessionID]
-	}
+	bound := c.nativeBinding(connection, request.SessionID)
 	if bound == nil || bound.turn == nil {
 		c.mu.Unlock()
-		return nil, errors.New("OpenCode returned a permission outside the attached prompt")
+		return nil, errors.New("acp: permission arrived outside the attached prompt")
 	}
 	turn := bound.turn.id
 	id := uuid.NewString()
@@ -267,11 +263,7 @@ func (c *connector) onUpdate(ctx context.Context, connection *acp.ClientConn, no
 		return
 	}
 	c.mu.Lock()
-	link := c.link
-	var bound *attachedSession
-	if link != nil && link.conn == connection {
-		bound = link.bound[notification.SessionID]
-	}
+	bound := c.nativeBinding(connection, notification.SessionID)
 	if bound == nil {
 		c.mu.Unlock()
 		return
@@ -281,15 +273,20 @@ func (c *connector) onUpdate(ctx context.Context, connection *acp.ClientConn, no
 		c.mu.Unlock()
 		return
 	}
+	turn := ""
+	if bound.turn != nil {
+		turn = bound.turn.id
+	}
 	c.mu.Unlock()
 	c.report(ctx, c.change(ctx, bound.id, func(value *wire.Session) {
 		value.Events = appendEvent(value.Events, event)
-		if event.ToolID == "" || event.Status == "" || event.Status == "pending" {
+		if turn == "" || value.Turn == nil || value.Turn.ID != turn ||
+			event.ToolID == "" || event.Status == "" || event.Status == "pending" {
 			return
 		}
 		for i := range value.Permissions {
 			permission := &value.Permissions[i]
-			if permission.ToolID == event.ToolID && permission.Status == "submitted" {
+			if permission.TurnID == turn && permission.ToolID == event.ToolID && permission.Status == "submitted" {
 				permission.Status = "closed"
 			}
 		}
@@ -298,7 +295,7 @@ func (c *connector) onUpdate(ctx context.Context, connection *acp.ClientConn, no
 
 func (c *connector) report(ctx context.Context, err error) {
 	if err != nil && c.ctx.Err() == nil {
-		slog.WarnContext(ctx, "OpenCode observation could not be saved", "error", err)
+		slog.WarnContext(ctx, "ACP observation could not be saved", "error", err)
 	}
 }
 

@@ -1,11 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
   bindOperations,
   failureText,
-  mutationSettlementIsUnknown,
   type PluginComponentProps,
 } from "@flame/component-sdk";
-import { type MutationPromise } from "@flame/runtime-client";
 import {
   Button,
   FormActions,
@@ -14,6 +12,7 @@ import {
   Panel,
   PanelSection,
   PanelTitle,
+  Select,
   TextArea,
   TextField,
 } from "@flame/ui";
@@ -23,7 +22,9 @@ import {
   type MethodOutputs,
 } from "../package/io.github.tangerg.flame/contracts/methods.generated";
 
+const agents = "flame.opencode/agents.v1";
 const list = "flame.opencode/list.v1";
+const create = "flame.opencode/create.v1";
 const open = "flame.opencode/open.v1";
 const get = "flame.opencode/get.v1";
 const prompt = "flame.opencode/prompt.v1";
@@ -35,7 +36,12 @@ const view = "opencode-sessions";
 type Session = MethodOutputs[typeof get];
 
 const english = {
-  title: "OpenCode sessions",
+  title: "ACP sessions",
+  agent: "Agent",
+  create: "New native session",
+  noList:
+    "This agent does not list native sessions. Enter an original session ID or start a session.",
+  noFork: "This agent does not advertise session forking.",
   directory: "Workspace directory",
   list: "Find native sessions",
   next: "Next results",
@@ -56,10 +62,14 @@ const english = {
   retry: "Check original command",
   diff: "Read workspace diff",
   clean: "The workspace has no Git changes.",
-  error: "OpenCode request failed.",
+  error: "ACP request failed.",
 };
 const chinese: typeof english = {
-  title: "OpenCode 会话",
+  title: "ACP 会话",
+  agent: "Agent",
+  create: "新建原生会话",
+  noList: "此 Agent 无法列出原生会话。请输入原会话 ID，或新建会话。",
+  noFork: "此 Agent 未声明会话分叉能力。",
   directory: "工作目录",
   list: "查找原生会话",
   next: "下一页",
@@ -80,14 +90,14 @@ const chinese: typeof english = {
   retry: "查询原命令",
   diff: "查看工作目录差异",
   clean: "工作目录没有 Git 改动。",
-  error: "OpenCode 请求失败。",
+  error: "ACP 请求失败。",
 };
 
 export function OpenCodeSessions({ context, locale }: PluginComponentProps) {
   const t = locale.startsWith("zh") ? chinese : english;
   const ops = useMemo(() => {
     if (!context.binding)
-      throw new Error("OpenCode requires its own installation");
+      throw new Error("ACP sessions require their own installation");
     return bindOperations<MethodInputs, MethodOutputs>(
       context,
       CAPABILITY_JSON,
@@ -98,6 +108,10 @@ export function OpenCodeSessions({ context, locale }: PluginComponentProps) {
     );
   }, [context]);
   const [directory, setDirectory] = useState(context.workspace?.ref.path ?? "");
+  const [agentID, setAgentID] = useState("opencode");
+  const [profiles, setProfiles] = useState<
+    MethodOutputs[typeof agents]["agents"]
+  >([]);
   const [nativeId, setNativeId] = useState("");
   const [sessions, setSessions] = useState<MethodOutputs[typeof list]>();
   const [id, setID] = useState("");
@@ -107,7 +121,28 @@ export function OpenCodeSessions({ context, locale }: PluginComponentProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [readError, setReadError] = useState("");
-  const [recover, setRecover] = useState<MutationPromise<Session>>();
+  useSyncExternalStore(ops.subscribeCommands, ops.commandsVersion);
+  const originals = context.signal.aborted
+    ? []
+    : ops.commands(create, open, fork, prompt, cancel, permission);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void context
+      .track((signal) =>
+        ops.query(agents, {}, AbortSignal.any([signal, controller.signal])),
+      )
+      .then(
+        (result) => {
+          if (!controller.signal.aborted) setProfiles(result.agents);
+        },
+        (error) => {
+          if (!controller.signal.aborted)
+            setError(failureText(error) ?? t.error);
+        },
+      );
+    return () => controller.abort();
+  }, [context, ops, t.error]);
 
   useEffect(
     () =>
@@ -146,13 +181,17 @@ export function OpenCodeSessions({ context, locale }: PluginComponentProps) {
 
   const active = current?.id === id ? current : undefined;
   const turn = active?.turn;
-  const locked = busy || !!recover;
+  const locked = busy || originals.some((entry) => entry.state === "active");
   async function find(cursor?: string) {
     setBusy(true);
     setError("");
     try {
       const page = await context.track((signal) =>
-        ops.query(list, { cwd: directory.trim(), cursor }, signal),
+        ops.query(
+          list,
+          { cwd: directory.trim(), agentId: agentID, cursor },
+          signal,
+        ),
       );
       setSessions(page);
     } catch (cause) {
@@ -161,15 +200,11 @@ export function OpenCodeSessions({ context, locale }: PluginComponentProps) {
       setBusy(false);
     }
   }
-  async function settle(
-    command: MutationPromise<Session>,
-    origin?: HTMLElement,
-  ) {
+  async function settle(command: Promise<Session>, origin?: HTMLElement) {
     setBusy(true);
     setError("");
     try {
       const accepted = await command;
-      setRecover(undefined);
       if (accepted.id !== id) {
         setCurrent(accepted);
         setID(accepted.id);
@@ -179,14 +214,15 @@ export function OpenCodeSessions({ context, locale }: PluginComponentProps) {
       setMessage("");
     } catch (cause) {
       setError(failureText(cause) ?? t.error);
-      setRecover(mutationSettlementIsUnknown(cause) ? command : undefined);
     } finally {
       setBusy(false);
     }
   }
   function openSession(cwd: string, nativeId: string, origin?: HTMLElement) {
     void settle(
-      context.track(() => ops.command(open, { cwd, nativeId })),
+      context.track(() =>
+        ops.command(open, { cwd, nativeId, agentId: agentID }),
+      ),
       origin,
     );
   }
@@ -214,6 +250,22 @@ export function OpenCodeSessions({ context, locale }: PluginComponentProps) {
             else void find();
           }}
         >
+          <FormField label={t.agent}>
+            <Select
+              label={t.agent}
+              value={agentID}
+              options={profiles.map((profile) => ({
+                value: profile.id,
+                label: profile.name,
+              }))}
+              disabled={locked || profiles.length === 0}
+              onValueChange={(value) => {
+                setAgentID(value);
+                setSessions(undefined);
+                setNativeId("");
+              }}
+            />
+          </FormField>
           <FormField label={t.directory}>
             <TextField
               value={directory}
@@ -236,6 +288,22 @@ export function OpenCodeSessions({ context, locale }: PluginComponentProps) {
             <Button
               type="button"
               size="sm"
+              disabled={locked || profiles.length === 0 || !directory.trim()}
+              onClick={(event) =>
+                void settle(
+                  ops.command(create, {
+                    cwd: directory.trim(),
+                    agentId: agentID,
+                  }),
+                  event.currentTarget,
+                )
+              }
+            >
+              {t.create}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
               disabled={busy || !directory.trim()}
               onClick={() => void find()}
             >
@@ -255,6 +323,7 @@ export function OpenCodeSessions({ context, locale }: PluginComponentProps) {
             <Metadata>
               {sessions.agent} · {sessions.machine}
             </Metadata>
+            {!sessions.capabilities.list && <p>{t.noList}</p>}
             <ul>
               {sessions.rows.map((session) => (
                 <li key={session.id}>
@@ -283,14 +352,18 @@ export function OpenCodeSessions({ context, locale }: PluginComponentProps) {
           </>
         )}
         {(error || readError) && <p role="alert">{error || readError}</p>}
-        {recover && (
-          <Button
-            size="sm"
-            pending={busy}
-            onClick={() => void settle(recover.retry())}
-          >
-            {t.retry}
-          </Button>
+        {originals.map(
+          (entry) =>
+            entry.state === "recoverable" && (
+              <Button
+                key={entry.idempotencyKey}
+                size="sm"
+                disabled={locked}
+                onClick={() => void settle(entry.recover())}
+              >
+                {t.retry}
+              </Button>
+            ),
         )}
         {id && !active && !readError && <p role="status">{t.connecting}</p>}
       </PanelSection>
@@ -308,12 +381,17 @@ export function OpenCodeSessions({ context, locale }: PluginComponentProps) {
             )}
             {turn?.stopReason && <span> {turn.stopReason}</span>}
           </p>
+          {active.capabilities && !active.capabilities.fork && (
+            <Metadata>{t.noFork}</Metadata>
+          )}
           <FormActions label={t.progress}>
             {!active.connected && (
               <Button
                 size="sm"
                 disabled={locked}
-                onClick={() => openSession(active.cwd, active.nativeId)}
+                onClick={() =>
+                  void settle(ops.command(open, { id: active.id }))
+                }
               >
                 {t.reconnect}
               </Button>

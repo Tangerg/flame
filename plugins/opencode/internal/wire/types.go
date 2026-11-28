@@ -1,7 +1,9 @@
 package wire
 
 const (
+	Agents     = "flame.opencode/agents.v1"
 	List       = "flame.opencode/list.v1"
+	Create     = "flame.opencode/create.v1"
 	Open       = "flame.opencode/open.v1"
 	Get        = "flame.opencode/get.v1"
 	Prompt     = "flame.opencode/prompt.v1"
@@ -10,9 +12,30 @@ const (
 	Fork       = "flame.opencode/fork.v1"
 )
 
+type Agent struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Registry string `json:"registry,omitempty"`
+	Version  string `json:"version,omitempty"`
+}
+
+type AgentsRequest struct{}
+
+type AgentsResponse struct {
+	Agents []Agent `json:"agents"`
+}
+
+type Capabilities struct {
+	List   bool `json:"list"`
+	Load   bool `json:"load"`
+	Resume bool `json:"resume"`
+	Fork   bool `json:"fork"`
+}
+
 type ListRequest struct {
-	CWD    string `json:"cwd"`
-	Cursor string `json:"cursor,omitempty"`
+	CWD     string `json:"cwd"`
+	Cursor  string `json:"cursor,omitempty"`
+	AgentID string `json:"agentId,omitempty"`
 }
 
 type NativeSession struct {
@@ -22,15 +45,24 @@ type NativeSession struct {
 }
 
 type Sessions struct {
-	Machine    string          `json:"machine"`
-	Agent      string          `json:"agent"`
-	Rows       []NativeSession `json:"rows"`
-	NextCursor string          `json:"nextCursor,omitempty"`
+	Machine      string          `json:"machine"`
+	Agent        string          `json:"agent"`
+	Capabilities Capabilities    `json:"capabilities"`
+	Rows         []NativeSession `json:"rows"`
+	NextCursor   string          `json:"nextCursor,omitempty"`
+}
+
+type CreateRequest struct {
+	CWD     string `json:"cwd"`
+	AgentID string `json:"agentId,omitempty"`
 }
 
 type OpenRequest struct {
-	NativeID string `json:"nativeId"`
-	CWD      string `json:"cwd"`
+	NativeID string `json:"nativeId,omitempty"`
+	CWD      string `json:"cwd,omitempty"`
+	AgentID  string `json:"agentId,omitempty"`
+	ID       string `json:"id,omitempty"`
+	Mode     string `json:"mode,omitempty" jsonschema:"enum=load,enum=resume"`
 }
 
 type SessionRequest struct {
@@ -87,14 +119,17 @@ type PermissionRequest struct {
 }
 
 type Session struct {
-	ID          string              `json:"id"`
-	NativeID    string              `json:"nativeId"`
-	CWD         string              `json:"cwd"`
-	Machine     string              `json:"machine"`
-	Agent       string              `json:"agent"`
-	Connected   bool                `json:"connected"`
-	CanFork     bool                `json:"canFork"`
-	Events      []Event             `json:"events"`
-	Permissions []PermissionRequest `json:"permissions"`
-	Turn        *Turn               `json:"turn,omitzero"`
+	ID           string              `json:"id"`
+	NativeID     string              `json:"nativeId"`
+	CWD          string              `json:"cwd"`
+	Machine      string              `json:"machine"`
+	Agent        string              `json:"agent"`
+	AgentID      string              `json:"agentId,omitempty"`
+	Capabilities *Capabilities       `json:"capabilities,omitzero"`
+	Connected    bool                `json:"connected"`
+	CanFork      bool                `json:"canFork"`
+	Events       []Event             `json:"events"`
+	Permissions  []PermissionRequest `json:"permissions"`
+	Turn         *Turn               `json:"turn,omitzero"`
+	Authority    string              `json:"-"`
 }

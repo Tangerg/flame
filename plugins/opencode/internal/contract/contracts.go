@@ -15,7 +15,9 @@ import (
 const Export = "native-sessions"
 
 type Methods struct {
+	Agents     *pluginmcp.Method[wire.AgentsRequest, wire.AgentsResponse]
 	List       *pluginmcp.Method[wire.ListRequest, wire.Sessions]
+	Create     *pluginmcp.Method[wire.CreateRequest, wire.Session]
 	Open       *pluginmcp.Method[wire.OpenRequest, wire.Session]
 	Get        *pluginmcp.Method[wire.SessionRequest, wire.Session]
 	Prompt     *pluginmcp.Method[wire.PromptRequest, wire.Session]
@@ -26,13 +28,15 @@ type Methods struct {
 
 func New() (Methods, error) {
 	list, e1 := method[wire.ListRequest, wire.Sessions](wire.List, frame.Query, "List native sessions in the canonical workspace.")
-	open, e2 := method[wire.OpenRequest, wire.Session](wire.Open, frame.Command, "Load the original OpenCode session and its history.")
+	open, e2 := method[wire.OpenRequest, wire.Session](wire.Open, frame.Command, "Restore the original native session through an advertised ACP operation.")
 	get, e3 := method[wire.SessionRequest, wire.Session](wire.Get, frame.Query, "Read the captured session, progress, permissions and turn settlement.")
 	prompt, e4 := method[wire.PromptRequest, wire.Session](wire.Prompt, frame.Command, "Accept one prompt for the bound native session.")
 	cancel, e5 := method[wire.TurnRequest, wire.Session](wire.Cancel, frame.Command, "Request cancellation of the original prompt and await its stop reason.")
 	permission, e6 := method[wire.AnswerRequest, wire.Session](wire.Permission, frame.Command, "Select an option from the original pending permission.")
 	fork, e7 := method[wire.SessionRequest, wire.Session](wire.Fork, frame.Command, "Fork the native session when OpenCode advertises the capability.")
-	return Methods{list, open, get, prompt, cancel, permission, fork}, errors.Join(e1, e2, e3, e4, e5, e6, e7)
+	agents, e8 := method[wire.AgentsRequest, wire.AgentsResponse](wire.Agents, frame.Query, "List the approved ACP agent profiles on the Runtime machine.")
+	create, e9 := method[wire.CreateRequest, wire.Session](wire.Create, frame.Command, "Create one native ACP session and retain its original acknowledgement.")
+	return Methods{agents, list, create, open, get, prompt, cancel, permission, fork}, errors.Join(e1, e2, e3, e4, e5, e6, e7, e8, e9)
 }
 
 func method[P, R any](name string, kind frame.MethodKind, description string) (*pluginmcp.Method[P, R], error) {
@@ -43,7 +47,7 @@ func (m Methods) Capability() (*plugincontract.Capability, error) {
 	return plugincontract.NewCapability(plugincontract.CapabilityConfig{
 		Reference: "flame.opencode.v1", Composition: plugincontract.Collection, Scope: extension.ScopeInstallation,
 	},
-		m.List.Descriptor(), m.Open.Descriptor(), m.Get.Descriptor(), m.Prompt.Descriptor(),
+		m.Agents.Descriptor(), m.List.Descriptor(), m.Create.Descriptor(), m.Open.Descriptor(), m.Get.Descriptor(), m.Prompt.Descriptor(),
 		m.Cancel.Descriptor(), m.Permission.Descriptor(), m.Fork.Descriptor(),
 	)
 }

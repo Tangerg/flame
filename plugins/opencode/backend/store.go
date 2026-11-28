@@ -16,37 +16,69 @@ import (
 const sessionSchema = `CREATE TABLE IF NOT EXISTS native_sessions (
 	id TEXT PRIMARY KEY, snapshot TEXT NOT NULL CHECK(json_valid(snapshot)))`
 
-func sessionID(machine, native, cwd string) string {
-	digest := sha256.Sum256([]byte(strings.Join([]string{machine, native, cwd}, "\x00")))
+func sessionID(machine, native, cwd string, program agentProgram) string {
+	parts := []string{machine, native, cwd}
+	if program.ID != defaultAgent {
+		parts = append(parts, program.ID)
+	}
+	digest := sha256.Sum256([]byte(strings.Join(parts, "\x00")))
 	return hex.EncodeToString(digest[:])
 }
 
-func emptySession(machine, agent, native, cwd string) wire.Session {
+func emptySession(machine, native, cwd string, link *agentLink) wire.Session {
 	return wire.Session{
-		ID: sessionID(machine, native, cwd), Machine: machine, Agent: agent, NativeID: native, CWD: cwd,
+		ID: sessionID(machine, native, cwd, link.program), Machine: machine, Agent: link.name,
+		AgentID: link.program.ID, Authority: link.program.authority, NativeID: native, CWD: cwd,
 		Events: []wire.Event{}, Permissions: []wire.PermissionRequest{},
 	}
 }
 
+type sessionSnapshot struct {
+	wire.Session
+	Authority string `json:"authority,omitempty"`
+}
+
 func (c *connector) stored(ctx context.Context, id string) (wire.Session, error) {
-	var value wire.Session
 	var raw string
 	err := c.db.RunReadSnapshot(ctx, func(tx context.Context) error {
 		return c.db.Executor(tx).QueryRowContext(tx, "SELECT snapshot FROM native_sessions WHERE id = ?", id).Scan(&raw)
 	})
 	if errors.Is(err, sql.ErrNoRows) {
-		return value, refuse("native session is not registered")
+		return wire.Session{}, refuse("native session is not registered")
 	}
 	if err != nil {
-		return value, err
+		return wire.Session{}, err
 	}
-	err = json.Unmarshal([]byte(raw), &value)
-	return value, err
+	return decodeSession(raw)
+}
+
+func decodeSession(raw string) (wire.Session, error) {
+	var record sessionSnapshot
+	err := json.Unmarshal([]byte(raw), &record)
+	record.Session.Authority = record.Authority
+	return record.Session, err
+}
+
+func (c *connector) original(ctx context.Context, profile, native string) (wire.Session, error) {
+	var raw string
+	err := c.db.RunReadSnapshot(ctx, func(tx context.Context) error {
+		return c.db.Executor(tx).QueryRowContext(tx, `SELECT snapshot FROM native_sessions
+			WHERE json_extract(snapshot, '$.machine')=? AND json_extract(snapshot,'$.nativeId')=?
+			AND COALESCE(json_extract(snapshot,'$.agentId'),?)=? LIMIT 1`, c.machine, native, defaultAgent, profile).Scan(&raw)
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return wire.Session{}, nil
+	}
+	if err != nil {
+		return wire.Session{}, err
+	}
+	return decodeSession(raw)
 }
 
 func (c *connector) save(ctx context.Context, value wire.Session) error {
 	value.Connected, value.CanFork = false, false
-	raw, err := json.Marshal(value)
+	value.Capabilities = nil
+	raw, err := json.Marshal(sessionSnapshot{value, value.Authority})
 	if err != nil {
 		return err
 	}
@@ -79,5 +111,5 @@ func classify(err error) (string, bool) {
 }
 
 func observedFailure(err error) error {
-	return fmt.Errorf("OpenCode session observation failed: %w", err)
+	return fmt.Errorf("acp: native session observation failed: %w", err)
 }
