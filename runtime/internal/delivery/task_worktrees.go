@@ -30,7 +30,7 @@ func registerTaskWorktrees(registry *Registry) {
 			CreateTaskWorktree(context.Context, protocol.CreateTaskWorktreeRequest) (*protocol.TaskWorktree, error)
 		}, ctx context.Context, in protocol.CreateTaskWorktreeRequest) (*protocol.TaskWorktree, error) {
 			return service.CreateTaskWorktree(ctx, in)
-		}).withOwnedReplay(worktreeReplay((*Handler).CreateTaskWorktree))
+		}).withOwnedReplay((*Handler).replayCreateTaskWorktree)
 	registry.query(MethodMeta{Name: TaskWorktreesList, GoName: "ListTaskWorktrees", CapabilityRules: git},
 		func(service interface {
 			ListTaskWorktrees(context.Context) (*protocol.Page[protocol.TaskWorktree], error)
@@ -48,46 +48,65 @@ func registerTaskWorktrees(registry *Registry) {
 			ApplyWorktreeHandoff(context.Context, protocol.ApplyWorktreeHandoffRequest) (*protocol.WorktreeHandoff, error)
 		}, ctx context.Context, in protocol.ApplyWorktreeHandoffRequest) (*protocol.WorktreeHandoff, error) {
 			return service.ApplyWorktreeHandoff(ctx, in)
-		}).withOwnedReplay(worktreeReplay((*Handler).ApplyWorktreeHandoff))
+		}).withOwnedReplay(worktreeMutationReplay((*Handler).applyWorktreeHandoff, presentWorktreeHandoff))
 	registry.commandAck(MethodMeta{Name: TaskWorktreesRelease, GoName: "ReleaseTaskWorktree", CapabilityRules: git, Errors: writeErrors},
 		func(service interface {
 			ReleaseTaskWorktree(context.Context, protocol.TaskWorktreeRequest) error
 		}, ctx context.Context, in protocol.TaskWorktreeRequest) error {
 			return service.ReleaseTaskWorktree(ctx, in)
-		}).withOwnedReplay(worktreeReplay(func(s *Handler, ctx context.Context, in protocol.TaskWorktreeRequest) (struct{}, error) {
-		return struct{}{}, s.ReleaseTaskWorktree(ctx, in)
-	}))
+		}).withOwnedReplay(worktreeMutationReplay((*Handler).releaseTaskWorktree, func(value struct{}) struct{} { return value }))
 }
 
-func worktreeReplay[P, R any](invoke func(*Handler, context.Context, P) (R, error)) func(*Handler, context.Context, P, keyedCall) protocol.OperationResult {
+func worktreeMutationReplay[P, T, R any](
+	invoke func(*Handler, context.Context, P, operation.Reply[T]) error,
+	present func(T) R,
+) func(*Handler, context.Context, P, keyedCall) protocol.OperationResult {
 	return func(s *Handler, ctx context.Context, in P, call keyedCall) protocol.OperationResult {
-		payload, err := call.replay.InvokeDeferred(ctx, call.key, call.fingerprint, func(complete *operation.DeferredCompletion) ([]byte, error) {
-			if err := complete.ReserveExternal(ctx); err != nil {
-				return nil, err
-			}
-			result, cause := invoke(s, ctx, in)
-			var data []byte
-			var encodingErr error
-			if cause != nil {
-				if ctx.Err() != nil {
-					return nil, errors.Join(operation.ErrOutcomePending, cause)
-				}
-				data, encodingErr = encodeStoredOutcome(failed(projectError(cause)))
-			} else {
-				data, encodingErr = encodeAtomicResult(call.method, result)
-			}
-			if encodingErr != nil {
-				return nil, errors.Join(operation.ErrOutcomePending, encodingErr)
-			}
-			save, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
-			defer cancel()
-			if err := complete.Stage(save, func(context.Context) ([]byte, error) { return data, nil }); err != nil {
-				return nil, errors.Join(operation.ErrOutcomePending, err)
-			}
-			return data, nil
-		}, func(data []byte, _ bool) ([]byte, error) { return data, nil })
+		refuse := func(cause error) ([]byte, error) {
+			return encodeAcknowledgement(taskWorktreeError(cause))
+		}
+		payload, err := call.replay.InvokeExternal(ctx, call.key, call.fingerprint, func(reply operation.Reply[[]byte]) error {
+			return invoke(s, ctx, in, func(ctx context.Context, write func(context.Context) (T, error)) error {
+				return reply(ctx, func(work context.Context) ([]byte, error) {
+					result, err := write(work)
+					if err != nil {
+						return refuse(err)
+					}
+					return encodeAtomicResult(call.method, present(result))
+				})
+			})
+		}, refuse)
 		return call.result(ctx, payload, err)
 	}
+}
+
+func (s *Handler) replayCreateTaskWorktree(ctx context.Context, in protocol.CreateTaskWorktreeRequest, call keyedCall) protocol.OperationResult {
+	payload, err := call.replay.InvokeDeferred(ctx, call.key, call.fingerprint, func(complete *operation.DeferredCompletion) ([]byte, error) {
+		if err := complete.ReserveExternal(ctx); err != nil {
+			return nil, err
+		}
+		result, cause := s.CreateTaskWorktree(ctx, in)
+		var data []byte
+		var encodingErr error
+		if cause != nil {
+			if ctx.Err() != nil {
+				return nil, errors.Join(operation.ErrOutcomePending, cause)
+			}
+			data, encodingErr = encodeAcknowledgement(cause)
+		} else {
+			data, encodingErr = encodeAtomicResult(call.method, result)
+		}
+		if encodingErr != nil {
+			return nil, errors.Join(operation.ErrOutcomePending, encodingErr)
+		}
+		save, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		defer cancel()
+		if err := complete.Stage(save, func(context.Context) ([]byte, error) { return data, nil }); err != nil {
+			return nil, errors.Join(operation.ErrOutcomePending, err)
+		}
+		return data, nil
+	}, func(data []byte, _ bool) ([]byte, error) { return data, nil })
+	return call.result(ctx, payload, err)
 }
 
 func (s *Handler) CreateTaskWorktree(ctx context.Context, in protocol.CreateTaskWorktreeRequest) (*protocol.TaskWorktree, error) {
@@ -112,26 +131,38 @@ func (s *Handler) ListTaskWorktrees(ctx context.Context) (*protocol.Page[protoco
 
 func (s *Handler) PreviewWorktreeHandoff(ctx context.Context, in protocol.TaskWorktreeRequest) (*protocol.WorktreeHandoff, error) {
 	preview, err := s.taskWorktrees.Preview(ctx, in.ID)
-	return presentWorktreeHandoff(preview, err)
-}
-
-func (s *Handler) ApplyWorktreeHandoff(ctx context.Context, in protocol.ApplyWorktreeHandoffRequest) (*protocol.WorktreeHandoff, error) {
-	preview, err := s.taskWorktrees.ApplyHandoff(ctx, in.ID, in.Digest)
-	return presentWorktreeHandoff(preview, err)
-}
-
-func (s *Handler) ReleaseTaskWorktree(ctx context.Context, in protocol.TaskWorktreeRequest) error {
-	return taskWorktreeError(s.taskWorktrees.Release(ctx, in.ID))
-}
-
-func presentWorktreeHandoff(preview workspace.WorktreeHandoff, err error) (*protocol.WorktreeHandoff, error) {
 	if err != nil {
 		return nil, taskWorktreeError(err)
 	}
+	return presentWorktreeHandoff(preview), nil
+}
+
+func (s *Handler) ApplyWorktreeHandoff(ctx context.Context, in protocol.ApplyWorktreeHandoffRequest) (*protocol.WorktreeHandoff, error) {
+	var handoff workspace.WorktreeHandoff
+	if err := s.applyWorktreeHandoff(ctx, in, operation.DirectReply(&handoff)); err != nil {
+		return nil, taskWorktreeError(err)
+	}
+	return presentWorktreeHandoff(handoff), nil
+}
+
+func (s *Handler) applyWorktreeHandoff(ctx context.Context, in protocol.ApplyWorktreeHandoffRequest, complete operation.Reply[workspace.WorktreeHandoff]) error {
+	return s.taskWorktrees.ApplyHandoff(ctx, in.ID, in.Digest, complete)
+}
+
+func (s *Handler) ReleaseTaskWorktree(ctx context.Context, in protocol.TaskWorktreeRequest) error {
+	var ack struct{}
+	return taskWorktreeError(s.releaseTaskWorktree(ctx, in, operation.DirectReply(&ack)))
+}
+
+func (s *Handler) releaseTaskWorktree(ctx context.Context, in protocol.TaskWorktreeRequest, complete operation.Reply[struct{}]) error {
+	return s.taskWorktrees.Release(ctx, in.ID, complete)
+}
+
+func presentWorktreeHandoff(preview workspace.WorktreeHandoff) *protocol.WorktreeHandoff {
 	return &protocol.WorktreeHandoff{
 		Worktree: presentTaskWorktree(preview.Worktree), Branch: preview.Branch, Head: preview.Head,
 		Digest: preview.Digest, Patch: strings.ToValidUTF8(preview.Patch, "�"),
-	}, nil
+	}
 }
 
 func presentTaskWorktree(task workspace.TaskWorktree) protocol.TaskWorktree {

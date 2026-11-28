@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/capture"
@@ -27,11 +28,12 @@ type Result struct {
 	ExitCode int
 }
 
-func Run(ctx context.Context, overrides []string, args ...string) (Result, error) {
+func Run(ctx context.Context, overrides []string, input io.Reader, args ...string) (Result, error) {
 	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return Result{}, err
 	}
 	command := exec.CommandContext(ctx, "git", args...)
+	command.Stdin = input
 	command.Env = environment(overrides...)
 	command.WaitDelay = processWaitDelay
 	procgroup.Prepare(command)
@@ -131,13 +133,26 @@ func readOutput(ctx context.Context, source io.Reader) ([]byte, error) {
 var parsingLocale = []string{"LC_ALL=C", "LANG=C"}
 
 func At(ctx context.Context, dir string, args ...string) (Result, error) {
-	prefix := []string{"--no-pager", "--no-optional-locks", "-C", dir, "-c", "core.quotepath=false", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=" + os.DevNull, "-c", "diff.ignoreSubmodules=dirty", "-c", "submodule.recurse=false"}
-	env := append([]string{"GIT_NO_LAZY_FETCH=1", "GIT_ALLOW_PROTOCOL=", "GIT_NO_REPLACE_OBJECTS=1"}, parsingLocale...)
+	prefix, env := worktreeInvocation(dir)
 	if len(args) > 0 {
 		switch args[0] {
 		case "status", "diff", "ls-files", "check-ignore":
 			return observeWorktree(ctx, env, prefix, args)
 		}
 	}
-	return Run(ctx, env, append(prefix, args...)...)
+	return Run(ctx, env, nil, append(prefix, args...)...)
+}
+
+func ApplyIndexPatch(ctx context.Context, dir string, patch string) (Result, error) {
+	prefix, env := worktreeInvocation(dir)
+	// Git checks that affected files match the index before writing, and local
+	// apply.whitespace settings must not rewrite the reviewed patch.
+	args := append(prefix, "apply", "--index", "--whitespace=nowarn", "-")
+	return Run(ctx, env, strings.NewReader(patch), args...)
+}
+
+func worktreeInvocation(dir string) (prefix, env []string) {
+	prefix = []string{"--no-pager", "--no-optional-locks", "-C", dir, "-c", "core.quotepath=false", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=" + os.DevNull, "-c", "diff.ignoreSubmodules=dirty", "-c", "submodule.recurse=false"}
+	env = append([]string{"GIT_NO_LAZY_FETCH=1", "GIT_ALLOW_PROTOCOL=", "GIT_NO_REPLACE_OBJECTS=1"}, parsingLocale...)
+	return prefix, env
 }

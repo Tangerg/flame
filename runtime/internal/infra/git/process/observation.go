@@ -29,7 +29,7 @@ type repositoryQuery struct {
 }
 
 func (q repositoryQuery) run(args ...string) (Result, error) {
-	return Run(q.ctx, q.env, append(slices.Clone(q.prefix), args...)...)
+	return Run(q.ctx, q.env, nil, append(slices.Clone(q.prefix), args...)...)
 }
 
 func (q repositoryQuery) path(args ...string) (string, error) {
@@ -59,7 +59,7 @@ func observePaths(ctx context.Context, env, prefix, args []string) (_ Result, er
 	if err := os.WriteFile(filepath.Join(view, "HEAD"), []byte(unbornHead), filesystem.PrivateFileMode); err != nil {
 		return Result{}, err
 	}
-	return Run(ctx, readViewEnvironment(env, view), append(slices.Clone(prefix), args...)...)
+	return Run(ctx, readViewEnvironment(env, view), nil, append(slices.Clone(prefix), args...)...)
 }
 
 func observeRepository(ctx context.Context, env, prefix, args []string) (_ Result, err error) {
@@ -89,7 +89,7 @@ func observeRepository(ctx context.Context, env, prefix, args []string) (_ Resul
 		return Result{}, err
 	}
 	env = append(env, "GIT_WORK_TREE="+tree, "GIT_OBJECT_DIRECTORY="+filepath.Join(common, objectsDirectory))
-	return Run(ctx, env, append(slices.Clone(prefix), args...)...)
+	return Run(ctx, env, nil, append(slices.Clone(prefix), args...)...)
 }
 
 func readViewEnvironment(env []string, view string) []string {

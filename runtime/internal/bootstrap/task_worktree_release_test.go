@@ -4,12 +4,10 @@ import (
 	"context"
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
@@ -34,37 +32,12 @@ func TestTaskWorktreeReleaseFencesNewSessionBinding(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	realGit, err := exec.LookPath("git")
-	if err != nil {
-		t.Fatal(err)
-	}
-	control := t.TempDir()
-	alias := filepath.Join(control, "task")
+	alias := filepath.Join(t.TempDir(), "task")
 	if err := os.Symlink(task.Workspace.Path, alias); err != nil {
 		t.Fatal(err)
 	}
 	archive.Artifact.Session.Workspace = task.Workspace
-	entered := filepath.Join(control, "remove-entered")
-	proceed := filepath.Join(control, "finish-remove")
-	const wrapper = `#!/bin/sh
-previous=
-for argument do
-  if [ "$previous" = worktree ] && [ "$argument" = remove ]; then
-    : > "$FLAME_TEST_GIT_REMOVE_ENTERED" || exit
-    while [ ! -f "$FLAME_TEST_GIT_REMOVE_PROCEED" ]; do sleep 0.02 || exit; done
-    break
-  fi
-  previous=$argument
-done
-exec "$FLAME_TEST_REAL_GIT" "$@"
-`
-	if err := os.WriteFile(filepath.Join(control, "git"), []byte(wrapper), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("PATH", control+string(os.PathListSeparator)+os.Getenv("PATH"))
-	t.Setenv("FLAME_TEST_REAL_GIT", realGit)
-	t.Setenv("FLAME_TEST_GIT_REMOVE_ENTERED", entered)
-	t.Setenv("FLAME_TEST_GIT_REMOVE_PROCEED", proceed)
+	entered, proceed := holdTaskGitBoundary(t, beforeCheckoutRemoval)
 
 	ctx, cancel := context.WithTimeout(protocolLifecycleContext(t.Context()), lifecycleWaitBudget(t))
 	release := make(chan protocol.OperationResult, 1)
@@ -77,24 +50,7 @@ exec "$FLAME_TEST_REAL_GIT" "$@"
 		release <- r.endpoint.Invoke(ctx, delivery.TaskWorktreesRelease, protocol.TaskWorktreeRequest{ID: task.ID},
 			protocol.CallMetadata{IdempotencyKey: "release-before-session-binding"})
 	})
-	poll := time.NewTicker(10 * time.Millisecond)
-	defer poll.Stop()
-	for {
-		_, err := os.Stat(entered)
-		if err == nil {
-			break
-		}
-		if !errors.Is(err, os.ErrNotExist) {
-			t.Fatal(err)
-		}
-		select {
-		case result := <-release:
-			t.Fatalf("release settled before Git removal: %v", result.Failure)
-		case <-ctx.Done():
-			t.Fatalf("release did not reach Git removal: %v", ctx.Err())
-		case <-poll.C:
-		}
-	}
+	awaitTaskGitBoundary(t, ctx, entered, release)
 
 	create := protocol.CreateSessionRequest{Workspace: &task.Workspace}
 	const createKey = "bind-during-release"

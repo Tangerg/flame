@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
@@ -45,7 +46,7 @@ type taskWorktreeBackend interface {
 	Get(context.Context, string) (TaskWorktree, error)
 	Preview(context.Context, TaskWorktree) (WorktreeHandoff, error)
 	Apply(context.Context, WorktreeHandoff) error
-	Release(context.Context, TaskWorktree) error
+	Release(context.Context, TaskWorktree, operation.Reply[struct{}]) error
 }
 
 type worktreeMutationGate interface {
@@ -91,32 +92,34 @@ func (w *TaskWorktrees) Preview(ctx context.Context, id string) (WorktreeHandoff
 	return w.backend.Preview(ctx, task)
 }
 
-func (w *TaskWorktrees) ApplyHandoff(ctx context.Context, id, digest string) (WorktreeHandoff, error) {
+func (w *TaskWorktrees) ApplyHandoff(ctx context.Context, id, digest string, complete operation.Reply[WorktreeHandoff]) error {
 	task, err := w.availableTask(ctx, id)
 	if err != nil {
-		return WorktreeHandoff{}, err
+		return err
 	}
 	release, err := w.claim(task.Path)
 	if err != nil {
-		return WorktreeHandoff{}, err
+		return err
 	}
 	defer release()
 	releaseSource, err := w.claim(task.Source)
 	if err != nil {
-		return WorktreeHandoff{}, err
+		return err
 	}
 	defer releaseSource()
 	preview, err := w.backend.Preview(ctx, task)
 	if err != nil {
-		return WorktreeHandoff{}, err
+		return err
 	}
 	if digest != preview.Digest {
-		return WorktreeHandoff{}, ErrTaskWorktreeChanged
+		return ErrTaskWorktreeChanged
 	}
-	return preview, w.backend.Apply(ctx, preview)
+	return complete(ctx, func(work context.Context) (WorktreeHandoff, error) {
+		return preview, w.backend.Apply(work, preview)
+	})
 }
 
-func (w *TaskWorktrees) Release(ctx context.Context, id string) error {
+func (w *TaskWorktrees) Release(ctx context.Context, id string, complete operation.Reply[struct{}]) error {
 	task, err := w.backend.Get(ctx, id)
 	if err != nil {
 		return err
@@ -140,7 +143,7 @@ func (w *TaskWorktrees) Release(ctx context.Context, id string) error {
 			return ErrTaskWorktreeBusy
 		}
 	}
-	return w.backend.Release(ctx, task)
+	return w.backend.Release(ctx, task, complete)
 }
 
 func (w *TaskWorktrees) availableTask(ctx context.Context, id string) (TaskWorktree, error) {

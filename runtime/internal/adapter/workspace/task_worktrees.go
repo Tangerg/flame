@@ -19,6 +19,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/capture"
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	work "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
 	"github.com/Tangerg/flame/runtime/internal/infra/git/process"
@@ -300,27 +301,21 @@ func (b *TaskWorktrees) Preview(ctx context.Context, task work.TaskWorktree) (wo
 	return work.WorktreeHandoff{Worktree: task, Branch: branch, Head: head, Digest: hex.EncodeToString(digest.Sum(nil)), Patch: string(patch)}, nil
 }
 
-func (b *TaskWorktrees) Apply(ctx context.Context, preview work.WorktreeHandoff) (err error) {
+func (b *TaskWorktrees) Apply(ctx context.Context, preview work.WorktreeHandoff) error {
 	if preview.Patch == "" {
 		return nil
 	}
-	file, err := os.CreateTemp(b.root, "handoff-*.patch")
+	result, err := process.ApplyIndexPatch(ctx, preview.Worktree.Source, preview.Patch)
 	if err != nil {
 		return err
 	}
-	defer func() { err = errors.Join(err, os.Remove(file.Name())) }()
-	_, writeErr := file.WriteString(preview.Patch)
-	if err := errors.Join(writeErr, file.Close()); err != nil {
-		return err
+	if result.ExitCode != 0 {
+		return fmt.Errorf("%w: git apply exited %d: %s", work.ErrTaskWorktreeChanged, result.ExitCode, strings.TrimSpace(result.Stderr))
 	}
-	if _, err := taskGitValue(ctx, preview.Worktree.Source, "apply", "--check", "--index", "--binary", "--", file.Name()); err != nil {
-		return errors.Join(work.ErrTaskWorktreeChanged, err)
-	}
-	_, err = taskGitValue(ctx, preview.Worktree.Source, "apply", "--index", "--binary", "--", file.Name())
-	return err
+	return nil
 }
 
-func (b *TaskWorktrees) Release(ctx context.Context, task work.TaskWorktree) error {
+func (b *TaskWorktrees) Release(ctx context.Context, task work.TaskWorktree, complete operation.Reply[struct{}]) error {
 	if task.Available {
 		head, err := taskGitValue(ctx, task.Path, "rev-parse", "--verify", "HEAD")
 		if err != nil {
@@ -329,11 +324,19 @@ func (b *TaskWorktrees) Release(ctx context.Context, task work.TaskWorktree) err
 		if head != task.Base {
 			return fmt.Errorf("%w: the task worktree contains committed changes", work.ErrTaskWorktreeChanged)
 		}
+	} else if _, err := os.Lstat(task.Path); !errors.Is(err, os.ErrNotExist) {
+		return errors.Join(work.ErrTaskWorktreeChanged, err)
+	}
+	return complete(ctx, func(work context.Context) (struct{}, error) {
+		return struct{}{}, b.removeTask(work, task)
+	})
+}
+
+func (b *TaskWorktrees) removeTask(ctx context.Context, task work.TaskWorktree) error {
+	if task.Available {
 		if _, err := taskGitValue(ctx, task.Source, "worktree", "remove", "--", task.Path); err != nil {
 			return errors.Join(work.ErrTaskWorktreeChanged, err)
 		}
-	} else if _, err := os.Lstat(task.Path); !errors.Is(err, os.ErrNotExist) {
-		return errors.Join(work.ErrTaskWorktreeChanged, err)
 	}
 	root, err := os.OpenRoot(b.root)
 	if err != nil {

@@ -30,7 +30,7 @@ func (s *Store) gitOutput(ctx context.Context, gitDir, workTree string, args ...
 	if workTree != "" {
 		environment = append(environment, "GIT_WORK_TREE="+workTree)
 	}
-	result, err := process.Run(ctx, environment, args...)
+	result, err := process.Run(ctx, environment, nil, args...)
 	if err != nil {
 		return nil, fmt.Errorf("checkpoint: git %s: %w", args[0], err)
 	}
