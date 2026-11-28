@@ -7,7 +7,6 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -29,7 +28,6 @@ const (
 	taskIDBytes          = 16
 	taskSetupTimeout     = 90 * time.Second
 	taskSetupOutputLimit = 4096
-	maxTaskRecord        = 16 << 10
 )
 
 type TaskWorktrees struct {
@@ -112,12 +110,12 @@ func (b *TaskWorktrees) registerTask(ctx, setupCtx context.Context, record taskR
 		delete(b.creating, record.ID)
 		b.creatingMu.Unlock()
 	}()
-	if err := writeTaskRecord(root, record); err != nil {
-		return work.TaskWorktree{}, err
-	}
 	checkout := b.checkoutPath(record.ID)
 	// The source checkout can be released after its base has been captured.
 	if _, err := taskGitValue(ctx, record.CommonDir, "worktree", "add", "--detach", "--quiet", "--", checkout, record.Base); err != nil {
+		return work.TaskWorktree{}, errors.Join(work.ErrVCSUnavailable, err)
+	}
+	if err := writeTaskRecord(root, record); err != nil {
 		return work.TaskWorktree{}, err
 	}
 	gitDir, err := taskGitValue(ctx, checkout, "rev-parse", "--absolute-git-dir")
@@ -218,13 +216,11 @@ func (b *TaskWorktrees) load(id string) (taskRecord, error) {
 		return taskRecord{}, err
 	}
 	defer file.Close()
-	raw, err := io.ReadAll(io.LimitReader(file, maxTaskRecord+1))
-	if err != nil {
-		return taskRecord{}, err
-	}
 	record := taskRecord{ID: id}
-	if len(raw) > maxTaskRecord || json.Unmarshal(raw, &record, json.RejectUnknownMembers(true)) != nil ||
-		!filepath.IsAbs(record.Source) || !filepath.IsAbs(record.CommonDir) || !validTaskSHA(record.Base) {
+	if err := json.UnmarshalRead(file, &record, json.RejectUnknownMembers(true)); err != nil {
+		return taskRecord{}, fmt.Errorf("workspace: decode task worktree record: %w", err)
+	}
+	if !filepath.IsAbs(record.Source) || !filepath.IsAbs(record.CommonDir) || !validTaskSHA(record.Base) {
 		return taskRecord{}, errors.New("workspace: invalid task worktree record")
 	}
 	return record, nil

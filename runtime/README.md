@@ -88,10 +88,11 @@ from a local Git branch or a commit, then open an ordinary Session with the
 resulting workspace.
 An optional setup command runs in place with the restricted macOS sandbox and
 retains its exit status and bounded output. A registered checkout keeps its
-creation receipt when the request ends during setup. The catalog keeps serving
-registered tasks while a new checkout runs its setup, and the same source
-repository can prepare another task at the same time. The main checkout is
-independent of task setup and edits. Once the base commit is captured,
+creation receipt when the request ends during setup. Runtime records the task
+after Git confirms registration. The catalog keeps serving registered tasks
+while a new checkout runs its setup, and the same source repository can prepare
+another task at the same time. The main checkout is independent of task setup
+and edits. Once the base commit is captured,
 registration uses the shared Git repository. The selected checkout remains the
 handoff destination. Handoff previews bind tracked and untracked
 changes to the original checkout's branch and HEAD. Accepting a current preview
