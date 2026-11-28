@@ -1,11 +1,13 @@
 import {
+  JSONRPC_VERSION,
   OperationFailure,
   RpcError,
   asSessionId,
   createFlameClient,
   createHttpTransport,
 } from "@flame/runtime-client";
-import { HTTP_HEADERS } from "@flame/runtime-client/wire";
+import { HTTP_HEADERS, RPC_HTTP, type TaskWorktree } from "@flame/runtime-client/wire";
+import type { WireMethodName } from "@flame/runtime-client/methods";
 import { TaskWorktreeCommands } from "@/features/workspace/application/taskWorktreeCommands";
 import { parseVisualDiff } from "../../../../../plugins/diff/component/visualDiff";
 import {
@@ -51,6 +53,83 @@ function workspaceGit(cwd: string) {
       { cwd },
     );
 }
+
+describe("Go Runtime ↔ HTTP: task worktree receipts", () => {
+  const fixture = useRuntimeFixture("git-receipts");
+
+  it("reads committed Worktree receipts while Git is unavailable", async () => {
+    const source = join(fixture.root, "source");
+    const file = "tracked.txt";
+    const baseline = "original checkout\n";
+    const material = "approved handoff\n";
+    await mkdir(source);
+    const git = workspaceGit(source);
+    await git("init", "--quiet", "--template=");
+    await writeFile(join(source, file), baseline);
+    await git("add", "--", file);
+    await git("commit", "--quiet", "-m", "source baseline");
+
+    const { capabilities } = await fixture.client.runtime.discover();
+    const namespace = capabilities.limits.idempotency.namespace;
+    const send = async (method: WireMethodName, params: unknown, key: string) => {
+      const response = await fixture.postRPC(method, params, {
+        [HTTP_HEADERS.idempotencyKey]: key,
+        [HTTP_HEADERS.idempotencyNamespace]: namespace,
+      });
+      expect(response.status).toBe(RPC_HTTP.callStatus);
+      return (await response.json()) as { result?: unknown; error?: unknown };
+    };
+    const create = [
+      "workspaces.tasks.create",
+      { source: { path: source }, base: "HEAD" },
+      "create",
+    ] as const;
+    const created = await send(...create);
+    expect(created).toHaveProperty("result.workspace.path");
+    const task = created.result as TaskWorktree;
+    const taskFile = join(task.workspace.path, file);
+    await writeFile(taskFile, material);
+    const { digest } = await fixture.client.workspaces.tasks.preview(task.id);
+    const apply = ["workspaces.tasks.handoff.apply", { id: task.id, digest }, "apply"] as const;
+    const applied = await send(...apply);
+    expect(applied).toMatchObject({ result: { digest } });
+    expect((await git("show", `:${file}`)).stdout).toBe(material);
+    await writeFile(taskFile, baseline);
+    const release = ["workspaces.tasks.release", { id: task.id }, "release"] as const;
+    const released = await send(...release);
+    expect(released).toEqual({ jsonrpc: JSONRPC_VERSION, id: release[0], result: {} });
+    await expect(stat(task.workspace.path)).rejects.toMatchObject({ code: "ENOENT" });
+
+    const restart = async (executableSearchPath?: string) => {
+      await fixture.client.close();
+      await fixture.stopRuntimeProcess();
+      await fixture.startRuntimeProcess({ executableSearchPath });
+      fixture.client = fixture.createRuntimeClient();
+      return (await fixture.client.runtime.discover()).capabilities;
+    };
+    const restricted = await restart("");
+    expect(restricted.features.git?.enabled).toBe(false);
+    expect(restricted.limits.idempotency.namespace).toBe(namespace);
+
+    const denied = {
+      error: { data: { problem: { type: "capability_not_negotiated" } } },
+    };
+    const newKey = "create-after-restart";
+    await expect(send(create[0], create[1], newKey)).resolves.toMatchObject(denied);
+    await expect(Promise.all([send(...create), send(...apply), send(...release)])).resolves.toEqual(
+      [created, applied, released],
+    );
+
+    const rebound = await send(apply[0], { id: "different-task", digest }, apply[2]);
+    expect(rebound).toMatchObject({
+      error: { data: { problem: { type: "idempotency_conflict" } } },
+    });
+    await restart();
+    await expect(send(create[0], create[1], newKey)).resolves.toHaveProperty(
+      "result.workspace.path",
+    );
+  }, 30_000);
+});
 
 describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: workspace", () => {
   const fixture = useRuntimeFixture("workspace");
@@ -164,7 +243,8 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: workspace", () => {
               const key = headers.get(HTTP_HEADERS.idempotencyKey);
               if (!key) throw new Error("the worktree command omitted its key");
               const envelope = (await response.clone().json()) as { result?: unknown };
-              if (Object.hasOwn(envelope, "result")) receipts.push({ key, result: envelope.result });
+              if (Object.hasOwn(envelope, "result"))
+                receipts.push({ key, result: envelope.result });
               if (loseReceipt) {
                 await response.arrayBuffer();
                 throw new Error("connection lost after Git committed");
@@ -181,7 +261,9 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: workspace", () => {
         if (operation === "apply") {
           await writeFile(taskFile, change);
           const preview = await tasks.preview(task.id);
-          await expect(commands.apply({ id: task.id, digest: preview.digest })).resolves.toBe(false);
+          await expect(commands.apply({ id: task.id, digest: preview.digest })).resolves.toBe(
+            false,
+          );
           expect((await git("show", `:${file}`)).stdout).toBe(change);
         } else {
           await expect(commands.release(task.id)).resolves.toBe(false);

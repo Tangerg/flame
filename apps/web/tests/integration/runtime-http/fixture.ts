@@ -245,6 +245,7 @@ export function useRuntimeFixture(
   const startRuntimeProcess = async ({
     readyBefore = Date.now() + processStartupMilliseconds,
     isolationUnavailable = defaultIsolationUnavailable,
+    executableSearchPath = process.env.PATH,
   } = {}) => {
     processOutput = "";
     baseUrl = "";
@@ -253,7 +254,7 @@ export function useRuntimeFixture(
     const args = restricted ? ["-p", unavailableIsolationProfile, runtimeExecutable] : [];
     const child = spawn(executable, args, {
       cwd: root,
-      env: runtimeEnvironment(),
+      env: { ...runtimeEnvironment(), PATH: executableSearchPath },
       stdio: ["ignore", "pipe", "pipe"],
     });
     runtime = child;

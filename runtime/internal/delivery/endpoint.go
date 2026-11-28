@@ -146,12 +146,7 @@ func (e *Endpoint) invoke(ctx context.Context, name Name, options protocol.CallM
 	if err != nil {
 		return failed(projectError(err))
 	}
-	// A replay must not serve a result the caller could not have asked for, and a
-	// refused request must not occupy the key a complete one retries with.
-	if failure := e.enforceCapabilities(ctx, method.Meta, parameters.members); failure != nil {
-		return failed(failure)
-	}
-	result := e.dispatch(ctx, method, parameters.value, options.IdempotencyKey)
+	result := e.dispatch(ctx, method, parameters, options.IdempotencyKey)
 	if result.Events == nil {
 		return result
 	}
@@ -176,20 +171,22 @@ func (e *Endpoint) bind(ctx context.Context, method *Method, parameters any, opt
 	return withCommandIdentity(ctx, commandIdentity{key: options.IdempotencyKey, fingerprint: fingerprint}), options, nil
 }
 
-func (e *Endpoint) dispatch(ctx context.Context, method *Method, parameters any, key string) protocol.OperationResult {
-	if key != "" {
-		switch policy := method.Meta.Idempotency; {
-		case policy == IdempotencyOwnerRun:
-			releaseKey, err := e.idempotency.Serialize(ctx, key)
-			if err != nil {
-				return failed(projectError(err))
-			}
-			defer releaseKey()
-		case policy.ReplaysResponse():
-			return e.replayOperation(ctx, method, parameters, key)
-		}
+func (e *Endpoint) dispatch(ctx context.Context, method *Method, parameters admittedParameters, key string) protocol.OperationResult {
+	policy := method.Meta.Idempotency
+	if key != "" && policy.ReplaysResponse() {
+		return e.replayOperation(ctx, method, parameters, key)
 	}
-	return e.execute(ctx, method, parameters)
+	if failure := e.enforceCapabilities(ctx, method.Meta, parameters.members); failure != nil {
+		return failed(failure)
+	}
+	if policy == IdempotencyOwnerRun {
+		releaseKey, err := e.idempotency.Serialize(ctx, key)
+		if err != nil {
+			return failed(projectError(err))
+		}
+		defer releaseKey()
+	}
+	return e.execute(ctx, method, parameters.value)
 }
 
 func (e *Endpoint) execute(ctx context.Context, method *Method, parameters any) protocol.OperationResult {

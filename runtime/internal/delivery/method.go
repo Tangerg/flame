@@ -399,11 +399,15 @@ func (m MethodMeta) validateCapabilityRules() error {
 			}
 		}
 		for featureIndex, feature := range rule.Requires {
-			if _, published := protocol.LookupFeature(feature); !published {
+			publishedFeature, published := protocol.LookupFeature(feature)
+			if !published {
 				return fmt.Errorf(
 					"%s: capability rule %d requires unknown feature %q",
 					m.Name, ruleIndex, feature,
 				)
+			}
+			if m.Idempotency == idempotencyRequiredReplayResponse && publishedFeature.ClientOptIn {
+				return fmt.Errorf("%s: an external receipt cannot depend on client opt-in feature %q", m.Name, feature)
 			}
 			if slices.Contains(rule.Requires[:featureIndex], feature) {
 				return fmt.Errorf(

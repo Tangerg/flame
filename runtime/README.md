@@ -117,6 +117,8 @@ The TypeScript SDK supplies and retains the key through its command journal.
 If preflight is canceled, the caller can retry with the same key. Once Runtime
 admits the Git write, it settles the receipt under that key even when the
 caller disconnects. Reusing the original request and key returns the receipt.
+The current Git capability gates first execution. The same store can replay a
+recorded response after Runtime restarts without Git.
 
 Project Home shows recent accepted background Runs and links to their original
 Sessions and PR reviews. A schedule or file watcher can capture a Project ID when

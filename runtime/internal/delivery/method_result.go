@@ -10,6 +10,8 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
+var acknowledgementType = reflect.TypeFor[struct{}]()
+
 func (m MethodMeta) ValidateResult(value any) error {
 	expected := m.resultType()
 	if expected.Kind() == reflect.Interface {
@@ -46,7 +48,7 @@ func (m MethodMeta) DecodeResult(encoded jsontext.Value) (any, error) {
 
 func (m MethodMeta) resultType() reflect.Type {
 	if m.Result == nil {
-		return reflect.TypeFor[struct{}]()
+		return acknowledgementType
 	}
 	return m.Result
 }

@@ -3,7 +3,6 @@ package delivery
 import (
 	"context"
 	"errors"
-	"reflect"
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -24,13 +23,12 @@ func registerTaskWorktrees(registry *Registry) {
 	unavailable, conflict := protocol.ErrWorkspaceUnavailable.Error(), protocol.ErrRevisionConflict.Error()
 	readErrors := []string{unavailable, conflict}
 	writeErrors := []string{unavailable, protocol.ErrSessionBusy.Error(), conflict}
-	registry.requiredReplayCommand(MethodMeta{
+	registry.externalCommand(MethodMeta{
 		Name: TaskWorktreesCreate, GoName: "CreateTaskWorktree", CapabilityRules: git,
-		Result: reflect.TypeFor[*protocol.TaskWorktree](),
 		Errors: []string{unavailable, protocol.ErrVcsUnavailable.Error()},
-	}, worktreeMutationReplay((*Handler).createTaskWorktree, func(task workspace.TaskWorktree) *protocol.TaskWorktree {
+	}, (*Handler).createTaskWorktree, func(task workspace.TaskWorktree) *protocol.TaskWorktree {
 		return new(presentTaskWorktree(task))
-	}))
+	}, taskWorktreeError)
 	registry.query(MethodMeta{Name: TaskWorktreesList, GoName: "ListTaskWorktrees", CapabilityRules: git},
 		func(service interface {
 			ListTaskWorktrees(context.Context) (*protocol.Page[protocol.TaskWorktree], error)
@@ -43,36 +41,12 @@ func registerTaskWorktrees(registry *Registry) {
 		}, ctx context.Context, in protocol.TaskWorktreeRequest) (*protocol.WorktreeHandoff, error) {
 			return service.PreviewWorktreeHandoff(ctx, in)
 		})
-	registry.requiredReplayCommand(MethodMeta{
+	registry.externalCommand(MethodMeta{
 		Name: TaskWorktreesApply, GoName: "ApplyWorktreeHandoff", CapabilityRules: git, Errors: writeErrors,
-		Result: reflect.TypeFor[*protocol.WorktreeHandoff](),
-	}, worktreeMutationReplay((*Handler).applyWorktreeHandoff, presentWorktreeHandoff))
-	registry.requiredReplayCommand(MethodMeta{
+	}, (*Handler).applyWorktreeHandoff, presentWorktreeHandoff, taskWorktreeError)
+	registry.externalCommand(MethodMeta{
 		Name: TaskWorktreesRelease, GoName: "ReleaseTaskWorktree", CapabilityRules: git, Errors: writeErrors,
-	}, worktreeMutationReplay((*Handler).releaseTaskWorktree, func(ack struct{}) struct{} { return ack }))
-}
-
-func worktreeMutationReplay[P, T, R any](
-	invoke func(*Handler, context.Context, P, operation.Reply[T]) error,
-	present func(T) R,
-) func(*Handler, context.Context, P, keyedCall) protocol.OperationResult {
-	return func(s *Handler, ctx context.Context, in P, call keyedCall) protocol.OperationResult {
-		refuse := func(cause error) ([]byte, error) {
-			return encodeAcknowledgement(taskWorktreeError(cause))
-		}
-		payload, err := call.replay.InvokeExternal(ctx, call.key, call.fingerprint, func(reply operation.Reply[[]byte]) error {
-			return invoke(s, ctx, in, func(ctx context.Context, write func(context.Context) (T, error)) error {
-				return reply(ctx, func(work context.Context) ([]byte, error) {
-					result, err := write(work)
-					if err != nil {
-						return refuse(err)
-					}
-					return encodeAtomicResult(call.method, present(result))
-				})
-			})
-		}, refuse)
-		return call.result(ctx, payload, err)
-	}
+	}, (*Handler).releaseTaskWorktree, func(ack struct{}) struct{} { return ack }, taskWorktreeError)
 }
 
 func (s *Handler) createTaskWorktree(ctx context.Context, in protocol.CreateTaskWorktreeRequest, complete operation.Reply[workspace.TaskWorktree]) error {

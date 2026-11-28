@@ -59,8 +59,9 @@ unread events through the terminal event.
 Capability checks use the request's wire fields. An explicit `isolated: false`
 requires isolation because it changes the Session's isolation setting. A
 descendant query requires `childRuns` only when `includeDescendants` is `true`.
-The SDK checks capabilities before reserving a new command. On retry, Runtime
-applies its live policy to the original request, metadata and idempotency key.
+The SDK checks capabilities before reserving a new command and sends the original
+request, metadata and idempotency key on retry. Runtime can return a recorded task
+worktree receipt even when the current Git capability is unavailable.
 JSON-RPC errors carry the problem in `error.data.problem`. For a command with
 a stored response, `error.data.recordedOutcome` confirms that the failure came
 from the matching durable receipt. The SDK retains a previously dispatched

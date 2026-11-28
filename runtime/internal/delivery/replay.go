@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"reflect"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
@@ -33,23 +34,39 @@ func encodeAcknowledgement(err error) ([]byte, error) {
 }
 
 type keyedCall struct {
-	replay      *operation.Replay
-	method      *Method
-	key         string
-	fingerprint string
+	replay            *operation.Replay
+	method            *Method
+	key               string
+	fingerprint       string
+	checkCapabilities func(context.Context) error
 }
 
 type ownedReplay func(target any, ctx context.Context, parameters any, call keyedCall) protocol.OperationResult
 
 var errIdempotencyRebound = errors.New("idempotency key is already bound to another operation")
 
-func (e *Endpoint) replayOperation(ctx context.Context, method *Method, parameters any, key string) protocol.OperationResult {
-	fingerprint, err := operationFingerprint(method.Meta.Name, parameters)
+func (e *Endpoint) replayOperation(ctx context.Context, method *Method, parameters admittedParameters, key string) protocol.OperationResult {
+	check := func(ctx context.Context) error {
+		if failure := e.enforceCapabilities(ctx, method.Meta, parameters.members); failure != nil {
+			return failure
+		}
+		return nil
+	}
+	// Required response replays have a stable wire shape. Their receipt owner checks
+	// live capabilities when the request would start a new external effect.
+	if method.Meta.Idempotency == idempotencyReplayResponse {
+		if err := check(ctx); err != nil {
+			return failed(projectError(err))
+		}
+	}
+	fingerprint, err := operationFingerprint(method.Meta.Name, parameters.value)
 	if err != nil {
 		return failed(projectError(fmt.Errorf("idempotency: fingerprint operation: %w", err)))
 	}
-	call := keyedCall{replay: e.idempotency, method: method, key: key, fingerprint: fingerprint}
-	return method.ownedReplay(e.target, ctx, parameters, call)
+	call := keyedCall{
+		replay: e.idempotency, method: method, key: key, fingerprint: fingerprint, checkCapabilities: check,
+	}
+	return method.ownedReplay(e.target, ctx, parameters.value, call)
 }
 
 func (c keyedCall) result(ctx context.Context, payload []byte, err error) protocol.OperationResult {
@@ -71,6 +88,42 @@ func (c keyedCall) result(ctx context.Context, payload []byte, err error) protoc
 func (c keyedCall) reportUnconfirmed(ctx context.Context, err error) {
 	slog.ErrorContext(ctx, "delivery: idempotency receipt is unconfirmed after a completed operation", telemetry.RPCMethod(c.method.Meta.Name.String()), telemetry.Error(err))
 	trace.SpanFromContext(ctx).RecordError(fmt.Errorf("idempotency: store %s replay: %w", c.method.Meta.Name, err))
+}
+
+func (r *Registry) externalCommand[Capability, Params, Value, Result any](
+	meta MethodMeta,
+	invoke func(Capability, context.Context, Params, operation.Reply[Value]) error,
+	present func(Value) Result,
+	projectRefusal func(error) error,
+) {
+	meta.Kind = kindUnary
+	meta.Operation = OperationCommand
+	meta.Idempotency = idempotencyRequiredReplayResponse
+	meta.ReplayCursor = replayCursorNone
+	meta.Pagination = paginationNone
+	meta.Params = reflect.TypeFor[Params]()
+	meta.Result = reflect.TypeFor[Result]()
+	if meta.Result == acknowledgementType {
+		meta.Result = nil
+	}
+	r.add(meta, nil).withOwnedReplay(func(owner Capability, ctx context.Context, in Params, call keyedCall) protocol.OperationResult {
+		refuse := func(cause error) ([]byte, error) {
+			return encodeAcknowledgement(projectRefusal(cause))
+		}
+		execute := func(reply operation.Reply[[]byte]) error {
+			return invoke(owner, ctx, in, func(ctx context.Context, write func(context.Context) (Value, error)) error {
+				return reply(ctx, func(work context.Context) ([]byte, error) {
+					result, err := write(work)
+					if err != nil {
+						return refuse(err)
+					}
+					return encodeAtomicResult(call.method, present(result))
+				})
+			})
+		}
+		payload, err := call.replay.InvokeExternal(ctx, call.key, call.fingerprint, call.checkCapabilities, execute, refuse)
+		return call.result(ctx, payload, err)
+	})
 }
 
 func (c keyedCall) invokeAtomic(ctx context.Context, commit func(atomicOutcome) error) protocol.OperationResult {
