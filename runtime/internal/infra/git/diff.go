@@ -80,44 +80,50 @@ func Diff(ctx context.Context, dir, relPath string, mode Mode, projection Projec
 	if projection != Rows && projection != Visual {
 		return DiffResult{}, fmt.Errorf("git: unsupported diff projection %q", projection)
 	}
-	output, baseline, err := completeDiff(ctx, dir, relPath, mode, budget.Bytes)
+	if budget.Files <= 0 || budget.Rows <= 0 {
+		return DiffResult{}, fmt.Errorf("%w: diff projection requires positive limits", ErrResultTooLarge)
+	}
+	comparison, baseline, err := resolveComparison(ctx, dir, relPath, mode)
 	if err != nil {
 		return DiffResult{}, err
 	}
-	parsed, err := parseUnifiedDiff(output.data, budget.Files, budget.Rows, projection == Rows)
+	output, err := comparison.capture(ctx, dir, budget.Bytes, append(changeSummaryFlags(), "--patch")...)
 	if err != nil {
 		return DiffResult{}, err
 	}
-	for index := range parsed.files {
-		file := &parsed.files[index]
-		file.Status = output.status(file.Path, file.Status)
+	summary, err := output.summarize(budget.Files)
+	if err != nil {
+		return DiffResult{}, err
+	}
+	parsed, err := parseUnifiedDiff(summary, budget.Rows, projection == Rows)
+	if err != nil {
+		return DiffResult{}, err
 	}
 	result := DiffResult{Baseline: baseline, Files: parsed.files, Truncated: parsed.truncated}
 	if projection == Visual {
-		result.Patch = string(output.data[:parsed.end])
+		result.Patch = string(summary.patch[:parsed.end])
 	}
 	return result, nil
 }
 
 func RawDiff(ctx context.Context, dir, relPath string, mode Mode, maxBytes int) (RawDiffResult, error) {
-	output, baseline, err := completeDiff(ctx, dir, relPath, mode, maxBytes)
+	comparison, baseline, err := resolveComparison(ctx, dir, relPath, mode)
+	if err != nil {
+		return RawDiffResult{}, err
+	}
+	output, err := comparison.capture(ctx, dir, maxBytes)
 	if err != nil {
 		return RawDiffResult{}, err
 	}
 	return RawDiffResult{Baseline: baseline, Patch: string(output.data)}, nil
 }
 
-func completeDiff(ctx context.Context, dir, relPath string, mode Mode, maxBytes int) (worktreeComparisonOutput, Baseline, error) {
+func resolveComparison(ctx context.Context, dir, relPath string, mode Mode) (worktreeComparison, Baseline, error) {
 	baseline, revision, err := diffBaseline(ctx, dir, mode)
 	if err != nil {
-		return worktreeComparisonOutput{}, Baseline{}, err
+		return worktreeComparison{}, Baseline{}, err
 	}
-	comparison := worktreeComparison{
+	return worktreeComparison{
 		revision: revision, path: relPath, includeUntracked: mode == Worktree,
-	}
-	output, err := comparison.patch(ctx, dir, maxBytes)
-	if err != nil {
-		return worktreeComparisonOutput{}, Baseline{}, err
-	}
-	return output, baseline, nil
+	}, baseline, nil
 }

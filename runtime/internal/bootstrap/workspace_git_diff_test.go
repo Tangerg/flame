@@ -106,12 +106,13 @@ func TestWorkspaceGitComparisonKeepsLinkedSplitIndexUntouched(t *testing.T) {
 func TestWorkspaceGitDiffPreservesFileIdentities(t *testing.T) {
 	source, git := taskWorktreeTestRepository(t)
 	const (
-		tracked   = "client notes.txt"
-		untracked = "new draft.txt"
-		modeOnly  = "scripts b/start.sh"
-		binary    = "assets and b/blob.bin"
-		before    = "previous name.txt"
-		after     = "new name.txt"
+		tracked        = "client notes.txt"
+		untracked      = "new draft.txt"
+		modeOnly       = "scripts b/start.sh"
+		binaryModeOnly = "assets and b/native.bin"
+		binary         = "assets and b/blob.bin"
+		before         = "previous name.txt"
+		after          = "new name.txt"
 	)
 	write := func(path, contents string) {
 		t.Helper()
@@ -125,12 +126,13 @@ func TestWorkspaceGitDiffPreservesFileIdentities(t *testing.T) {
 	}
 	write(tracked, "old notes\n")
 	write(modeOnly, "#!/bin/sh\n")
+	write(binaryModeOnly, "\x00unchanged executable\n")
 	write(binary, "\x00old asset\n")
 	write(before, "renamed without content changes\n")
 	git("add", ".")
 	git("commit", "--quiet", "-m", "original files")
 	git("config", "core.filemode", "false")
-	git("update-index", "--chmod=+x", "--", modeOnly)
+	git("update-index", "--chmod=+x", "--", modeOnly, binaryModeOnly)
 	git("mv", "--", before, after)
 	write(tracked, "updated notes\n")
 	write(binary, "\x00updated asset\n")
@@ -151,6 +153,7 @@ func TestWorkspaceGitDiffPreservesFileIdentities(t *testing.T) {
 		{path: tracked, status: protocol.FileStatusModified},
 		{path: untracked, status: protocol.FileStatusUntracked},
 		{path: modeOnly, status: protocol.FileStatusModified},
+		{path: binaryModeOnly, status: protocol.FileStatusModified, binary: true},
 		{path: binary, status: protocol.FileStatusModified, binary: true},
 		{path: after, previous: before, status: protocol.FileStatusRenamed},
 	}

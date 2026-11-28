@@ -251,13 +251,6 @@ func (v *VCS) structuredDiff(ctx context.Context, root, path string, input DiffI
 	if len(result.Patch) > maxWorkspaceDiffBytes {
 		return Diff{}, fmt.Errorf("%w: visual diff exceeds %d bytes", ErrVCSResultTooLarge, maxWorkspaceDiffBytes)
 	}
-	paths := make(map[string]struct{}, len(result.Files))
-	for _, file := range result.Files {
-		if _, duplicate := paths[file.Change.Path]; duplicate {
-			return Diff{}, fmt.Errorf("workspace: VCS diff repeated path %q", file.Change.Path)
-		}
-		paths[file.Change.Path] = struct{}{}
-	}
 	return Diff{
 		Format: format, Baseline: result.Baseline, Files: result.Files,
 		Patch: result.Patch, Truncated: result.Truncated,

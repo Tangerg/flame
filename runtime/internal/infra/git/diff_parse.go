@@ -13,13 +13,10 @@ type parsedDiff struct {
 	truncated bool
 }
 
-func parseUnifiedDiff(patch []byte, maxFiles, maxRows int, retainRows bool) (parsedDiff, error) {
-	if maxFiles <= 0 || maxRows <= 0 {
-		return parsedDiff{}, fmt.Errorf("%w: diff projection requires positive limits", ErrResultTooLarge)
-	}
-	parser := unifiedDiffParser{maxFiles: maxFiles, maxRows: maxRows, retainRows: retainRows}
+func parseUnifiedDiff(summary comparisonSummary, maxRows int, retainRows bool) (parsedDiff, error) {
+	parser := unifiedDiffParser{summary: summary, maxRows: maxRows, retainRows: retainRows}
 	offset := 0
-	for encoded := range bytes.SplitAfterSeq(patch, []byte{'\n'}) {
+	for encoded := range bytes.SplitAfterSeq(summary.patch, []byte{'\n'}) {
 		stop, err := parser.consume(bytes.TrimSuffix(encoded, []byte{'\n'}), offset)
 		if err != nil {
 			return parsedDiff{}, err
@@ -29,24 +26,19 @@ func parseUnifiedDiff(patch []byte, maxFiles, maxRows int, retainRows bool) (par
 		}
 		offset += len(encoded)
 	}
-	flushed, err := parser.flush(len(patch))
-	if err != nil {
+	if err := parser.flush(len(summary.patch)); err != nil {
 		return parsedDiff{}, err
 	}
-	return parsedDiff{files: parser.files, end: parser.acceptedEnd, truncated: !flushed}, nil
+	if len(parser.files) != len(summary.files) {
+		return parsedDiff{}, fmt.Errorf("git: patch omitted a reported file")
+	}
+	return parsedDiff{files: parser.files, end: parser.acceptedEnd, truncated: summary.truncated}, nil
 }
 
 const (
-	diffFileHeader        = "diff --git "
-	newFileModeHeader     = "new file mode"
-	deletedFileModeHeader = "deleted file mode"
-	renameFromHeader      = "rename from "
-	renameToHeader        = "rename to "
-	binaryFilesHeader     = "Binary files "
-	hunkHeader            = "@@"
-	oldPathPrefix         = "a/"
-	newPathPrefix         = "b/"
-	noNewlineMarker       = `\ No newline at end of file`
+	diffFileHeader  = "diff --git "
+	hunkHeader      = "@@"
+	noNewlineMarker = `\ No newline at end of file`
 )
 
 const (
@@ -56,18 +48,19 @@ const (
 )
 
 type unifiedDiffParser struct {
-	maxFiles    int
-	maxRows     int
-	files       []DiffFile
-	current     *DiffFile
-	left        hunkRange
-	right       hunkRange
-	rows        int
-	currentRows int
-	retainRows  bool
-	lastRow     *Row
-	scratch     Row
-	acceptedEnd int
+	summary         comparisonSummary
+	maxRows         int
+	files           []DiffFile
+	current         *DiffFile
+	awaitingTypeAdd bool
+	left            hunkRange
+	right           hunkRange
+	rows            int
+	currentRows     int
+	retainRows      bool
+	lastRow         *Row
+	scratch         Row
+	acceptedEnd     int
 }
 
 func (parser *unifiedDiffParser) consume(encoded []byte, offset int) (bool, error) {
@@ -79,15 +72,9 @@ func (parser *unifiedDiffParser) consume(encoded []byte, offset int) (bool, erro
 	}
 	line := string(encoded)
 	if strings.HasPrefix(line, diffFileHeader) {
-		return parser.startFragment(strings.TrimPrefix(line, diffFileHeader), offset)
+		return parser.startFragment(offset)
 	}
-	if parser.current == nil {
-		return false, nil
-	}
-	if parser.applyMetadata(line) {
-		return false, nil
-	}
-	if strings.HasPrefix(line, hunkHeader) {
+	if parser.current != nil && strings.HasPrefix(line, hunkHeader) {
 		return parser.appendHunk(line)
 	}
 	return false, nil
@@ -106,69 +93,44 @@ func (parser *unifiedDiffParser) markNoNewline() error {
 	return nil
 }
 
-func (parser *unifiedDiffParser) startFragment(header string, offset int) (bool, error) {
-	path := sameFilePatchPath(header)
-	// Git emits both sides of a type change as consecutive fragments of the same file.
-	if path != "" && parser.current != nil && path == parser.current.Path {
-		parser.lastRow = nil
+func (parser *unifiedDiffParser) startFragment(offset int) (bool, error) {
+	parser.lastRow = nil
+	// With external diffs disabled, Git emits a type change as a deletion followed by an addition.
+	if parser.awaitingTypeAdd {
+		parser.awaitingTypeAdd = false
 		return false, nil
 	}
-	flushed, err := parser.flush(offset)
-	if err != nil || !flushed || len(parser.files) >= parser.maxFiles {
-		return true, err
+	if err := parser.flush(offset); err != nil {
+		return false, err
 	}
-	parser.current = &DiffFile{
-		FileChange: FileChange{Path: path, Status: StatusModified},
+	if len(parser.files) == len(parser.summary.files) {
+		if parser.summary.truncated {
+			return true, nil
+		}
+		return false, fmt.Errorf("git: patch contains an unreported file")
 	}
-	parser.left = hunkRange{}
-	parser.right = hunkRange{}
+	file := parser.summary.files[len(parser.files)]
+	parser.current = &DiffFile{FileChange: file.FileChange}
+	parser.awaitingTypeAdd = file.typeChanged
 	parser.currentRows = 0
-	parser.lastRow = nil
 	return false, nil
 }
 
-func (parser *unifiedDiffParser) flush(end int) (bool, error) {
+func (parser *unifiedDiffParser) flush(end int) error {
 	if parser.left.remaining != 0 || parser.right.remaining != 0 {
-		return false, fmt.Errorf("git: incomplete diff hunk")
+		return fmt.Errorf("git: incomplete diff hunk")
+	}
+	if parser.awaitingTypeAdd {
+		return fmt.Errorf("git: incomplete file type change")
 	}
 	if parser.current == nil {
-		return true, nil
-	}
-	if len(parser.files) >= parser.maxFiles || parser.rows+parser.currentRows > parser.maxRows {
-		return false, nil
-	}
-	if parser.current.Path == "" {
-		return false, fmt.Errorf("git: patch file has no path")
+		return nil
 	}
 	parser.rows += parser.currentRows
 	parser.files = append(parser.files, *parser.current)
 	parser.current = nil
 	parser.acceptedEnd = end
-	return true, nil
-}
-
-func (parser *unifiedDiffParser) applyMetadata(line string) bool {
-	switch {
-	case strings.HasPrefix(line, newFileModeHeader):
-		if parser.current.Status == StatusDeleted {
-			parser.current.Status = StatusModified
-		} else {
-			parser.current.Status = StatusAdded
-		}
-	case strings.HasPrefix(line, deletedFileModeHeader):
-		parser.current.Status = StatusDeleted
-	case strings.HasPrefix(line, renameFromHeader):
-		parser.current.PreviousPath = parsePatchPath(strings.TrimPrefix(line, renameFromHeader), "")
-		parser.current.Status = StatusRenamed
-	case strings.HasPrefix(line, renameToHeader):
-		parser.current.Path = parsePatchPath(strings.TrimPrefix(line, renameToHeader), "")
-		parser.current.Status = StatusRenamed
-	case strings.HasPrefix(line, binaryFilesHeader):
-		parser.current.Binary = true
-	default:
-		return false
-	}
-	return true
+	return nil
 }
 
 func (parser *unifiedDiffParser) appendHunk(line string) (bool, error) {
@@ -199,13 +161,6 @@ func (parser *unifiedDiffParser) appendRow(line []byte) (bool, error) {
 	row := Row{Type: rowType}
 	if parser.retainRows {
 		row.Code = string(line[1:])
-	}
-	switch rowType {
-	case RowAdded:
-		parser.current.Added++
-	case RowDeleted:
-		parser.current.Removed++
-	case RowHunk, RowContext:
 	}
 	if left {
 		row.LeftLine = parser.left.advance()
@@ -243,29 +198,6 @@ func (parser *unifiedDiffParser) recordRow(row Row) {
 
 func (parser *unifiedDiffParser) rowBudgetExhausted() bool {
 	return parser.rows+parser.currentRows >= parser.maxRows
-}
-
-func parsePatchPath(value, prefix string) string {
-	if strings.HasPrefix(value, "\"") {
-		if unquoted, err := strconv.Unquote(value); err == nil {
-			value = unquoted
-		}
-	}
-	return strings.TrimPrefix(value, prefix)
-}
-
-func sameFilePatchPath(header string) string {
-	// Git repeats the path with equal-width prefixes, even when it contains spaces.
-	separator := len(header) / 2
-	if len(header)%2 == 0 || header[separator] != ' ' {
-		return ""
-	}
-	before := parsePatchPath(header[:separator], oldPathPrefix)
-	after := parsePatchPath(header[separator+1:], newPathPrefix)
-	if before != after {
-		return ""
-	}
-	return after
 }
 
 type hunkRange struct {

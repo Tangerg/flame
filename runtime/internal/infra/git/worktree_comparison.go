@@ -35,11 +35,11 @@ func (o worktreeComparisonOutput) status(path string, status Status) Status {
 
 func WorktreePatch(ctx context.Context, dir, revision string, maxBytes int) ([]byte, error) {
 	comparison := worktreeComparison{revision: revision, includeUntracked: true}
-	output, err := comparison.patch(ctx, dir, maxBytes, "--binary")
+	output, err := comparison.capture(ctx, dir, maxBytes, "--binary")
 	return output.data, err
 }
 
-func (comparison worktreeComparison) patch(ctx context.Context, dir string, maxBytes int, flags ...string) (worktreeComparisonOutput, error) {
+func (comparison worktreeComparison) capture(ctx context.Context, dir string, maxBytes int, flags ...string) (worktreeComparisonOutput, error) {
 	if maxBytes <= 0 {
 		return worktreeComparisonOutput{}, fmt.Errorf("%w: diff requires a positive byte limit", ErrResultTooLarge)
 	}

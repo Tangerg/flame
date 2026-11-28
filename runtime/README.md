@@ -1924,16 +1924,15 @@ parser consumes each hunk's declared left/right ranges before interpreting file
 metadata, so header-like source lines retain their file identity and line counts.
 
 Workspace diff reads have explicit rows, complete raw and visual projections.
-The visual projection captures the baseline, patch and authoritative manifest
-through one `completeDiff` operation; it does not promise an atomic filesystem
-snapshot against concurrent writes. The existing unified parser selects the
-accepted complete-file prefix and computes metadata without retaining rows.
-Rows use that same grammar and retain their real CLI behavior. Visual and rows
+One Git invocation emits raw records, numstat and the patch for a structured
+read. Raw and numstat records supply file metadata. The unified patch parser
+uses those file records to find the complete-file prefix and read hunk rows.
+Concurrent filesystem edits can still affect what Git observes. Visual and rows
 share the 5,000-file / 5,000-row budgets (hunks count as rows); explicit row limits
 are positive and clamped to that maximum. Both return their actual budgets and
 whole-file truncation. A type change keeps both Git patch fragments together
-under one file and one budget decision. All projections retain the 64 MiB
-capture safety bound. Complete raw refuses row limits and fails on byte overflow.
+under one file and one budget decision. The 64 MiB capture bound covers all Git
+output for the read. Complete raw refuses row limits and fails on byte overflow.
 An oversized first file yields an empty visual patch and manifest with
 `truncated: true`. Raw, rows and visual wire payloads are mutually exclusive and
 all clients must migrate with the Runtime.

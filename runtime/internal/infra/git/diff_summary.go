@@ -23,16 +23,39 @@ type FileChange struct {
 }
 
 func ListChanges(ctx context.Context, dir string, maxChanges int) ([]FileChange, error) {
-	_, revision, err := diffBaseline(ctx, dir, Worktree)
+	comparison, _, err := resolveComparison(ctx, dir, "", Worktree)
 	if err != nil {
 		return nil, err
 	}
-	comparison := worktreeComparison{revision: revision, includeUntracked: true}
-	output, err := comparison.read(ctx, dir, "--raw", "--numstat", "-z")
+	output, err := comparison.read(ctx, dir, changeSummaryFlags()...)
 	if err != nil {
 		return nil, err
 	}
-	return parseChangeSummary(output, maxChanges)
+	summary, err := output.summarize(maxChanges)
+	if err != nil {
+		return nil, err
+	}
+	if summary.truncated {
+		return nil, fmt.Errorf("%w: more than %d workspace changes", ErrResultTooLarge, maxChanges)
+	}
+	files := make([]FileChange, 0, len(summary.files))
+	for _, file := range summary.files {
+		files = append(files, file.FileChange)
+	}
+	return files, nil
+}
+
+func changeSummaryFlags() []string { return []string{"--raw", "--numstat", "-z"} }
+
+type comparisonFile struct {
+	FileChange
+	typeChanged bool
+}
+
+type comparisonSummary struct {
+	files     []comparisonFile
+	patch     []byte
+	truncated bool
 }
 
 type changeSummaryReader struct{ unread []byte }
@@ -43,54 +66,60 @@ func (r *changeSummaryReader) field() string {
 	return string(field)
 }
 
-func parseChangeSummary(output worktreeComparisonOutput, maxChanges int) ([]FileChange, error) {
-	reader := changeSummaryReader{unread: output.data}
-	var files []FileChange
-	// Git writes raw records and then numstat records from the same diff queue.
+func (output worktreeComparisonOutput) summarize(maxChanges int) (comparisonSummary, error) {
+	// Git uses a blank NUL-delimited record to separate metadata from the patch.
+	metadata, patch, _ := bytes.Cut(output.data, []byte{0, 0})
+	summary := comparisonSummary{patch: patch}
+	reader := changeSummaryReader{unread: metadata}
 	for len(reader.unread) != 0 && reader.unread[0] == ':' {
-		if len(files) >= maxChanges {
-			return nil, fmt.Errorf("%w: more than %d workspace changes", ErrResultTooLarge, maxChanges)
-		}
 		file, err := reader.change()
 		if err != nil {
-			return nil, err
+			return comparisonSummary{}, err
+		}
+		if len(summary.files) >= maxChanges {
+			summary.truncated = true
+			continue
 		}
 		file.Status = output.status(file.Path, file.Status)
-		files = append(files, file)
+		summary.files = append(summary.files, file)
 	}
-	for index := range files {
-		if err := reader.lineCounts(&files[index]); err != nil {
-			return nil, err
+	// Raw and numstat records have the same order because Git emits both from one diff queue.
+	for index := range summary.files {
+		if err := reader.lineCounts(&summary.files[index].FileChange); err != nil {
+			return comparisonSummary{}, err
 		}
 	}
-	if len(reader.unread) != 0 {
-		return nil, fmt.Errorf("git: numstat contains additional file records")
+	if !summary.truncated && len(reader.unread) != 0 {
+		return comparisonSummary{}, fmt.Errorf("git: numstat contains additional file records")
 	}
-	return files, nil
+	return summary, nil
 }
 
-func (r *changeSummaryReader) change() (FileChange, error) {
+func (r *changeSummaryReader) change() (comparisonFile, error) {
 	header := strings.Fields(r.field())
 	if len(header) != rawChangeFields {
-		return FileChange{}, fmt.Errorf("git: malformed raw change header %q", header)
+		return comparisonFile{}, fmt.Errorf("git: malformed raw change header %q", header)
 	}
-	file := FileChange{Path: r.field()}
+	file := comparisonFile{FileChange: FileChange{Path: r.field()}}
 	status := header[rawChangeFields-1]
 	switch status[0] {
 	case 'A':
 		file.Status = StatusAdded
 	case 'D':
 		file.Status = StatusDeleted
-	case 'M', 'T', 'U':
+	case 'M', 'U':
 		file.Status = StatusModified
+	case 'T':
+		file.Status = StatusModified
+		file.typeChanged = true
 	case 'R':
 		file.Status = StatusRenamed
 		file.PreviousPath, file.Path = file.Path, r.field()
 	default:
-		return FileChange{}, fmt.Errorf("git: unsupported raw change status %q", status)
+		return comparisonFile{}, fmt.Errorf("git: unsupported raw change status %q", status)
 	}
 	if file.Path == "" || file.Status == StatusRenamed && file.PreviousPath == "" {
-		return FileChange{}, fmt.Errorf("git: raw change has a missing path")
+		return comparisonFile{}, fmt.Errorf("git: raw change has a missing path")
 	}
 	return file, nil
 }
