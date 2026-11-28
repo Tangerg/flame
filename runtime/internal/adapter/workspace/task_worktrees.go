@@ -273,16 +273,16 @@ func checkoutGitDirectory(ctx context.Context, checkout string) (string, error) 
 }
 
 func taskGitValue(ctx context.Context, path string, args ...string) (string, error) {
-	raw, err := taskGitBytes(ctx, path, 0, args...)
+	raw, err := taskGitBytes(ctx, path, args...)
 	return strings.TrimSuffix(string(raw), "\n"), err
 }
 
-func taskGitBytes(ctx context.Context, path string, acceptedExit int, args ...string) ([]byte, error) {
+func taskGitBytes(ctx context.Context, path string, args ...string) ([]byte, error) {
 	result, err := process.At(ctx, path, args...)
 	if err != nil {
 		return nil, err
 	}
-	if result.ExitCode != 0 && result.ExitCode != acceptedExit {
+	if result.ExitCode != 0 {
 		return nil, fmt.Errorf("workspace: git %s failed with exit %d: %s", args[0], result.ExitCode, strings.TrimSpace(result.Stderr))
 	}
 	return result.Stdout, nil

@@ -6,59 +6,33 @@ import (
 	"strings"
 )
 
-func diffSources(ctx context.Context, dir, relPath string, mode Mode) (patch []byte, untracked []string, baseline Baseline, err error) {
+func diffBaseline(ctx context.Context, dir string, mode Mode) (Baseline, string, error) {
 	repository, err := IsRepo(ctx, dir)
 	if err != nil {
-		return nil, nil, Baseline{}, err
+		return Baseline{}, "", err
 	}
 	if !repository {
-		return nil, nil, Baseline{}, ErrNotRepo
+		return Baseline{}, "", ErrNotRepo
 	}
-
-	args := []string{"diff", "--no-ext-diff", "--no-textconv", "--no-color", "-M", "--relative"}
-	switch mode {
-	case Base:
-		base, berr := mergeBase(ctx, dir)
-		if berr != nil {
-			return nil, nil, Baseline{}, berr
-		}
-		baseline = Baseline{Type: BaselineMergeBase, Commit: base}
-		args = append(args, base)
-	default:
-		head, headErr := runAllowingExitCode(ctx, dir, 1, "rev-parse", "--verify", "--quiet", "HEAD")
-		if headErr != nil {
-			return nil, nil, Baseline{}, headErr
-		}
-		commit := strings.TrimSpace(string(head))
-		if commit == "" {
-			empty, emptyErr := run(ctx, dir, "hash-object", "-t", "tree", "--stdin")
-			if emptyErr != nil {
-				return nil, nil, Baseline{}, emptyErr
-			}
-			baseline = Baseline{Type: BaselineEmptyTree}
-			args = append(args, strings.TrimSpace(string(empty)))
-		} else {
-			baseline = Baseline{Type: BaselineHead, Commit: commit}
-			args = append(args, commit)
-		}
-	}
-	scopePath, err := workspacePathspec(dir, relPath)
-	if err != nil {
-		return nil, nil, Baseline{}, err
-	}
-	args = append(args, "--", scopePath)
-	patch, err = run(ctx, dir, args...)
-	if err != nil {
-		return nil, nil, Baseline{}, err
-	}
-
-	if mode == Worktree {
-		untracked, err = untrackedPaths(ctx, dir, relPath)
+	if mode == Base {
+		base, err := mergeBase(ctx, dir)
 		if err != nil {
-			return nil, nil, Baseline{}, err
+			return Baseline{}, "", err
 		}
+		return Baseline{Type: BaselineMergeBase, Commit: base}, base, nil
 	}
-	return patch, untracked, baseline, nil
+	head, err := runAllowingExitCode(ctx, dir, 1, "rev-parse", "--verify", "--quiet", "HEAD")
+	if err != nil {
+		return Baseline{}, "", err
+	}
+	if commit := strings.TrimSpace(string(head)); commit != "" {
+		return Baseline{Type: BaselineHead, Commit: commit}, commit, nil
+	}
+	empty, err := run(ctx, dir, "hash-object", "-t", "tree", "--stdin")
+	if err != nil {
+		return Baseline{}, "", err
+	}
+	return Baseline{Type: BaselineEmptyTree}, strings.TrimSpace(string(empty)), nil
 }
 
 func mergeBase(ctx context.Context, dir string) (string, error) {

@@ -18,23 +18,23 @@ const readBufferBytes = 64 << 10
 
 const maxUntrackedDiffPaths = 10_000
 
-func untrackedPaths(ctx context.Context, dir, relPath string) ([]string, error) {
-	scopePath, err := workspacePathspec(dir, relPath)
-	if err != nil {
-		return nil, err
-	}
-	out, err := run(ctx, dir, "ls-files", "--others", "--exclude-standard", "-z", "--", scopePath)
+func untrackedPaths(ctx context.Context, dir, pathspec string) ([]string, error) {
+	out, err := run(ctx, dir, "ls-files", "--others", "--exclude-standard", "-z", "--", pathspec)
 	if err != nil {
 		return nil, err
 	}
 	var paths []string
 	for path := range bytes.SplitSeq(out, []byte{0}) {
-		if len(path) != 0 {
-			if len(paths) >= maxUntrackedDiffPaths {
-				return nil, fmt.Errorf("%w: more than %d untracked diff paths", ErrResultTooLarge, maxUntrackedDiffPaths)
-			}
-			paths = append(paths, string(path))
+		if len(path) == 0 {
+			continue
 		}
+		if !filepath.IsLocal(string(path)) {
+			return nil, fmt.Errorf("git: untracked path %q lies outside the working tree", path)
+		}
+		if len(paths) >= maxUntrackedDiffPaths {
+			return nil, fmt.Errorf("%w: more than %d untracked diff paths", ErrResultTooLarge, maxUntrackedDiffPaths)
+		}
+		paths = append(paths, string(path))
 	}
 	return paths, nil
 }
