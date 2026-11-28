@@ -65,6 +65,7 @@ func workspaceFailure(err error) (error, bool) {
 		errors.Is(err, workspaceapp.ErrPageLimit),
 		errors.Is(err, workspaceapp.ErrPageCursor),
 		errors.Is(err, workspaceapp.ErrVCSResultTooLarge),
+		errors.Is(err, workspaceapp.ErrVCSUnpatchablePath),
 		errors.Is(err, workspaceapp.ErrVCSBaseUnknown):
 		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err), true
 	case errors.Is(err, workspaceapp.ErrVCSUnavailable):

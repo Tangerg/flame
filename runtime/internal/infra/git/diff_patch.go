@@ -2,9 +2,17 @@ package git
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
+	"strings"
+
+	"github.com/Tangerg/flame/runtime/internal/infra/git/process"
 )
+
+const noIndexChanges = 1
+
+var ErrUnpatchablePath = errors.New("git: path cannot be represented in a patch")
 
 type patchComparison struct {
 	revision         string
@@ -47,8 +55,7 @@ func readWorktreePatch(ctx context.Context, dir string, comparison patchComparis
 	}
 	noIndex := append([]string{"diff", "--no-index"}, options...)
 	for _, path := range untracked {
-		// Git uses status 1 when the file differs from /dev/null.
-		delta, err := runAllowingExitCode(ctx, dir, 1, append(noIndex, "--", os.DevNull, path)...)
+		delta, err := readUntrackedPatch(ctx, dir, append(noIndex, "--", os.DevNull, path))
 		if err != nil {
 			return nil, nil, err
 		}
@@ -58,6 +65,18 @@ func readWorktreePatch(ctx context.Context, dir string, comparison patchComparis
 		}
 	}
 	return patch, untracked, nil
+}
+
+func readUntrackedPatch(ctx context.Context, dir string, args []string) ([]byte, error) {
+	result, err := process.At(ctx, dir, args...)
+	if err != nil {
+		return nil, gitProcessError(args, err)
+	}
+	// Git can also use status 1 when it cannot read the selected file.
+	if result.ExitCode == noIndexChanges && len(result.Stdout) != 0 {
+		return result.Stdout, nil
+	}
+	return nil, errors.Join(ErrUnpatchablePath, gitExitError(args, result.ExitCode, strings.TrimSpace(result.Stderr)))
 }
 
 func appendDiffPatch(patch, part []byte, maxBytes int) ([]byte, error) {

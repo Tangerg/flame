@@ -1922,6 +1922,8 @@ complete raw refuses row limits and fails on byte overflow. An oversized first
 file yields an empty visual patch and manifest with `truncated: true`, never a
 clean comparison. Raw, rows and visual wire payloads are mutually exclusive and
 all clients must migrate with the Runtime; there is no old-shape reader.
+Worktree comparisons and handoffs reject untracked directory entries such as
+embedded Git repositories. Every selected untracked file must produce a patch.
 
 Checkpoint predicates accept exit codes only from admitted Git command results.
 A process failure carrying the same status remains a failed observation. Object

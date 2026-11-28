@@ -163,6 +163,8 @@ func vcsError(err error) error {
 		return errors.Join(workspaceapp.ErrVCSBaseUnknown, err)
 	case errors.Is(err, git.ErrResultTooLarge):
 		return errors.Join(workspaceapp.ErrVCSResultTooLarge, err)
+	case errors.Is(err, git.ErrUnpatchablePath):
+		return errors.Join(workspaceapp.ErrVCSUnpatchablePath, err)
 	default:
 		return err
 	}

@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/capture"
 
@@ -24,17 +25,21 @@ func untrackedPaths(ctx context.Context, dir, pathspec string) ([]string, error)
 		return nil, err
 	}
 	var paths []string
-	for path := range bytes.SplitSeq(out, []byte{0}) {
-		if len(path) == 0 {
+	for raw := range bytes.SplitSeq(out, []byte{0}) {
+		if len(raw) == 0 {
 			continue
 		}
-		if !filepath.IsLocal(string(path)) {
+		path := string(raw)
+		if !filepath.IsLocal(path) {
 			return nil, fmt.Errorf("git: untracked path %q lies outside the working tree", path)
+		}
+		if strings.HasSuffix(path, "/") {
+			return nil, fmt.Errorf("%w: untracked directory %q", ErrUnpatchablePath, path)
 		}
 		if len(paths) >= maxUntrackedDiffPaths {
 			return nil, fmt.Errorf("%w: more than %d untracked diff paths", ErrResultTooLarge, maxUntrackedDiffPaths)
 		}
-		paths = append(paths, string(path))
+		paths = append(paths, path)
 	}
 	return paths, nil
 }

@@ -12,4 +12,5 @@ var (
 	ErrVCSUnavailable       = errors.New("workspace: VCS unavailable")
 	ErrVCSBaseUnknown       = errors.New("workspace: VCS base unknown")
 	ErrVCSResultTooLarge    = errors.New("workspace: VCS result too large")
+	ErrVCSUnpatchablePath   = errors.New("workspace: a selected path cannot be included in the diff")
 )
