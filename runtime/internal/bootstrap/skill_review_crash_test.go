@@ -195,6 +195,32 @@ func TestSkillReviewAcknowledgementSurvivesAbruptExit(t *testing.T) {
 	}
 }
 
+func TestSkillReviewsRequireCallerIdentity(t *testing.T) {
+	for _, method := range []delivery.Name{delivery.SkillsProposalsApprove, delivery.SkillsProposalsReject} {
+		t.Run(method.String(), func(t *testing.T) {
+			cfg := poMCPConfig(t)
+			cfg.skillsUserDir = filepath.Join(cfg.stores.DataDirectory, "skills")
+			r := poMCPOpen(t, cfg)
+			installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "skills"))
+			waitCallContributorState(t, r, installed.ID, protocol.MCPServerConnected)
+			ref := stageSkillReview(t, r, cfg, "proposal-requires-caller", "Keep the review open until approved.")
+			result := r.endpoint.Invoke(t.Context(), method, ref, protocol.CallMetadata{})
+			if result.Failure == nil || !errors.Is(result.Failure, protocol.ErrInvalidParams) {
+				t.Errorf("%s without a key = %+v, %v; want invalid params", method, result.Value, result.Failure)
+			}
+			query := protocol.WorkspaceQuery{Workspace: ref.Workspace}
+			pending := r.must(delivery.SkillsProposalsList, query, "").(*protocol.Page[protocol.SkillProposal]).Data
+			if len(pending) != 1 || pending[0].Revision != ref.Revision {
+				t.Errorf("review without a caller key consumed the proposal: %+v", pending)
+			}
+			path := filepath.Join(cfg.skillsUserDir, ref.Name, skillspec.SkillFile)
+			if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
+				t.Errorf("review without a caller key changed the document: %v", err)
+			}
+		})
+	}
+}
+
 func TestCommittedSkillReviewAllowsShutdownBeforeAcknowledgement(t *testing.T) {
 	cfg := poMCPConfig(t)
 	home := cfg.stores.DataDirectory

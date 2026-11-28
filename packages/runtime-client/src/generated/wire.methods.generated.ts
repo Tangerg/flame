@@ -813,14 +813,14 @@ export const WIRE_METHOD_POLICY = {
   "skills.proposals.approve": {
     operation: "command",
     response: "unary",
-    idempotency: "replayResponse",
+    idempotency: "requiredReplayResponse",
     replayCursor: "none",
     pagination: "none",
   },
   "skills.proposals.reject": {
     operation: "command",
     response: "unary",
-    idempotency: "replayResponse",
+    idempotency: "requiredReplayResponse",
     replayCursor: "none",
     pagination: "none",
   },

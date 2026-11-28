@@ -115,17 +115,19 @@ func TestSkillsComponentUsesCanonicalOwnersAndWithdrawalPreservesCuration(t *tes
 		t.Fatalf("skills component bytes: %v", err)
 	}
 	options := protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)}}
-	refuse := func(method delivery.Name, input any, want error) {
+	refuse := func(method delivery.Name, input any, key string, want error) {
 		t.Helper()
-		if result := r.endpoint.Invoke(t.Context(), method, input, options); !errors.Is(result.Failure, want) {
+		call := options
+		call.IdempotencyKey = key
+		if result := r.endpoint.Invoke(t.Context(), method, input, call); result.Failure == nil || !errors.Is(result.Failure, want) {
 			t.Fatalf("%s: %v, want %v", method, result.Failure, want)
 		}
 	}
 	missing := detail
 	missing.Name = "absent"
-	refuse(delivery.SkillsDiscoveredGet, missing, protocol.ErrSkillNotFound)
+	refuse(delivery.SkillsDiscoveredGet, missing, "", protocol.ErrSkillNotFound)
 	r.must(delivery.SkillsLibraryArchive, protocol.SkillNameRequest{Name: "verify"}, "archive")
-	refuse(delivery.SkillsDiscoveredGet, detail, protocol.ErrSkillNotFound)
+	refuse(delivery.SkillsDiscoveredGet, detail, "", protocol.ErrSkillNotFound)
 	archived := r.must(delivery.SkillsLibraryList, struct{}{}, "").(*protocol.Page[protocol.ManagedSkill])
 	foundArchived := false
 	for _, item := range archived.Data {
@@ -142,7 +144,7 @@ func TestSkillsComponentUsesCanonicalOwnersAndWithdrawalPreservesCuration(t *tes
 	current := submit("replacement", proposal)
 	inspect()
 	stale := protocol.SkillProposalRef{Workspace: query.Workspace, Scope: protocol.SkillProposalScopeUser, Name: ref.Name, Revision: ref.Revision}
-	refuse(delivery.SkillsProposalsApprove, stale, protocol.ErrRevisionConflict)
+	refuse(delivery.SkillsProposalsApprove, stale, "approve-stale", protocol.ErrRevisionConflict)
 	stale.Revision = current.Revision
 	r.must(delivery.SkillsProposalsApprove, stale, "approve-current")
 	inspect()
@@ -163,9 +165,11 @@ func TestSkillsComponentUsesCanonicalOwnersAndWithdrawalPreservesCuration(t *tes
 		t.Fatalf("source switch merged independent proposals: %+v", originals)
 	}
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable")
-	refuse(delivery.PluginsReadResource, resource, protocol.ErrPluginDisabled)
-	if result := r.endpoint.Invoke(t.Context(), delivery.SkillsProposalsApprove, outstandingRef, options); result.Failure == nil {
-		t.Fatal("disabled release published a proposal")
+	refuse(delivery.PluginsReadResource, resource, "", protocol.ErrPluginDisabled)
+	reviewOptions := options
+	reviewOptions.IdempotencyKey = "approve-disabled-source"
+	if result := r.endpoint.Invoke(t.Context(), delivery.SkillsProposalsApprove, outstandingRef, reviewOptions); result.Failure == nil || errors.Is(result.Failure, protocol.ErrInvalidParams) {
+		t.Fatalf("approval from a disabled release = %+v, %v; want provider refusal", result.Value, result.Failure)
 	}
 	before := r.must(delivery.SkillsLibraryList, struct{}{}, "")
 	pending := r.must(delivery.SkillsProposalsList, query, "")
@@ -176,8 +180,9 @@ func TestSkillsComponentUsesCanonicalOwnersAndWithdrawalPreservesCuration(t *tes
 	if proposals := r.must(delivery.SkillsProposalsList, query, ""); !reflect.DeepEqual(proposals, pending) {
 		t.Fatal("uninstall changed the pending proposal")
 	}
-	if result := r.endpoint.Invoke(t.Context(), delivery.SkillsProposalsApprove, outstandingRef, options); result.Failure == nil {
-		t.Fatal("uninstalled source was retargeted to an enabled replacement")
+	reviewOptions.IdempotencyKey = "approve-uninstalled-source"
+	if result := r.endpoint.Invoke(t.Context(), delivery.SkillsProposalsApprove, outstandingRef, reviewOptions); result.Failure == nil || errors.Is(result.Failure, protocol.ErrInvalidParams) {
+		t.Fatalf("approval from an uninstalled release = %+v, %v; want provider refusal", result.Value, result.Failure)
 	}
 	replacementRef := outstandingRef
 	replacementRef.Revision = replacement.Revision
@@ -186,5 +191,5 @@ func TestSkillsComponentUsesCanonicalOwnersAndWithdrawalPreservesCuration(t *tes
 	if err != nil || !strings.Contains(string(activeBytes), proposal.Instructions) {
 		t.Fatalf("replacement did not publish its own input: %s, %v", activeBytes, err)
 	}
-	refuse(delivery.PluginsReadResource, resource, protocol.ErrPluginNotFound)
+	refuse(delivery.PluginsReadResource, resource, "", protocol.ErrPluginNotFound)
 }

@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-11-28.7",
+  "protocolVersion": "2026-11-28.8",
   "features": [
     "reasoning",
     "multimodal",
@@ -806,7 +806,7 @@
       "name": "skills.proposals.approve",
       "kind": "unary",
       "operation": "command",
-      "idempotency": "replayResponse",
+      "idempotency": "requiredReplayResponse",
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
@@ -823,7 +823,7 @@
       "name": "skills.proposals.reject",
       "kind": "unary",
       "operation": "command",
-      "idempotency": "replayResponse",
+      "idempotency": "requiredReplayResponse",
       "replayCursor": "none",
       "pagination": "none",
       "errors": [

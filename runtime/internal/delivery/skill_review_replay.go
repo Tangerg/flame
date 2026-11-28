@@ -16,17 +16,11 @@ import (
 type skillReviewAction func(*workspace.Skills, context.Context, workspace.SkillReviewTarget) error
 
 func registerSkillReview(registry *Registry, method Name, goName string, apply skillReviewAction) {
-	registry.commandAck(MethodMeta{
+	registry.requiredReplayCommand(MethodMeta{
 		Name: method, GoName: goName,
 		Errors:          []string{protocol.ErrWorkspaceUnavailable.Error(), protocol.ErrRevisionConflict.Error()},
 		CapabilityRules: requires(protocol.FeatureSkills),
-	}, func(s *Handler, ctx context.Context, in protocol.SkillProposalRef) error {
-		review, err := s.prepareSkillReview(in)
-		if err != nil {
-			return mapSkillProposalErr(err)
-		}
-		return mapSkillProposalErr(apply(s.workspaceSkills, ctx, review))
-	}).withOwnedReplay(func(s *Handler, ctx context.Context, in protocol.SkillProposalRef, call keyedCall) protocol.OperationResult {
+	}, func(s *Handler, ctx context.Context, in protocol.SkillProposalRef, call keyedCall) protocol.OperationResult {
 		payload, err := call.replay.InvokeDeferred(ctx, call.key, call.fingerprint, call.admit, func(complete *operation.DeferredCompletion) ([]byte, error) {
 			review, err := s.prepareSkillReview(in)
 			if err != nil {
