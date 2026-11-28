@@ -27,7 +27,6 @@ import (
 const (
 	taskManifest         = "task.json"
 	taskCheckout         = "checkout"
-	taskCustody          = "flame-task-id"
 	taskIDBytes          = 16
 	taskSetupTimeout     = 90 * time.Second
 	taskSetupOutputLimit = 4096
@@ -116,13 +115,13 @@ func (b *TaskWorktrees) registerTask(ctx, setupCtx context.Context, record taskR
 	if _, err := taskGitValue(ctx, record.Source, "worktree", "add", "--detach", "--quiet", "--", checkout, record.Base); err != nil {
 		return work.TaskWorktree{}, err
 	}
-	custody, err := taskCustodyPath(ctx, checkout)
+	gitDir, err := taskGitValue(ctx, checkout, "rev-parse", "--absolute-git-dir")
 	if err != nil {
 		return work.TaskWorktree{}, err
 	}
 	// Git removes the registration and its custody stamp together. A new
 	// checkout can reuse both the working path and Git's registration name.
-	if err := os.WriteFile(custody, []byte(record.ID), filesystem.PrivateFileMode); err != nil {
+	if err := os.WriteFile(filepath.Join(gitDir, taskCustody), []byte(record.ID), filesystem.PrivateFileMode); err != nil {
 		return work.TaskWorktree{}, fmt.Errorf("workspace: record task worktree custody: %w", err)
 	}
 	if record.Setup != nil {
@@ -232,79 +231,19 @@ func (b *TaskWorktrees) inspect(ctx context.Context, record taskRecord) (work.Ta
 	}
 	checkout := filepath.Join(directory, taskCheckout)
 	task := work.TaskWorktree{ID: record.ID, Path: checkout, Source: record.Source, Base: record.Base, Setup: record.Setup}
-	info, err := os.Lstat(checkout)
+	gitDir, err := checkoutGitDirectory(ctx, checkout)
 	if errors.Is(err, os.ErrNotExist) {
 		return task, nil
 	}
 	if err != nil {
 		return work.TaskWorktree{}, err
 	}
-	if !info.IsDir() {
-		return task, nil
-	}
-	if repository, err := git.IsRepo(ctx, checkout); err != nil || !repository {
-		return task, err
-	}
-	top, err := taskGitValue(ctx, checkout, "rev-parse", "--show-toplevel")
+	registration, err := record.registrationAt(gitDir)
 	if err != nil {
 		return work.TaskWorktree{}, err
 	}
-	if top != checkout {
-		return task, nil
-	}
-	custody, err := taskCustodyPath(ctx, checkout)
-	if err != nil {
-		return work.TaskWorktree{}, err
-	}
-	owner, err := os.ReadFile(custody)
-	if errors.Is(err, os.ErrNotExist) {
-		return task, nil
-	}
-	if err != nil {
-		return work.TaskWorktree{}, fmt.Errorf("workspace: read task worktree custody: %w", err)
-	}
-	task.Available = string(owner) == record.ID
+	task.Available = registration != nil && registration.checkout == checkout
 	return task, nil
-}
-
-func (b *TaskWorktrees) Release(ctx context.Context, task work.TaskWorktree, complete operation.Reply[struct{}]) error {
-	var commonDir string
-	if task.Available {
-		head, err := taskGitValue(ctx, task.Path, "rev-parse", "--verify", "HEAD")
-		if err != nil {
-			return err
-		}
-		if head != task.Base {
-			return fmt.Errorf("%w: the task worktree contains committed changes", work.ErrTaskWorktreeChanged)
-		}
-		// The task's registration survives removal of its handoff destination.
-		commonDir, err = taskCommonDir(ctx, task.Path)
-		if err != nil {
-			return err
-		}
-	} else if _, err := os.Lstat(task.Path); !errors.Is(err, os.ErrNotExist) {
-		return errors.Join(work.ErrTaskWorktreeChanged, err)
-	}
-	return complete(ctx, func(work context.Context) (struct{}, error) {
-		return struct{}{}, b.removeTask(work, task, commonDir)
-	})
-}
-
-func (b *TaskWorktrees) removeTask(ctx context.Context, task work.TaskWorktree, commonDir string) error {
-	if commonDir != "" {
-		if _, err := taskGitValue(ctx, commonDir, "worktree", "remove", "--", task.Path); err != nil {
-			return errors.Join(work.ErrTaskWorktreeChanged, err)
-		}
-	}
-	root, err := os.OpenRoot(b.root)
-	if err != nil {
-		return err
-	}
-	defer root.Close()
-	if err := root.Remove(filepath.Join(task.ID, taskManifest)); err != nil {
-		return err
-	}
-	return root.Remove(task.ID)
 }
 
 func taskCommonDir(ctx context.Context, path string) (string, error) {
@@ -315,12 +254,22 @@ func taskCommonDir(ctx context.Context, path string) (string, error) {
 	return filepath.EvalSymlinks(common)
 }
 
-func taskCustodyPath(ctx context.Context, checkout string) (string, error) {
-	gitDir, err := taskGitValue(ctx, checkout, "rev-parse", "--absolute-git-dir")
+func checkoutGitDirectory(ctx context.Context, checkout string) (string, error) {
+	info, err := os.Lstat(checkout)
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(gitDir, taskCustody), nil
+	if !info.IsDir() {
+		return "", nil
+	}
+	if repository, err := git.IsRepo(ctx, checkout); err != nil || !repository {
+		return "", err
+	}
+	top, err := taskGitValue(ctx, checkout, "rev-parse", "--show-toplevel")
+	if err != nil || top != checkout {
+		return "", err
+	}
+	return taskGitValue(ctx, checkout, "rev-parse", "--absolute-git-dir")
 }
 
 func taskGitValue(ctx context.Context, path string, args ...string) (string, error) {

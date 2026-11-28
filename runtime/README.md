@@ -85,9 +85,11 @@ repository can prepare another task at the same time. The main checkout is
 independent of task setup and edits. Handoff previews bind tracked and untracked
 changes to the original checkout's branch and HEAD. Accepting a current preview
 stages its changes in that clean destination. Release uses Git's non-forced
-removal for an owned worktree at its original base with no attached Session.
-Task custody follows the Git registration created by Runtime. Worktrees created
-before Runtime recorded that custody appear as unavailable and remain on disk.
+removal for an owned registration at its original base with no attached Session,
+even if the checkout directory is missing. A worktree moved with Git appears
+unavailable. Move it back to the managed path or remove its registration in Git
+before releasing the task. Worktrees created before Runtime recorded Git custody
+appear as unavailable and remain on disk.
 
 Project Home shows recent accepted background Runs and links to their original
 Sessions and PR reviews. A schedule or file watcher can capture a Project ID when

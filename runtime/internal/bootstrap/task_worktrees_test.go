@@ -219,7 +219,7 @@ func TestTaskWorktreesKeepSeparateChangesAndHandoffAfterRestart(t *testing.T) {
 	requireContents(source, "shared.txt", []byte("second task updated\n"))
 }
 
-func TestTaskWorktreesKeepListingWhenAMovedCheckoutPathIsReused(t *testing.T) {
+func TestTaskWorktreeReleasePreservesMovedRegistrationAndReplacements(t *testing.T) {
 	source, git := taskWorktreeTestRepository(t)
 	git("commit", "--quiet", "--allow-empty", "-m", "initial snapshot")
 	cfg := poMCPConfig(t)
@@ -231,14 +231,6 @@ func TestTaskWorktreesKeepListingWhenAMovedCheckoutPathIsReused(t *testing.T) {
 	retained := r.must(delivery.TaskWorktreesCreate, request, "retain-task-worktree").(*protocol.TaskWorktree)
 	newPath := filepath.Join(t.TempDir(), "moved")
 	git("worktree", "move", "--", moved.Workspace.Path, newPath)
-	if err := os.Mkdir(moved.Workspace.Path, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	replacement := filepath.Join(moved.Workspace.Path, "notes.txt")
-	const notes = "keep these notes"
-	if err := os.WriteFile(replacement, []byte(notes), 0o600); err != nil {
-		t.Fatal(err)
-	}
 
 	requireUnavailable := func(releaseKey string) {
 		t.Helper()
@@ -251,10 +243,19 @@ func TestTaskWorktreesKeepListingWhenAMovedCheckoutPathIsReused(t *testing.T) {
 		release := r.endpoint.Invoke(t.Context(), delivery.TaskWorktreesRelease, protocol.TaskWorktreeRequest{ID: moved.ID},
 			protocol.CallMetadata{IdempotencyKey: releaseKey})
 		if release.Failure == nil || !errors.Is(release.Failure, protocol.ErrRevisionConflict) {
-			t.Fatalf("release did not report the replaced checkout: %v", release.Failure)
+			t.Fatalf("release did not report the moved checkout (%s): %v", releaseKey, release.Failure)
 		}
 	}
 
+	requireUnavailable("release-moved-without-replacement")
+	if err := os.Mkdir(moved.Workspace.Path, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	replacement := filepath.Join(moved.Workspace.Path, "notes.txt")
+	const notes = "keep these notes"
+	if err := os.WriteFile(replacement, []byte(notes), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	requireUnavailable("release-plain-replacement")
 	contents, err := os.ReadFile(replacement)
 	if err != nil || string(contents) != notes {
@@ -270,6 +271,13 @@ func TestTaskWorktreesKeepListingWhenAMovedCheckoutPathIsReused(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(newPath, ".git")); err != nil {
 		t.Fatalf("moved worktree lost its Git checkout: %v", err)
+	}
+	git("worktree", "remove", "--", moved.Workspace.Path)
+	git("worktree", "remove", "--", newPath)
+	r.must(delivery.TaskWorktreesRelease, protocol.TaskWorktreeRequest{ID: moved.ID}, "release-after-native-removal")
+	list := r.must(delivery.TaskWorktreesList, struct{}{}, "").(*protocol.Page[protocol.TaskWorktree])
+	if len(list.Data) != 1 || list.Data[0].ID != retained.ID || !list.Data[0].Available {
+		t.Fatalf("catalog after Git removed the moved checkout = %+v", list.Data)
 	}
 }
 

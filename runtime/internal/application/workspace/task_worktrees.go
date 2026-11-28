@@ -131,16 +131,14 @@ func (w *TaskWorktrees) Release(ctx context.Context, id string, complete operati
 	if err != nil {
 		return err
 	}
-	if task.Available {
-		release, ok, err := w.gate.AcquireWorkingTreeRemoval(task.Path)
-		if err != nil {
-			return err
-		}
-		if !ok {
-			return ErrTaskWorktreeBusy
-		}
-		defer release()
+	release, ok, err := w.gate.AcquireWorkingTreeRemoval(task.Path)
+	if err != nil {
+		return err
 	}
+	if !ok {
+		return ErrTaskWorktreeBusy
+	}
+	defer release()
 	sessions, err := w.session.List(ctx)
 	if err != nil {
 		return err

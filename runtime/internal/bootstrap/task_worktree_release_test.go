@@ -63,6 +63,39 @@ func TestTaskWorktreeReleaseUsesItsOwnGitRegistration(t *testing.T) {
 	}
 }
 
+func TestTaskWorktreeReleaseRemovesRegistrationWithoutCheckout(t *testing.T) {
+	source, git := taskWorktreeTestRepository(t)
+	git("commit", "--quiet", "--allow-empty", "-m", "initial checkout")
+	git("config", "worktree.useRelativePaths", "true")
+	cfg := poMCPConfig(t)
+	cfg.defaultWorkspacePath = source
+	r := poMCPOpen(t, cfg)
+	task := r.must(delivery.TaskWorktreesCreate, protocol.CreateTaskWorktreeRequest{
+		Source: protocol.WorkspaceRef{Path: source}, Base: "HEAD",
+	}, "create-checkout-that-disappears").(*protocol.TaskWorktree)
+	if err := os.Remove(filepath.Join(task.Workspace.Path, ".git")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(task.Workspace.Path); err != nil {
+		t.Fatal(err)
+	}
+	if registrations := git("worktree", "list", "--porcelain"); !strings.Contains(registrations, "worktree "+task.Workspace.Path+"\n") {
+		t.Fatalf("removing the directory did not leave a Git registration: %s", registrations)
+	}
+
+	request := protocol.TaskWorktreeRequest{ID: task.ID}
+	const key = "release-missing-checkout"
+	r.must(delivery.TaskWorktreesRelease, request, key)
+	r.must(delivery.TaskWorktreesRelease, request, key)
+	if registrations := git("worktree", "list", "--porcelain"); strings.Count(registrations, "worktree ") != 1 {
+		t.Errorf("release acknowledged an existing Git registration: %s", registrations)
+	}
+	catalog := r.must(delivery.TaskWorktreesList, struct{}{}, "").(*protocol.Page[protocol.TaskWorktree])
+	if len(catalog.Data) != 0 {
+		t.Errorf("release left the task in the catalog: %+v", catalog.Data)
+	}
+}
+
 func TestTaskWorktreeReleaseFencesNewSessionBinding(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("the Git timing fixture uses a POSIX shell")
