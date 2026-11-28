@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -8,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -15,6 +17,68 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
+
+func TestTaskWorktreeHandoffComparesRecreatedPathsOnce(t *testing.T) {
+	source, git := taskWorktreeTestRepository(t)
+	const recreated, other = "a [1].txt", "z.txt"
+	for _, name := range []string{recreated, other} {
+		if err := os.WriteFile(filepath.Join(source, name), []byte("original "+name+"\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	git("add", ".")
+	git("commit", "--quiet", "-m", "original material")
+	cfg := poMCPConfig(t)
+	cfg.defaultWorkspacePath = source
+	r := poMCPOpen(t, cfg)
+	task := r.must(delivery.TaskWorktreesCreate, protocol.CreateTaskWorktreeRequest{
+		Source: protocol.WorkspaceRef{Path: source}, Base: "HEAD",
+	}, "create-task-for-recreated-path").(*protocol.TaskWorktree)
+	git("-C", task.Workspace.Path, "--literal-pathspecs", "rm", "--cached", "--", recreated)
+	for _, name := range []string{recreated, other} {
+		if err := os.WriteFile(filepath.Join(task.Workspace.Path, name), []byte("updated "+name+"\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	index := git("-C", task.Workspace.Path, "rev-parse", "--path-format=absolute", "--git-path", "index")
+	before, err := os.ReadFile(index)
+	if err != nil {
+		t.Fatal(err)
+	}
+	objects := git("count-objects", "-v")
+
+	read := r.endpoint.Invoke(protocolLifecycleContext(t.Context()), delivery.WorkspaceDiffGet, protocol.GetDiffRequest{
+		Workspace: task.Workspace, Format: protocol.DiffFormatVisual,
+	}, protocol.CallMetadata{})
+	if read.Failure != nil {
+		t.Errorf("workspace diff refused the recreated path: %v", read.Failure)
+	} else {
+		visual := read.Value.(*protocol.Diff).Visual
+		if visual == nil || len(visual.Manifest) != 2 || !slices.ContainsFunc(visual.Manifest, func(file protocol.WorkspaceFileChange) bool {
+			return file.Path == recreated && file.Status == protocol.FileStatusModified
+		}) {
+			t.Errorf("recreated path is missing from the worktree comparison: %+v", visual)
+		}
+	}
+	preview := r.must(delivery.TaskWorktreesPreview, protocol.TaskWorktreeRequest{ID: task.ID}, "").(*protocol.WorktreeHandoff)
+	if marker := "diff --git a/" + recreated + " b/" + recreated + "\n"; strings.Count(preview.Patch, marker) != 1 {
+		t.Errorf("handoff did not compare the recreated file once: %q", preview.Patch)
+	}
+	if after, err := os.ReadFile(index); err != nil || !bytes.Equal(before, after) {
+		t.Fatalf("the worktree comparison changed its source index: %v", err)
+	}
+	if after := git("count-objects", "-v"); after != objects {
+		t.Fatalf("the worktree comparison wrote objects to the source repository: %s", after)
+	}
+
+	r.must(delivery.TaskWorktreesApply, protocol.ApplyWorktreeHandoffRequest{ID: task.ID, Digest: preview.Digest},
+		"apply-recreated-path-handoff")
+	for _, name := range []string{recreated, other} {
+		if got := git("show", ":"+name); got != "updated "+name {
+			t.Errorf("handoff staged %q for %q", got, name)
+		}
+	}
+}
 
 func TestTaskWorktreePreviewReportsPatchCapacity(t *testing.T) {
 	source, git := taskWorktreeTestRepository(t)
@@ -102,7 +166,7 @@ func TestWorkspacePatchReportsAFileRemovedDuringRead(t *testing.T) {
 	if err := os.WriteFile(file, []byte("temporary content\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	entered, proceed := holdTaskGitBoundary(t, beforeUntrackedPatch)
+	entered, proceed := holdTaskGitBoundary(t, beforeUntrackedInclusion)
 	ctx, cancel := context.WithTimeout(protocolLifecycleContext(t.Context()), lifecycleWaitBudget(t))
 	var caller sync.WaitGroup
 	defer func() {

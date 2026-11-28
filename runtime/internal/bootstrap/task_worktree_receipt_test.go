@@ -27,7 +27,7 @@ const (
 	afterCheckoutRegistration  taskGitBoundary = "after-register"
 	beforeHandoffPreview       taskGitBoundary = "before-preview"
 	afterHandoffApply          taskGitBoundary = "after-apply"
-	beforeUntrackedPatch       taskGitBoundary = "before-untracked-patch"
+	beforeUntrackedInclusion   taskGitBoundary = "before-untracked-inclusion"
 	beforeCheckoutReleaseCheck taskGitBoundary = "before-check-release"
 	afterCheckoutRemoval       taskGitBoundary = "after-remove"
 )
@@ -316,7 +316,7 @@ for argument do
   case "$argument" in
     list) if [ "$previous" = worktree ]; then operation=preview; fi ;;
     apply) operation=apply ;;
-    --no-index) if [ "$previous" = diff ]; then operation=untracked-patch; fi ;;
+    --intent-to-add) if [ "$previous" = add ]; then operation=untracked-inclusion; fi ;;
     *'^{commit}') operation=resolve-base ;;
     add) if [ "$previous" = worktree ]; then operation=register; fi ;;
     HEAD) if [ "$previous" = --verify ]; then operation=check-release; fi ;;

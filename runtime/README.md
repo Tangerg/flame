@@ -1932,8 +1932,11 @@ capture safety bound. Complete raw refuses row limits and fails on byte overflow
 An oversized first file yields an empty visual patch and manifest with
 `truncated: true`. Raw, rows and visual wire payloads are mutually exclusive and
 all clients must migrate with the Runtime.
-Worktree comparisons and handoffs reject untracked directory entries such as
-embedded Git repositories. Every selected untracked file must produce a patch.
+Worktree comparisons and handoffs include selected untracked paths in a private
+Git index before comparing with the baseline. Patches and manifests follow
+Git's comparison order. Git reads existing objects from the repository as an
+alternate. Untracked directory entries such as embedded Git repositories are
+rejected before comparison.
 
 Checkpoint predicates accept exit codes only from admitted Git command results.
 A process failure carrying the same status remains a failed observation. Object

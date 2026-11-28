@@ -1,16 +1,14 @@
 package git
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/infra/git/process"
 )
-
-const noIndexChanges = 1
 
 var ErrUnpatchablePath = errors.New("git: path cannot be represented in a patch")
 
@@ -36,55 +34,51 @@ func readWorktreePatch(ctx context.Context, dir string, comparison patchComparis
 	if err != nil {
 		return nil, nil, err
 	}
-	options := []string{"--no-ext-diff", "--no-textconv", "--no-color"}
+	args := []string{"diff", "--no-ext-diff", "--no-textconv", "--no-color"}
 	if comparison.binary {
-		options = append(options, "--binary")
+		args = append(args, "--binary")
 	}
-	args := append([]string{"diff"}, options...)
-	tracked, err := run(ctx, dir, append(args, "-M", "--relative", comparison.revision, "--", pathspec)...)
+	args = append(args, "-M", "--relative", comparison.revision, "--", pathspec)
+	var untracked []string
+	result, err := process.ObserveWorktree(ctx, dir, func(query process.WorktreeQuery) (process.Result, error) {
+		if comparison.includeUntracked {
+			paths, err := untrackedPaths(query, pathspec)
+			if err != nil {
+				return process.Result{}, err
+			}
+			if err := includeUntrackedPaths(query, paths); err != nil {
+				return process.Result{}, err
+			}
+			untracked = paths
+		}
+		return query(nil, args...)
+	})
+	patch, err := readCommandOutput(args, result, err, 0)
 	if err != nil {
 		return nil, nil, err
 	}
-	patch, err := appendDiffPatch(nil, tracked, maxBytes)
-	if err != nil || !comparison.includeUntracked {
-		return patch, nil, err
-	}
-	untracked, err := untrackedPaths(ctx, dir, pathspec)
-	if err != nil {
-		return nil, nil, err
-	}
-	noIndex := append([]string{"diff", "--no-index"}, options...)
-	for _, path := range untracked {
-		delta, err := readUntrackedPatch(ctx, dir, append(noIndex, "--", os.DevNull, path))
-		if err != nil {
-			return nil, nil, err
-		}
-		patch, err = appendDiffPatch(patch, delta, maxBytes)
-		if err != nil {
-			return nil, nil, err
-		}
+	if len(patch) > maxBytes {
+		return nil, nil, fmt.Errorf("%w: diff exceeds %d bytes", ErrResultTooLarge, maxBytes)
 	}
 	return patch, untracked, nil
 }
 
-func readUntrackedPatch(ctx context.Context, dir string, args []string) ([]byte, error) {
-	result, err := process.At(ctx, dir, args...)
+func includeUntrackedPaths(query process.WorktreeQuery, paths []string) error {
+	if len(paths) == 0 {
+		return nil
+	}
+	var names bytes.Buffer
+	for _, path := range paths {
+		names.WriteString(path)
+		names.WriteByte(0)
+	}
+	args := []string{"add", "--intent-to-add", "--pathspec-from-file=-", "--pathspec-file-nul"}
+	result, err := query(&names, append([]string{"--literal-pathspecs"}, args...)...)
 	if err != nil {
-		return nil, gitProcessError(args, err)
+		return gitProcessError(args, err)
 	}
-	// Git can also use status 1 when it cannot read the selected file.
-	if result.ExitCode == noIndexChanges && len(result.Stdout) != 0 {
-		return result.Stdout, nil
+	if result.ExitCode != 0 {
+		return errors.Join(ErrUnpatchablePath, gitExitError(args, result.ExitCode, strings.TrimSpace(result.Stderr)))
 	}
-	return nil, errors.Join(ErrUnpatchablePath, gitExitError(args, result.ExitCode, strings.TrimSpace(result.Stderr)))
-}
-
-func appendDiffPatch(patch, part []byte, maxBytes int) ([]byte, error) {
-	if len(part) > maxBytes-len(patch) {
-		return nil, fmt.Errorf("%w: aggregate diff exceeds %d bytes", ErrResultTooLarge, maxBytes)
-	}
-	if len(patch) == 0 {
-		return part, nil
-	}
-	return append(patch, part...), nil
+	return nil
 }

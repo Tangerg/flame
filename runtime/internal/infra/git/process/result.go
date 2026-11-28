@@ -133,13 +133,15 @@ func readOutput(ctx context.Context, source io.Reader) ([]byte, error) {
 var parsingLocale = []string{"LC_ALL=C", "LANG=C"}
 
 func At(ctx context.Context, dir string, args ...string) (Result, error) {
-	prefix, env := worktreeInvocation(dir)
 	if len(args) > 0 {
 		switch args[0] {
 		case "status", "diff", "ls-files":
-			return observeWorktree(ctx, env, prefix, args)
+			return ObserveWorktree(ctx, dir, func(query WorktreeQuery) (Result, error) {
+				return query(nil, args...)
+			})
 		}
 	}
+	prefix, env := worktreeInvocation(dir)
 	return Run(ctx, env, nil, append(prefix, args...)...)
 }
 

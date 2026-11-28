@@ -247,13 +247,13 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: workspace", () => {
     expect(visual.visual).toEqual({
       patch: raw.patch,
       manifest: [
-        { path: "tracked.txt", status: "modified", added: 1, removed: 1 },
         { path: "new-中文.txt", status: "untracked", added: 1, removed: 0 },
+        { path: "tracked.txt", status: "modified", added: 1, removed: 1 },
       ],
       truncated: false,
       budget: { files: 5_000, rows: 5_000, bytes: 64 * 1024 * 1024 },
     });
-    expect([...parseVisualDiff(visual).rendered.keys()]).toEqual(["tracked.txt", "new-中文.txt"]);
+    expect([...parseVisualDiff(visual).rendered.keys()]).toEqual(["new-中文.txt", "tracked.txt"]);
 
     await expect(workspace.diff.get({ format: "visual", limit: 1 })).resolves.toEqual({
       type: "visual",

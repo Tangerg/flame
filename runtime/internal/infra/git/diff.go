@@ -98,7 +98,7 @@ func Diff(ctx context.Context, dir, relPath string, mode Mode, projection Projec
 		untracked[path] = struct{}{}
 	}
 	for index := range parsed.files {
-		if _, ok := untracked[parsed.files[index].Path]; ok {
+		if _, ok := untracked[parsed.files[index].Path]; ok && parsed.files[index].Status == StatusAdded {
 			parsed.files[index].Status = StatusUntracked
 		}
 	}

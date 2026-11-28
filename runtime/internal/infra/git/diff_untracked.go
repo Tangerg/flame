@@ -13,14 +13,17 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/capture"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
+	"github.com/Tangerg/flame/runtime/internal/infra/git/process"
 )
 
 const readBufferBytes = 64 << 10
 
 const maxUntrackedDiffPaths = 10_000
 
-func untrackedPaths(ctx context.Context, dir, pathspec string) ([]string, error) {
-	out, err := run(ctx, dir, "ls-files", "--others", "--exclude-standard", "-z", "--", pathspec)
+func untrackedPaths(query process.WorktreeQuery, pathspec string) ([]string, error) {
+	args := []string{"ls-files", "--others", "--exclude-standard", "-z", "--", pathspec}
+	result, err := query(nil, args...)
+	out, err := readCommandOutput(args, result, err, 0)
 	if err != nil {
 		return nil, err
 	}

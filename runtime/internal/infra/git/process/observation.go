@@ -28,12 +28,14 @@ type repositoryQuery struct {
 	env, prefix []string
 }
 
-func (q repositoryQuery) run(args ...string) (Result, error) {
-	return Run(q.ctx, q.env, nil, append(slices.Clone(q.prefix), args...)...)
+type WorktreeQuery func(input io.Reader, args ...string) (Result, error)
+
+func (q repositoryQuery) run(input io.Reader, args ...string) (Result, error) {
+	return Run(q.ctx, q.env, input, append(slices.Clone(q.prefix), args...)...)
 }
 
 func (q repositoryQuery) path(args ...string) (string, error) {
-	r, err := q.run(append([]string{"rev-parse", "--path-format=absolute"}, args...)...)
+	r, err := q.run(nil, append([]string{"rev-parse", "--path-format=absolute"}, args...)...)
 	if err != nil {
 		return "", err
 	}
@@ -43,33 +45,17 @@ func (q repositoryQuery) path(args ...string) (string, error) {
 	return strings.TrimSuffix(string(r.Stdout), "\n"), nil
 }
 
-func observeWorktree(ctx context.Context, env, prefix, args []string) (Result, error) {
-	if len(args) > 1 && args[0] == "diff" && args[1] == "--no-index" {
-		return observePaths(ctx, env, prefix, args)
-	}
-	return observeRepository(ctx, env, prefix, args, nil)
-}
-
 func CheckIgnore(ctx context.Context, dir string, names io.Reader) (Result, error) {
+	return ObserveWorktree(ctx, dir, func(query WorktreeQuery) (Result, error) {
+		return query(names, "check-ignore", "--stdin", "-z")
+	})
+}
+
+// ObserveWorktree lets related queries share a private index and object store.
+func ObserveWorktree(ctx context.Context, dir string, inspect func(WorktreeQuery) (Result, error)) (_ Result, err error) {
 	prefix, env := worktreeInvocation(dir)
-	return observeRepository(ctx, env, prefix, []string{"check-ignore", "--stdin", "-z"}, names)
-}
-
-func observePaths(ctx context.Context, env, prefix, args []string) (_ Result, err error) {
-	view, err := newReadDirectory("")
-	if err != nil {
-		return Result{}, err
-	}
-	defer func() { err = errors.Join(err, os.RemoveAll(view)) }()
-	if err := os.WriteFile(filepath.Join(view, "HEAD"), []byte(unbornHead), filesystem.PrivateFileMode); err != nil {
-		return Result{}, err
-	}
-	return Run(ctx, readViewEnvironment(env, view), nil, append(slices.Clone(prefix), args...)...)
-}
-
-func observeRepository(ctx context.Context, env, prefix, args []string, input io.Reader) (_ Result, err error) {
 	q := repositoryQuery{ctx: ctx, env: env, prefix: prefix}
-	root, err := q.run("rev-parse", "--show-toplevel")
+	root, err := q.run(nil, "rev-parse", "--show-toplevel")
 	if err != nil || root.ExitCode != 0 {
 		return root, err
 	}
@@ -93,8 +79,9 @@ func observeRepository(ctx context.Context, env, prefix, args []string, input io
 	if err := q.installReadIndex(view, common); err != nil {
 		return Result{}, err
 	}
-	env = append(env, "GIT_WORK_TREE="+tree, "GIT_OBJECT_DIRECTORY="+filepath.Join(common, objectsDirectory))
-	return Run(ctx, env, input, append(slices.Clone(prefix), args...)...)
+	objects := strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(filepath.Join(common, objectsDirectory))
+	q.env = append(env, "GIT_WORK_TREE="+tree, `GIT_ALTERNATE_OBJECT_DIRECTORIES="`+objects+`"`)
+	return inspect(q.run)
 }
 
 func readViewEnvironment(env []string, view string) []string {
@@ -131,11 +118,8 @@ func newReadDirectory(tree string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if tree != "" {
-		rel, err := filepath.Rel(tree, parent)
-		if err == nil && (rel == "." || filepath.IsLocal(rel)) {
-			return "", errors.New("git: inspection requires a temporary directory outside the worktree")
-		}
+	if rel, err := filepath.Rel(tree, parent); err == nil && filepath.IsLocal(rel) {
+		return "", errors.New("git: inspection requires a temporary directory outside the worktree")
 	}
 	view, err := os.MkdirTemp(parent, "flame-git-read-*")
 	if err != nil {
@@ -150,7 +134,7 @@ func newReadDirectory(tree string) (string, error) {
 }
 
 func (q repositoryQuery) installReadHead(view string) error {
-	r, err := q.run("rev-parse", "--verify", "--quiet", "HEAD")
+	r, err := q.run(nil, "rev-parse", "--verify", "--quiet", "HEAD")
 	if err != nil {
 		return err
 	}
@@ -170,7 +154,7 @@ func (q repositoryQuery) installReadHead(view string) error {
 // repository. A config rewrite between discovery and execution cannot add a
 // command, hook, remote or include to this closed list.
 func (q repositoryQuery) installReadConfig(view string, env []string) ([]string, error) {
-	r, err := q.run("config", "--null", "--get-regexp", `^(core\.(filemode|ignorecase|symlinks|autocrlf|eol|safecrlf|trustctime|checkstat|precomposeunicode|excludesfile|attributesfile)|extensions\.objectformat)$`)
+	r, err := q.run(nil, "config", "--null", "--get-regexp", `^(core\.(filemode|ignorecase|symlinks|autocrlf|eol|safecrlf|trustctime|checkstat|precomposeunicode|excludesfile|attributesfile)|extensions\.objectformat)$`)
 	if err != nil {
 		return nil, err
 	}
