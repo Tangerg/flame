@@ -242,7 +242,7 @@ func (c *Coordinator) retireExecutionPolicy(id identity.SessionID) error {
 func (c *Coordinator) resolveSessionWorkspace(path string) (session.Workspace, error) {
 	resolved, err := c.paths.ResolveExistingDir(path)
 	if err != nil {
-		return session.Workspace{}, errors.Join(workspaceapp.ErrCWDUnavailable, err)
+		return session.Workspace{}, err
 	}
 	workspace, err := session.NewWorkspace(resolved)
 	if err != nil {
@@ -254,7 +254,7 @@ func (c *Coordinator) resolveSessionWorkspace(path string) (session.Workspace, e
 func (c *Coordinator) bindWorkspace(path string) (session.Workspace, func(), error) {
 	release, acquired, err := c.admissions.AcquireWorkspaceBinding(path)
 	if err != nil {
-		return session.Workspace{}, nil, errors.Join(workspaceapp.ErrCWDUnavailable, err)
+		return session.Workspace{}, nil, err
 	}
 	if !acquired {
 		return session.Workspace{}, nil, fmt.Errorf("%w: %q is being released", workspaceapp.ErrCWDUnavailable, path)

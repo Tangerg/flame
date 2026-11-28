@@ -2,6 +2,7 @@ package workspace
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,7 +12,27 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/repository"
 )
 
-type Resolver struct{ filesystem.DirectoryResolver }
+type Resolver struct{}
+
+func (Resolver) CanonicalPath(path string) (string, error) {
+	resolved, err := filesystem.CanonicalPath(path)
+	if err != nil {
+		return "", unavailableWorkspace(path, err)
+	}
+	return resolved, nil
+}
+
+func (Resolver) ResolveExistingDir(path string) (string, error) {
+	resolved, err := (filesystem.DirectoryResolver{}).ResolveExistingDir(path)
+	if err != nil {
+		return "", unavailableWorkspace(path, err)
+	}
+	return resolved, nil
+}
+
+func unavailableWorkspace(path string, err error) error {
+	return fmt.Errorf("%w: %q: %w", workspaceapp.ErrCWDUnavailable, path, err)
+}
 
 func (Resolver) ResolveInRoot(root, path string) (string, error) {
 	if !filepath.IsAbs(root) {
@@ -55,8 +76,8 @@ func (r Resolver) ResolveExistingInRoot(root, path string) (string, error) {
 	return rel, nil
 }
 
-func (Resolver) Inspect(path string) (workspaceapp.Resolved, error) {
-	cwd, err := filesystem.CanonicalPath(path)
+func (r Resolver) Inspect(path string) (workspaceapp.Resolved, error) {
+	cwd, err := r.CanonicalPath(path)
 	if err != nil {
 		return workspaceapp.Resolved{}, err
 	}
@@ -67,7 +88,7 @@ func (Resolver) Inspect(path string) (workspaceapp.Resolved, error) {
 			identity.Missing = true
 			return identity, nil
 		}
-		return workspaceapp.Resolved{}, err
+		return workspaceapp.Resolved{}, unavailableWorkspace(path, err)
 	}
 	if !info.IsDir() {
 		identity.Missing = true

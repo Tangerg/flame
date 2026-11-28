@@ -219,8 +219,9 @@ func assembleSessions(cfg assemblyConfig, policy policyComposition, workspaceSer
 	if err != nil {
 		return sessionAssembly{}, fmt.Errorf("runtime: session resource retirement: %w", err)
 	}
+	workspacePaths := workspaceadapter.Resolver{}
 	admissionGate, err := ownership.NewGate(ownership.GateConfig{
-		TreesOverlap: filesystem.PathsOverlap, ResolveTree: filesystem.CanonicalPath,
+		TreesOverlap: filesystem.PathsOverlap, ResolveTree: workspacePaths.CanonicalPath,
 		SettleRetirement: retirer.SettleSession, WorkspaceRollbackPending: cfg.stores.WorkspaceMutations.SessionPending,
 	})
 	if err != nil {
@@ -240,7 +241,7 @@ func assembleSessions(cfg assemblyConfig, policy policyComposition, workspaceSer
 		Writes:                sessionStores,
 		TransientState:        execution.transientSessions,
 		ExecutionReleaser:     execution.executor,
-		Paths:                 workspaceadapter.Resolver{},
+		Paths:                 workspacePaths,
 		Projects:              cfg.stores.Projects,
 		Models:                execution.models.capabilities,
 		DefaultModelSelection: cfg.defaultSelection,

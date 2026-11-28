@@ -2,7 +2,6 @@ package workspace
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/samber/lo"
 )
@@ -45,9 +44,5 @@ func (s *Scope) ResolveRoot(cwd string) (string, error) {
 	if root == "" {
 		root = s.defaultWorkspacePath
 	}
-	resolved, err := s.paths.ResolveExistingDir(root)
-	if err != nil {
-		return "", fmt.Errorf("%w: %s: %w", ErrCWDUnavailable, root, err)
-	}
-	return resolved, nil
+	return s.paths.ResolveExistingDir(root)
 }
