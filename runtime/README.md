@@ -1251,6 +1251,8 @@ resource teardown finishes, every call returns its retained diagnostic without
 repeating cleanup; a later call cannot turn a failed close into apparent success.
 Shutdown cancels accepted calls and component-owned work before joining delivery.
 Dependencies close only after their calls and components have returned.
+The HTTP drain closes sockets that are still waiting for their first request
+headers. Connections with admitted requests follow the request lifecycle.
 If the caller's close wait expires while a Frame resource remains unconfirmed,
 the error retains both the timeout and the original cleanup cause. Frame's
 release proof still controls when storage, content and the directory lease close.

@@ -32,6 +32,7 @@ type Server struct {
 	httpServer   *http.Server
 	handlerCtx   context.Context
 	stopHandlers context.CancelFunc
+	unstarted    unstartedConnections
 }
 
 type Config struct {
@@ -99,12 +100,14 @@ func NewServer(cfg Config) (*Server, error) {
 		web:            cfg.WebApplication,
 		handlerCtx:     handlerCtx,
 		stopHandlers:   stopHandlers,
+		unstarted:      unstartedConnections{waiting: make(map[net.Conn]struct{})},
 		info:           newInfoResponse(cfg.ServerInfo),
 	}
 	s.httpServer = &http.Server{
 		Addr:              cfg.Addr,
 		Handler:           s.Handler(),
 		ReadHeaderTimeout: serverReadHeaderTimeout,
+		ConnState:         s.unstarted.observe,
 		// No WriteTimeout — SSE streams can be arbitrarily long.
 	}
 	return s, nil
@@ -167,10 +170,12 @@ func (s *Server) Start(ctx context.Context) (net.Addr, <-chan error, error) {
 
 func (s *Server) Shutdown(ctx context.Context) error {
 	s.stopHandlers()
+	s.unstarted.seal()
 	return s.httpServer.Shutdown(ctx)
 }
 
 func (s *Server) Close() error {
 	s.stopHandlers()
+	s.unstarted.seal()
 	return s.httpServer.Close()
 }
