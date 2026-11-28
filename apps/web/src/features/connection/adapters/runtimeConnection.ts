@@ -42,6 +42,7 @@ export function createRuntimeConnection(
     capabilities: projection.capabilities,
     status: projection.status,
     endpoint,
+    connection: projection.stream,
   };
   let shared: {
     signature: string;

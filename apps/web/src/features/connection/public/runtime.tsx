@@ -4,10 +4,12 @@ import {
   type RuntimeServiceStatusPort,
 } from "@/features/connection/application/runtimeService";
 import { type RuntimeEndpoint } from "@/features/connection/application/runtimeEndpoint";
+import { type RuntimeStream } from "@/features/connection/public/services";
 export interface RuntimeAccess {
   readonly capabilities: RuntimeCapabilityPort;
   readonly status: RuntimeServiceStatusPort;
   readonly endpoint: RuntimeEndpoint;
+  readonly connection: Pick<RuntimeStream, "connectionGeneration" | "subscribeConnection">;
 }
 const RuntimeContext = createContext<RuntimeAccess | null>(null);
 export function RuntimeProvider({

@@ -16,6 +16,7 @@ export function openWebSession(
   const runtime = {
     capabilities: connection.capabilities,
     status: connection.status,
+    connection: connection.stream,
     endpoint: createRuntimeEndpoint({
       read: target,
       defaultTarget: target,

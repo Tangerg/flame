@@ -56,9 +56,15 @@ export function createVisualClient(runtimeClient: () => FlameClient, messages: N
       throw new Error("Visual Runtime endpoint is not bound");
     },
   };
+  const stream = {
+    connectionGeneration: () => projection.store.getState().connectionGeneration,
+    subscribeConnection: (listener: () => void) => projection.store.subscribe(listener),
+    reportConnectionLoss: () => undefined,
+  };
   const runtime: RuntimeAccess = {
     capabilities: projection.capabilities,
     status: projection.status,
+    connection: stream,
     endpoint: createRuntimeEndpoint({
       read: () => configuration.read(),
       defaultTarget: () => configuration.defaultTarget(),
@@ -73,11 +79,6 @@ export function createVisualClient(runtimeClient: () => FlameClient, messages: N
         return changed;
       },
     }),
-  };
-  const stream = {
-    connectionGeneration: () => projection.store.getState().connectionGeneration,
-    subscribeConnection: (listener: () => void) => projection.store.subscribe(listener),
-    reportConnectionLoss: () => undefined,
   };
   const agent = composeAgent(runtimeClient, navigation, runtime, stream, scope, messages);
   agent.dependencies = {

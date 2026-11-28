@@ -21,6 +21,7 @@ import {
 } from "@/features/agent/public/session";
 import { useAgent } from "@/features/agent/public/agent";
 import { useRuntime } from "@/features/connection/public/runtime";
+import { type RuntimeConnectionGeneration } from "@/features/connection/public/services";
 import { useRuntimeCommandsAvailable } from "@/features/connection/public/serviceStatus";
 import { selectWorkspaceChat } from "@/features/workspace/public/navigation";
 import { useWorkspace } from "@/features/workspace/public/workspace";
@@ -31,14 +32,20 @@ import { rpcErrorText } from "@/lib/rpcErrors";
 
 const DEFAULT_BASE_REF = "HEAD";
 
-type PreviewState =
-  | { phase: "idle" | "loading" }
+type PreviewState = { generation: RuntimeConnectionGeneration } & (
+  | { phase: "loading" }
   | { phase: "ready"; handoff: WorktreeHandoff }
-  | { phase: "failed"; error: unknown };
+  | { phase: "failed"; error: unknown }
+);
 
 export function TaskWorktrees() {
   const workspace = useWorkspace();
   const runtime = useRuntime();
+  const { connection } = runtime;
+  const generation = useSyncExternalStore(
+    connection.subscribeConnection,
+    connection.connectionGeneration,
+  );
   const commands = workspace.taskWorktreeCommands;
   const command = useSyncExternalStore(commands.subscribe, commands.snapshot);
   const commandAvailable = useRuntimeCommandsAvailable();
@@ -50,52 +57,67 @@ export function TaskWorktrees() {
   const [source, setSource] = useState<string>();
   const [base, setBase] = useState(DEFAULT_BASE_REF);
   const [setup, setSetup] = useState("");
-  const [previewState, setPreview] = useState<PreviewState>({ phase: "idle" });
-  const preview = previewState.phase === "ready" ? previewState.handoff : undefined;
+  const [previewState, setPreview] = useState<PreviewState>();
+  const currentPreview = previewState?.generation === generation ? previewState : undefined;
+  const preview = currentPreview?.phase === "ready" ? currentPreview.handoff : undefined;
   const error =
     command.phase === "failed" || command.phase === "unconfirmed"
       ? command.error
-      : previewState.phase === "failed"
-        ? previewState.error
+      : currentPreview?.phase === "failed"
+        ? currentPreview.error
         : undefined;
   const location = source ?? active?.workspace.path ?? "";
   const endpoint = runtime.endpoint.currentRuntimeEndpoint();
   const tasks = useQuery({
-    queryKey: taskWorktreesQueryKey(endpoint),
+    queryKey: taskWorktreesQueryKey(endpoint, generation?.processGeneration),
     queryFn: ({ signal }) => workspace.taskWorktrees().list(signal),
-    enabled: commandAvailable,
+    enabled: commandAvailable && generation !== null,
   });
   useEffect(() => {
-    if (commandAvailable) commands.restorePending();
-  }, [commandAvailable, commands, endpoint]);
+    if (commandAvailable && generation) commands.restorePending();
+  }, [commandAvailable, commands, generation]);
 
+  const currentGeneration = () => {
+    const active = connection.connectionGeneration();
+    return active === generation ? active : null;
+  };
   const showPreview = async (id: string) => {
-    setPreview({ phase: "loading" });
+    const origin = currentGeneration();
+    if (!origin) return;
+    const pending: PreviewState = { phase: "loading", generation: origin };
+    setPreview(pending);
+    let completed: PreviewState;
     try {
-      setPreview({ phase: "ready", handoff: await workspace.taskWorktrees().preview(id) });
+      const handoff = await workspace.taskWorktrees().preview(id);
+      completed = { phase: "ready", handoff, generation: origin };
     } catch (cause) {
-      setPreview({ phase: "failed", error: cause });
+      completed = { phase: "failed", error: cause, generation: origin };
     }
+    setPreview((current) => (current === pending ? completed : current));
   };
   const settle = async (
     operation: TaskWorktreeMutation,
-    acknowledged: Promise<boolean>,
+    submit: () => Promise<boolean>,
     submittedSetup?: string,
   ) => {
-    if (!(await acknowledged)) return;
-    if (operation !== "create") setPreview({ phase: "idle" });
+    const origin = currentGeneration();
+    if (!origin || !(await submit())) return;
+    if (operation !== "create")
+      setPreview((current) => (current?.generation === origin ? undefined : current));
     else if (submittedSetup !== undefined)
       setSetup((current) => (current === submittedSetup ? "" : current));
   };
   const open = async (task: TaskWorktree) => {
+    if (!currentGeneration()) return;
     const bound = sessions?.find((session) => session.workspace.path === task.workspace.path);
     if (bound) agent.selectAgentSession(bound.id);
     else if (!(await startSession({ cwd: task.workspace.path, projectId: active?.projectId })))
       return;
     selectWorkspaceChat(workspace);
   };
-  const busy = command.phase === "sending" || previewState.phase === "loading";
-  const disabled = busy || !commandAvailable || command.phase === "unconfirmed";
+  const busy = command.phase === "sending" || currentPreview?.phase === "loading";
+  const unavailable = !commandAvailable || !generation;
+  const disabled = busy || unavailable || command.phase === "unconfirmed";
 
   return (
     <Panel
@@ -113,8 +135,8 @@ export function TaskWorktrees() {
       )}
       {command.phase === "unconfirmed" && (
         <Button
-          disabled={busy || !commandAvailable}
-          onClick={() => void settle(command.operation, commands.recover())}
+          disabled={busy || unavailable}
+          onClick={() => void settle(command.operation, () => commands.recover())}
         >
           {t("workspace.tasks.recover")}
         </Button>
@@ -126,11 +148,12 @@ export function TaskWorktrees() {
             if (disabled || !location.trim() || !base.trim()) return;
             void settle(
               "create",
-              commands.create({
-                source: { path: location.trim() },
-                base: base.trim(),
-                setup: setup.trim() ? setup : undefined,
-              }),
+              () =>
+                commands.create({
+                  source: { path: location.trim() },
+                  base: base.trim(),
+                  setup: setup.trim() ? setup : undefined,
+                }),
               setup,
             );
           }}
@@ -189,7 +212,7 @@ export function TaskWorktrees() {
               </Button>
               <Button
                 disabled={disabled}
-                onClick={() => void settle("release", commands.release(task.id))}
+                onClick={() => void settle("release", () => commands.release(task.id))}
               >
                 {t("workspace.tasks.release")}
               </Button>
@@ -213,15 +236,14 @@ export function TaskWorktrees() {
               variant="primary"
               disabled={disabled || !preview.patch}
               onClick={() =>
-                void settle(
-                  "apply",
+                void settle("apply", () =>
                   commands.apply({ id: preview.worktree.id, digest: preview.digest }),
                 )
               }
             >
               {t("workspace.tasks.apply")}
             </Button>
-            <Button disabled={busy} onClick={() => setPreview({ phase: "idle" })}>
+            <Button disabled={busy} onClick={() => setPreview(undefined)}>
               {t("common.cancel")}
             </Button>
           </FormActions>
