@@ -18,9 +18,8 @@ export function forkSessionAt(
     .runSessionFork(key, async () => {
       const sessionId = await runtime.forkSession({ sessionId: id, fromRunId });
       owner.assertCurrent();
-      await owner.settle(invalidateAgentSessions());
-      owner.assertCurrent();
       state.selectSession(sessionId);
+      invalidateAgentSessions([sessionId]);
     })
     .catch((error: unknown) => {
       if (owner.isCurrent()) reportSessionError(agentAccess.notifications, "fork", error);

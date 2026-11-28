@@ -1,6 +1,6 @@
 import { type AgentAccess } from "@/features/agent/public/agent";
 import { queryClient, replaceCachedRead } from "@/lib/queryClient";
-import { AGENT_SESSIONS_KEY } from "@/features/agent/public/session";
+import { invalidateAgentSessions } from "@/features/agent/public/session";
 
 import { APPROVAL_MODE_KEY, APPROVAL_RULES_KEY } from "@/features/agent/public/approvalPolicy";
 import { MODELS_KEY, PROVIDERS_KEY } from "@/features/providers/public/queries";
@@ -17,7 +17,10 @@ import {
   type WorkspaceInvalidationTarget,
 } from "@/features/workspace/domain/eventInvalidation";
 const QUERY_KEYS: Record<
-  Exclude<WorkspaceInvalidationTarget, "all" | "agentSessionProjection" | "sessionUsage">,
+  Exclude<
+    WorkspaceInvalidationTarget,
+    "all" | "agentSessionProjection" | "sessionUsage" | "sessions"
+  >,
   string
 > = {
   approvalMode: APPROVAL_MODE_KEY,
@@ -28,7 +31,6 @@ const QUERY_KEYS: Record<
   models: MODELS_KEY,
   projects: PROJECTS_KEY,
   providers: PROVIDERS_KEY,
-  sessions: AGENT_SESSIONS_KEY,
 };
 
 function invalidateWorkspaceTargets(
@@ -55,6 +57,10 @@ function invalidateWorkspaceTargets(
       void replaceCachedRead({ queryKey: agentAccess.sessionUsageQueryKey() });
       continue;
     }
+    if (target === "sessions") {
+      invalidateAgentSessions(event.sessionIds);
+      continue;
+    }
     const predicate = (query: { queryKey: readonly unknown[] }) =>
       workspaceQueryAffected(
         target,
@@ -65,7 +71,10 @@ function invalidateWorkspaceTargets(
   }
 }
 
-export function invalidateWorkspaceEvent(agentAccess: AgentAccess, ev: WorkspaceInvalidationEvent): void {
+export function invalidateWorkspaceEvent(
+  agentAccess: AgentAccess,
+  ev: WorkspaceInvalidationEvent,
+): void {
   invalidateWorkspaceTargets(agentAccess, workspaceInvalidations(ev), ev);
 }
 

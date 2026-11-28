@@ -20,6 +20,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
 	work "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/flame/runtime/internal/infra/git"
 	"github.com/Tangerg/flame/runtime/internal/infra/git/process"
 	toolshell "github.com/Tangerg/scope/tools/shell"
 )
@@ -27,18 +28,22 @@ import (
 const (
 	taskManifest  = "task.json"
 	taskCheckout  = "checkout"
+	taskCustody   = "flame-task-id"
 	maxHandoff    = 512 << 10
 	maxTaskRecord = 16 << 10
 )
 
+const taskPublicationTimeout = 5 * time.Second
+
 type TaskWorktrees struct {
-	root     string
-	toolDirs []string
-	creating sync.RWMutex
+	root       string
+	toolDirs   []string
+	creatingMu sync.RWMutex
+	creating   map[string]struct{}
 }
 
 func NewTaskWorktrees(root string, toolDirs []string) *TaskWorktrees {
-	return &TaskWorktrees{root: root, toolDirs: toolDirs}
+	return &TaskWorktrees{root: root, toolDirs: toolDirs, creating: make(map[string]struct{})}
 }
 
 type taskRecord struct {
@@ -50,8 +55,6 @@ type taskRecord struct {
 }
 
 func (b *TaskWorktrees) Create(ctx context.Context, path, base, setup string) (work.TaskWorktree, error) {
-	b.creating.Lock()
-	defer b.creating.Unlock()
 	source, err := taskGitValue(ctx, path, "rev-parse", "--show-toplevel")
 	if err != nil {
 		return work.TaskWorktree{}, errors.Join(work.ErrVCSUnavailable, err)
@@ -90,12 +93,31 @@ func (b *TaskWorktrees) Create(ctx context.Context, path, base, setup string) (w
 	if err := root.Mkdir(record.ID, filesystem.PrivateDirectoryMode); err != nil {
 		return work.TaskWorktree{}, err
 	}
+	// The manifest must survive interruption. A live creation still owns the
+	// checkout until its setup and registration can be published together.
+	b.creatingMu.Lock()
+	b.creating[record.ID] = struct{}{}
+	b.creatingMu.Unlock()
+	defer func() {
+		b.creatingMu.Lock()
+		delete(b.creating, record.ID)
+		b.creatingMu.Unlock()
+	}()
 	if err := writeTaskRecord(root, record); err != nil {
 		return work.TaskWorktree{}, err
 	}
 	checkout := filepath.Join(b.root, record.ID, taskCheckout)
 	if _, err := taskGitValue(ctx, source, "worktree", "add", "--detach", "--quiet", "--", checkout, commit); err != nil {
 		return work.TaskWorktree{}, err
+	}
+	custody, err := taskCustodyPath(ctx, checkout)
+	if err != nil {
+		return work.TaskWorktree{}, err
+	}
+	// Git removes the registration and its custody stamp together. A new
+	// checkout can reuse both the working path and Git's registration name.
+	if err := os.WriteFile(custody, []byte(record.ID), filesystem.PrivateFileMode); err != nil {
+		return work.TaskWorktree{}, fmt.Errorf("workspace: record task worktree custody: %w", err)
 	}
 	if record.Setup != nil {
 		limited, cancel := context.WithTimeout(ctx, 90*time.Second)
@@ -117,7 +139,10 @@ func (b *TaskWorktrees) Create(ctx context.Context, path, base, setup string) (w
 			return work.TaskWorktree{}, err
 		}
 	}
-	return b.inspect(ctx, record)
+	// The caller can stop setup after Git has registered the checkout.
+	publicationCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), taskPublicationTimeout)
+	defer cancel()
+	return b.inspect(publicationCtx, record)
 }
 
 func (b *TaskWorktrees) List(ctx context.Context) ([]work.TaskWorktree, error) {
@@ -149,8 +174,6 @@ func (b *TaskWorktrees) List(ctx context.Context) ([]work.TaskWorktree, error) {
 }
 
 func (b *TaskWorktrees) Get(ctx context.Context, id string) (work.TaskWorktree, error) {
-	b.creating.RLock()
-	defer b.creating.RUnlock()
 	record, err := b.load(id)
 	if err != nil {
 		return work.TaskWorktree{}, err
@@ -160,6 +183,11 @@ func (b *TaskWorktrees) Get(ctx context.Context, id string) (work.TaskWorktree, 
 
 func (b *TaskWorktrees) load(id string) (taskRecord, error) {
 	if !isTaskID(id) {
+		return taskRecord{}, work.ErrTaskWorktreeNotFound
+	}
+	b.creatingMu.RLock()
+	defer b.creatingMu.RUnlock()
+	if _, creating := b.creating[id]; creating {
 		return taskRecord{}, work.ErrTaskWorktreeNotFound
 	}
 	root, err := os.OpenRoot(b.root)
@@ -207,15 +235,28 @@ func (b *TaskWorktrees) inspect(ctx context.Context, record taskRecord) (work.Ta
 	if !info.IsDir() {
 		return task, nil
 	}
+	if repository, err := git.IsRepo(ctx, checkout); err != nil || !repository {
+		return task, err
+	}
 	top, err := taskGitValue(ctx, checkout, "rev-parse", "--show-toplevel")
 	if err != nil {
 		return work.TaskWorktree{}, err
 	}
-	current, err := taskCommonDir(ctx, checkout)
+	if top != checkout {
+		return task, nil
+	}
+	custody, err := taskCustodyPath(ctx, checkout)
 	if err != nil {
 		return work.TaskWorktree{}, err
 	}
-	task.Available = current == record.Common && top == checkout
+	owner, err := os.ReadFile(custody)
+	if errors.Is(err, os.ErrNotExist) {
+		return task, nil
+	}
+	if err != nil {
+		return work.TaskWorktree{}, fmt.Errorf("workspace: read task worktree custody: %w", err)
+	}
+	task.Available = string(owner) == record.ID
 	return task, nil
 }
 
@@ -342,6 +383,14 @@ func taskCommonDir(ctx context.Context, path string) (string, error) {
 		return "", err
 	}
 	return filepath.EvalSymlinks(common)
+}
+
+func taskCustodyPath(ctx context.Context, checkout string) (string, error) {
+	gitDir, err := taskGitValue(ctx, checkout, "rev-parse", "--absolute-git-dir")
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(gitDir, taskCustody), nil
 }
 
 func taskGitValue(ctx context.Context, path string, args ...string) (string, error) {

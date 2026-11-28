@@ -72,10 +72,11 @@ func (c *Coordinator) RestorePortableSession(ctx context.Context, portable Porta
 		return err
 	}
 	defer admission.Release()
-	workspace, err := c.resolveSessionWorkspace(snapshot.Session.Workspace().Path())
+	workspace, release, err := c.bindWorkspace(snapshot.Session.Workspace().Path())
 	if err != nil {
 		return err
 	}
+	defer release()
 	snapshot.Session, err = snapshot.Session.InstallRestoredWorkspace(workspace)
 	if err != nil {
 		return err

@@ -4,6 +4,9 @@ import { describe, expect, it, onTestFinished } from "vitest";
 import { QueryObserver } from "@tanstack/react-query";
 import { asRunId, asSessionId, createSidecarClient, type FlameClient } from "@flame/runtime-client";
 import { HTTP_HEADERS } from "@flame/runtime-client/wire";
+import { startKernel, stopKernel } from "@/extensions/bootstrap";
+import { definePlugin } from "@/extensions/definePlugin";
+import { registerAgentDataProviders } from "@/features/agent/adapters/runtimeDataProviders";
 import {
   readRuntimeSessionSummaries,
   toAgentSessionSummary,
@@ -11,6 +14,7 @@ import {
 import { editAgentSession } from "@/features/agent/application/session/editSession";
 import {
   AGENT_SESSIONS_KEY,
+  fetchAgentSessionSummary,
   type AgentSessionSummary,
 } from "@/features/agent/application/session/sessionQueries";
 import {
@@ -21,7 +25,7 @@ import { createComposer } from "@/features/composer/adapters/composerStatePorts"
 import { DraftContent } from "@/features/composer/domain/draft";
 import { runtimeServiceInspector } from "@/features/connection/adapters/runtimeServiceInspector";
 import { NotificationFeed } from "@/features/notifications/public/notifications";
-import { createConversationImportGateway } from "@/features/workspace/adapters/runtimeConversationImportGateway";
+import { bindConversationImportRuntime } from "@/features/workspace/adapters/runtimeConversationImportGateway";
 import { createConversationImport } from "@/features/workspace/application/conversationImport";
 import { queryClient } from "@/lib/queryClient";
 import {
@@ -128,70 +132,76 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
     }
   }, 30_000);
 
-  it("creates a separate Session while the current view is awaiting its first snapshot", async () => {
-    const session = await fixture.client.sessions.create({ workspace: { path: fixture.root } });
-    const sessionId = asSessionId(session.id);
-    const opening = await fixture.client.runs.start({
-      sessionId,
-      input: [{ type: "text", text: "A conversation that should stay open in its own tab." }],
-    });
-    await collectRunEvents(originalOpeningEvents(opening));
+  it.each(["create", "fork"] as const)(
+    "%s opens a Session with a pending catalog read",
+    async (action) => {
+      const session = await fixture.client.sessions.create({ workspace: { path: fixture.root } });
+      const sessionId = asSessionId(session.id);
+      const opening = await fixture.client.runs.start({
+        sessionId,
+        input: [{ type: "text", text: "A conversation that should stay open in its own tab." }],
+      });
+      await collectRunEvents(originalOpeningEvents(opening));
 
-    const listing = Promise.withResolvers<void>();
-    const release = Promise.withResolvers<void>();
-    let created = false;
-    const client = fixture.createRuntimeClient(async (url, init) => {
-      const method = new Headers(init?.headers).get(HTTP_HEADERS.method);
-      const response = await fetch(url, init);
-      if (method === "sessions.create") created = true;
-      if (method === "sessions.list" && created) {
-        listing.resolve();
-        await release.promise;
+      const listing = Promise.withResolvers<void>();
+      const release = Promise.withResolvers<void>();
+      const client = fixture.createRuntimeClient(async (url, init) => {
+        const method = new Headers(init?.headers).get(HTTP_HEADERS.method);
+        const response = await fetch(url, init);
+        if (method === "sessions.list") {
+          listing.resolve();
+          await release.promise;
+        }
+        return response;
+      });
+      const web = openWebSession(client, fixture.baseUrl, sessionId);
+      const access = web.agent.access;
+      const queryKey = [AGENT_SESSIONS_KEY];
+      const observer = new QueryObserver(queryClient, {
+        queryKey,
+        queryFn: ({ signal }) => readRuntimeSessionSummaries(client, signal),
+      });
+      const unsubscribe = observer.subscribe(() => {});
+      let openingSession: Promise<string | null> | undefined;
+      try {
+        await within(listing.promise, "the pending Session catalog read");
+        openingSession =
+          action === "create"
+            ? access.createSession()
+            : access
+                .forkAgentSession(sessionId, opening.result.runId)
+                .then(access.getActiveSessionId);
+        const newId = await within(
+          openingSession,
+          "opening a Session while its catalog read is held",
+        );
+        if (!newId) throw new Error("new Session ID is missing");
+        expect(newId).not.toBe(sessionId);
+        expect(access.getActiveSessionId()).toBe(newId);
+        expect(observer.getCurrentResult().data).toBeUndefined();
+        await expect(fixture.client.sessions.get(asSessionId(newId))).resolves.toMatchObject({
+          id: newId,
+        });
+        release.resolve();
+        await expect
+          .poll(() => observer.getCurrentResult().data?.map(({ id }) => id))
+          .toContain(newId);
+        web.agent.projection.store.getState().ensureSession(newId);
+        await expect(access.synchronizeRewrittenSessionView(newId)).resolves.toBe(true);
+        if (action === "create") await expect(access.createSession()).resolves.toBe(newId);
+      } finally {
+        release.resolve();
+        const newId = await openingSession?.catch(() => null);
+        unsubscribe();
+        queryClient.removeQueries({ queryKey });
+        web.dispose();
+        await client.close();
+        if (newId && newId !== sessionId) await fixture.client.sessions.delete(asSessionId(newId));
+        await fixture.client.sessions.delete(sessionId);
       }
-      return response;
-    });
-    const web = openWebSession(client, fixture.baseUrl, sessionId);
-    const access = web.agent.access;
-    const queryKey = [AGENT_SESSIONS_KEY];
-    const observer = new QueryObserver(queryClient, {
-      queryKey,
-      queryFn: ({ signal }) => readRuntimeSessionSummaries(client, signal),
-    });
-    const unsubscribe = observer.subscribe(() => {});
-    let creating: Promise<string | null> | undefined;
-    try {
-      await observer.refetch({ throwOnError: true });
-      creating = access.createSession();
-      await expect(
-        within(
-          Promise.race([
-            listing.promise.then(() => "created"),
-            creating.then(() => "returned before the list refetch"),
-          ]),
-          "creating a new Session from a loading view",
-        ),
-      ).resolves.toBe("created");
-      expect(access.getActiveSessionId()).toBe(sessionId);
-      release.resolve();
-      const newId = await creating;
-      if (!newId) throw new Error("new Session ID is missing");
-      expect(newId).not.toBe(sessionId);
-      expect(access.getActiveSessionId()).toBe(newId);
-      expect(observer.getCurrentResult().data?.map(({ id }) => id)).toContain(newId);
-      web.agent.projection.store.getState().ensureSession(newId);
-      await expect(access.synchronizeRewrittenSessionView(newId)).resolves.toBe(true);
-      await expect(access.createSession()).resolves.toBe(newId);
-    } finally {
-      release.resolve();
-      const newId = await creating?.catch(() => null);
-      unsubscribe();
-      queryClient.removeQueries({ queryKey });
-      web.dispose();
-      await client.close();
-      if (newId && newId !== sessionId) await fixture.client.sessions.delete(asSessionId(newId));
-      await fixture.client.sessions.delete(sessionId);
-    }
-  }, 30_000);
+    },
+    30_000,
+  );
 
   it("recovers the original creation explicitly after an independent Session is created", async () => {
     const workspace = { path: fixture.root };
@@ -250,7 +260,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
     }
   }, 30_000);
 
-  it("opens an unmounted JSON import and refreshes an existing view on reimport", async () => {
+  it("opens a JSON import after reconnect and refreshes an existing view on reimport", async () => {
     const title = "Conversation imported before its view mounts";
     const source = await fixture.client.sessions.create({
       title,
@@ -265,8 +275,26 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
     await collectRunEvents(originalOpeningEvents(run));
     const { artifact } = await fixture.client.sessions.export(sourceId, "json");
     if (!artifact) throw new Error("JSON export omitted its Session artifact");
+    await fixture.client.sessions.delete(sourceId);
 
-    const client = fixture.createSharedClient();
+    const committed = Promise.withResolvers<number>();
+    const release = Promise.withResolvers<void>();
+    const listing = Promise.withResolvers<void>();
+    const releaseCatalog = Promise.withResolvers<void>();
+    let importsSent = 0;
+    const client = fixture.createSharedClient(async (url, init) => {
+      const method = new Headers(init?.headers).get(HTTP_HEADERS.method);
+      const response = await fetch(url, init);
+      if (method === "sessions.import" && ++importsSent === 1) {
+        committed.resolve(response.status);
+        await release.promise;
+      }
+      if (method === "sessions.list" && importsSent > 0) {
+        listing.resolve();
+        await releaseCatalog.promise;
+      }
+      return response;
+    });
     const web = openWebSession(client, fixture.baseUrl, "");
     const access = web.agent.access;
     const sidecar = createSidecarClient({ baseUrl: fixture.baseUrl });
@@ -278,20 +306,61 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
     );
     const presentations: string[] = [];
     const notifications = new NotificationFeed(({ level }) => presentations.push(level));
-    const imports = createConversationImport(web.agent.access, web.runtime, notifications);
-    const gateway = createConversationImportGateway(imports, () => client, {
+    const imports = createConversationImport(access, web.runtime, notifications, {
       pickText: async () => JSON.stringify(artifact),
     });
+    const unbind = bindConversationImportRuntime(imports, () => client, web.connection.scope);
+    const kernel = await startKernel([
+      definePlugin({
+        name: "flame.test.session-summary-query",
+        setup({ contributions }) {
+          registerAgentDataProviders(contributions, () => client);
+        },
+      }),
+    ]);
+    const queryKey = [AGENT_SESSIONS_KEY];
+    const catalog = new QueryObserver(queryClient, {
+      queryKey,
+      queryFn: ({ signal }) => readRuntimeSessionSummaries(client, signal),
+    });
+    const unsubscribe = catalog.subscribe(() => {});
     try {
       await web.connection.status.refresh();
-      await imports.importConversationJson();
+      await catalog.refetch({ throwOnError: true });
+      await expect(fetchAgentSessionSummary(sourceId)).resolves.toBeNull();
+      const generation = web.connection.stream.connectionGeneration();
+      if (!generation) throw new Error("the Runtime had no initial connection");
+      const importing = imports.importConversationJson();
+      await expect(within(committed.promise, "the import receipt")).resolves.toBe(200);
+      web.connection.stream.reportConnectionLoss(generation);
+      expect(web.connection.stream.connectionGeneration()).toBeNull();
+      await web.connection.status.refresh();
+      const restored = web.connection.stream.connectionGeneration();
+      expect(restored?.processGeneration).toBe(generation.processGeneration);
+      expect(restored).not.toBe(generation);
+      release.resolve();
+      await within(listing.promise, "the catalog read after import");
+      await within(importing, "opening the imported Session while its catalog read is held");
       expect(access.getActiveSessionId()).toBe(sourceId);
+      expect(catalog.getCurrentResult().data?.map(({ id }) => id)).not.toContain(sourceId);
+      await expect(fetchAgentSessionSummary(sourceId)).resolves.toMatchObject({
+        id: sourceId,
+        title,
+        workspace: { path: source.workspace.ref.path },
+        provider: source.provider,
+        model: source.model,
+      });
       expect(web.agent.dependencies.view.getSession(sourceId)).toBeUndefined();
       expect(presentations).toEqual(["success"]);
       await expect(fixture.client.sessions.snapshot(sourceId)).resolves.toMatchObject({
         session: { id: sourceId, title },
         runs: [expect.objectContaining({ id: run.result.runId })],
       });
+      expect(importsSent).toBe(1);
+      releaseCatalog.resolve();
+      await expect
+        .poll(() => catalog.getCurrentResult().data?.map(({ id }) => id))
+        .toContain(sourceId);
 
       await fixture.client.sessions.rollback({
         sessionId: sourceId,
@@ -303,11 +372,16 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
       expect(access.activeAgentConversation()?.messages).toEqual([]);
       await imports.importConversationJson();
       expect(presentations).toEqual(["success", "success"]);
-      expect(access.activeAgentConversation()?.messages).toContainEqual(
-        expect.objectContaining({ role: "user", runId: run.result.runId }),
-      );
+      await expect
+        .poll(() => access.activeAgentConversation()?.messages)
+        .toContainEqual(expect.objectContaining({ role: "user", runId: run.result.runId }));
     } finally {
-      gateway.dispose();
+      release.resolve();
+      releaseCatalog.resolve();
+      unsubscribe();
+      queryClient.removeQueries({ queryKey });
+      unbind();
+      await stopKernel(kernel);
       notifications.dispose();
       web.dispose();
       await client.close();

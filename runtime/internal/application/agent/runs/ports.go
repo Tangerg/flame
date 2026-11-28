@@ -155,7 +155,7 @@ type sessionReader interface {
 }
 
 type sessionCreator interface {
-	PrepareOpening(ctx context.Context, opening SessionOpening, selection flamemodel.Selection) (session.Session, *session.Session, error)
+	PrepareOpening(ctx context.Context, opening SessionOpening, selection flamemodel.Selection) (session.Session, error)
 }
 
 type rootRunReader interface {

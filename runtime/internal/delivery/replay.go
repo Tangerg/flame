@@ -97,10 +97,10 @@ func (o atomicOutcome) acknowledgement() operation.Reply[struct{}] {
 	return atomicReply(o.complete, func(struct{}) ([]byte, error) { return encodeAtomicResult(o.method, struct{}{}) })
 }
 
-func (o atomicOutcome) sessionView(response func(*protocol.Session) any) operation.Reply[sessions.View] {
+func (o atomicOutcome) sessionView() operation.Reply[sessions.View] {
 	return atomicReply(o.complete, func(result sessions.View) ([]byte, error) {
 		view := presentSession(result)
-		return encodeAtomicResult(o.method, response(&view))
+		return encodeAtomicResult(o.method, &view)
 	})
 }
 
@@ -108,24 +108,6 @@ func (o atomicOutcome) project() operation.Reply[project.Project] {
 	return atomicReply(o.complete, func(result project.Project) ([]byte, error) {
 		return encodeAtomicResult(o.method, presentProject(result))
 	})
-}
-
-func (o atomicOutcome) commitCreation(ctx context.Context, creation sessions.Creation, err error) error {
-	if err != nil {
-		return o.commitFailure(ctx, err)
-	}
-	view := presentSession(creation.View)
-	payload, err := encodeAtomicResult(o.method, &view)
-	if err != nil {
-		return err
-	}
-	err = o.complete.Commit(ctx, func(tx context.Context) ([]byte, error) {
-		return payload, creation.Commit(tx)
-	})
-	if err == nil {
-		creation.Publish()
-	}
-	return err
 }
 
 func (o atomicOutcome) settleRefusal(ctx context.Context, err error) error {

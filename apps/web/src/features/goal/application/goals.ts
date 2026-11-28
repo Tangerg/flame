@@ -1,12 +1,9 @@
-import {
-  GoalCommandOwner,
-  type GoalProjectionRepair,
-} from "@/features/goal/application/goalCommands";
+import { GoalCommandOwner } from "@/features/goal/application/goalCommands";
 import { GoalComposerSubmissionOwner } from "@/features/goal/application/goalComposerSubmission";
 import { type GoalAccess } from "@/features/goal/application/goalAccess";
 
-export function createGoals(repairProjection: GoalProjectionRepair) {
-  const commands = new GoalCommandOwner(repairProjection);
+export function createGoals() {
+  const commands = new GoalCommandOwner();
   const submissions = new GoalComposerSubmissionOwner();
   const access: GoalAccess = { commands, submissions };
   return {

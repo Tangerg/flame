@@ -41,7 +41,7 @@ function ConversationContent({ ready, sessionId }: { ready: boolean; sessionId: 
       <AgentSurfaceHeader corner="window">
         <SessionIdentity
           sessionId={sessionId}
-          title={session ? sessionDisplayTitle(t, session.title) : t("session.draft")}
+          title={sessionId ? sessionDisplayTitle(t, session?.title) : t("session.draft")}
           workspacePath={session?.workspace.path}
           detail={<RunStatusPill />}
         />
@@ -88,7 +88,6 @@ export function ConversationPane({
   );
 }
 
-// An inspected full-pane view returns to its source; any other closes.
 // An inspected full-pane view returns to its source and owns material keys;
 // any other full-pane view closes.
 export function FullPaneHeader({

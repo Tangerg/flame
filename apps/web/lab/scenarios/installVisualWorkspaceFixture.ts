@@ -72,10 +72,6 @@ import { useTelemetryStore } from "@/lib/observability/stores";
 import { Skills } from "../../../../plugins/skills/component/component";
 import { fileView } from "@/features/workspace/views";
 import { createWorkspaceEventsPlugin } from "@/features/workspace/events";
-import {
-  WORKSPACE_MUTATION_LIFECYCLE,
-  type WorkspaceMutationLifecycle,
-} from "@/features/workspace/public/services";
 import { DATA_PROVIDER } from "@/extensions/dataProvider";
 import { contributeLayout } from "@/extensions/contributeHelpers";
 import { SETTINGS_PANE } from "@/features/settings/public/panes";
@@ -311,12 +307,10 @@ function workspaceDataPlugin(
   readDiff: (signal?: AbortSignal) => Promise<Diff>,
   runtimeClient: () => FlameClient,
   state: VisualWorkspaceState,
-  mutationLifecycle: WorkspaceMutationLifecycle,
   directoryState?: VisualDirectoryState,
 ): AnyPlugin {
   return definePlugin({
     name: "flame.visual.workspace-data",
-    provides: { mutationLifecycle: WORKSPACE_MUTATION_LIFECYCLE },
     setup(ctx) {
       const brandLifetime = ctx.contributions.child("visual-brand");
       const brandSources = visualComponentProps(runtimeClient(), brandLifetime, "brand");
@@ -725,7 +719,6 @@ function workspaceDataPlugin(
           return RESIZER_SOURCE;
         },
       });
-      return { mutationLifecycle };
     },
   });
 }
@@ -913,7 +906,7 @@ export async function installVisualWorkspaceFixture(
     pluginManagementPane,
     createVisualNotifier(visual.messages),
     visualShortcuts,
-    workspaceDataPlugin(readDiff, runtimeClient, state, visual.workspace, directoryState),
+    workspaceDataPlugin(readDiff, runtimeClient, state, directoryState),
     ...(directoryState === "refresh-error"
       ? [createWorkspaceEventsPlugin(visual.agent.access, visual.runtime, runtimeClient)]
       : []),

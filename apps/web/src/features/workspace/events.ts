@@ -2,6 +2,7 @@ import { type AgentAccess } from "@/features/agent/public/agent";
 import { type RuntimeAccess } from "@/features/connection/public/runtime";
 import { type FlameClient } from "@flame/runtime-client";
 import { definePlugin } from "@/extensions/definePlugin";
+import { READY_HANDLER } from "@/extensions/lifecycle";
 import { AGENT_SESSIONS } from "@/features/agent/public/services";
 import { installFolderIndexRefresh } from "@/features/workspace/adapters/folderIndexRefresh";
 import {
@@ -26,7 +27,6 @@ import {
   workspaceReadTargets,
 } from "@/features/workspace/adapters/workspaceReadObservation";
 import { RUNTIME_SERVER_SCOPE, RUNTIME_STREAM } from "@/features/connection/public/services";
-import { WORKSPACE_MUTATION_LIFECYCLE } from "@/features/workspace/public/services";
 export function createWorkspaceEventsPlugin(
   agentAccess: AgentAccess,
   runtimeAccess: RuntimeAccess,
@@ -37,7 +37,6 @@ export function createWorkspaceEventsPlugin(
     requires: {
       runtime: RUNTIME_STREAM,
       serverScope: RUNTIME_SERVER_SCOPE,
-      mutationLifecycle: WORKSPACE_MUTATION_LIFECYCLE,
       sessions: AGENT_SESSIONS,
     },
     setup(ctx) {
@@ -58,26 +57,25 @@ export function createWorkspaceEventsPlugin(
           replaceWorkspaceServerScope.bind(null, agentAccess),
         ),
       );
-      ctx.lifetime.defer(
-        startWorkspaceEventSubscription({
-          canSubscribe: canSubscribeWorkspaceEvents.bind(null, runtimeAccess),
-          connectionGeneration: ctx.dependencies.runtime.connectionGeneration,
-          subscribeConnection: ctx.dependencies.runtime.subscribeConnection,
-          retireReadModels: () => {
-            ctx.dependencies.mutationLifecycle.replaceRuntimeGeneration();
-            retireWorkspaceReadModels(agentAccess);
-          },
-          resolveWorkspaceCwd: (signal) =>
-            resolveActiveSessionWorkspaceCwd(runtimeClient, ctx.dependencies.sessions, signal),
-          reportResolutionError: (error) =>
-            console.warn("[workspace-events] target resolution failed:", error),
-          subscribeWorkspaceCwdInputs: (onChange) =>
-            subscribeWorkspaceCwdInputs(ctx.dependencies.sessions, onChange),
-          readTargets: workspaceReadTargets,
-          subscribeReadTargets: subscribeWorkspaceReadTargets,
-          loop,
-        }),
-      );
+      ctx.contributions.add(READY_HANDLER, () => {
+        ctx.lifetime.defer(
+          startWorkspaceEventSubscription({
+            canSubscribe: canSubscribeWorkspaceEvents.bind(null, runtimeAccess),
+            connectionGeneration: ctx.dependencies.runtime.connectionGeneration,
+            subscribeConnection: ctx.dependencies.runtime.subscribeConnection,
+            retireReadModels: retireWorkspaceReadModels.bind(null, agentAccess),
+            resolveWorkspaceCwd: (signal) =>
+              resolveActiveSessionWorkspaceCwd(ctx.dependencies.sessions, signal),
+            reportResolutionError: (error) =>
+              console.warn("[workspace-events] target resolution failed:", error),
+            subscribeWorkspaceCwdInputs: (onChange) =>
+              subscribeWorkspaceCwdInputs(ctx.dependencies.sessions, onChange),
+            readTargets: workspaceReadTargets,
+            subscribeReadTargets: subscribeWorkspaceReadTargets,
+            loop,
+          }),
+        );
+      });
     },
   });
 }

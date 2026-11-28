@@ -225,6 +225,9 @@ successor gateway. The old generation is retired with its original gateway;
 late replies cannot publish into the successor's projection. Merely replacing a
 task queue while retaining its old gateway is insufficient.
 
+The gateway obtains the connection's client at command dispatch. The desktop
+host can supply its credential after the gateway is installed.
+
 React consumes the corresponding feature Provider; ordinary commands capture the
 required access object at construction or receive it as an argument. There is no
 module-global port installation, default feature instance, or application service
@@ -342,6 +345,9 @@ feature that understands the data:
 Each feature registers once and removes its contribution with its own plugin
 installation. Defaults has no business-data registry or cross-feature mapper.
 Components consume query hooks and read models rather than RPC envelopes.
+
+The workbench reads the active Session by ID. The title, workspace and model
+selection can load while the catalog is still reading its pages.
 
 Agent usage query keys include the owning instance. Replacing a gateway or
 retiring its Workspace observation only invalidates that instance's usage

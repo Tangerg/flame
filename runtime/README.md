@@ -78,11 +78,16 @@ Workspace filename suggestions use the optional `nameQuery` of `workspace.files.
 Task worktrees live under the Runtime data directory. Create one from a local Git
 branch or a commit, then open an ordinary Session with the resulting workspace.
 An optional setup command runs in place with the restricted macOS sandbox and
-retains its exit status and bounded output. The main checkout is independent of
-task setup and edits. Handoff previews bind tracked and untracked changes to the
-original checkout's branch and HEAD. Accepting a current preview stages its
-changes in that clean destination. Release uses Git's non-forced removal for an
-owned worktree at its original base with no attached Session.
+retains its exit status and bounded output. A registered checkout keeps its
+creation receipt when the request ends during setup. The catalog keeps serving
+registered tasks while a new checkout runs its setup, and the same source
+repository can prepare another task at the same time. The main checkout is
+independent of task setup and edits. Handoff previews bind tracked and untracked
+changes to the original checkout's branch and HEAD. Accepting a current preview
+stages its changes in that clean destination. Release uses Git's non-forced
+removal for an owned worktree at its original base with no attached Session.
+Task custody follows the Git registration created by Runtime. Worktrees created
+before Runtime recorded that custody appear as unavailable and remain on disk.
 
 Project Home shows recent accepted background Runs and links to their original
 Sessions and PR reviews. A schedule or file watcher can capture a Project ID when
@@ -2383,8 +2388,9 @@ session retains its successful result if the caller later cancels.
 Remote termination of an ordinary MCP session withdraws that exact session and
 its tools through the same connection outcome owner. The failure retains the
 terminal evidence, and a late predecessor exit cannot withdraw a replacement.
-Retirement still runs once; shutdown closes sessions before joining their
-termination observers. No failed RPC is replayed.
+Retirement still runs once. Shutdown seals the pool and starts Frame Host teardown
+before joining the session termination observers. Frame releases installed
+transports after settling their consumers. No failed RPC is replayed.
 The handshake owns its temporary callback, timer and untransferred session lifetime.
 Admission rejects an expired request or stopped session owner before connection I/O.
 Failures retain transport diagnostics, the handshake's timeout or cancellation and

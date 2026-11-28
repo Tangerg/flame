@@ -80,9 +80,7 @@ function startClient(messages: NotificationFeed, render: (content: ReactNode) =>
     connection.scope,
     messages,
   );
-  const goals = createGoals((sessionId) =>
-    agent.access.synchronizeMountedAgentSession(sessionId, "replace-live"),
-  );
+  const goals = createGoals();
   const composer = createComposer(
     {
       getActiveSessionId: agent.access.getActiveSessionId,

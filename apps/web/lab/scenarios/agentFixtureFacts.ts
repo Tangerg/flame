@@ -1,4 +1,5 @@
 import { RuntimeConnectionGeneration } from "@/features/connection/public/services";
+import { GOAL_RUNTIME_FEATURE } from "@/features/goal/application/goalCommands";
 import { type ServerCapabilities } from "@flame/runtime-client/wire";
 export const VISUAL_PRIMARY_MODEL_CONTEXT_WINDOW = 1_050_000;
 
@@ -16,6 +17,7 @@ const VISUAL_RUNTIME_FEATURES = [
   "mcp",
   "fileWatch",
   "plan",
+  GOAL_RUNTIME_FEATURE,
   "skills",
   "plugins",
   "relocate",

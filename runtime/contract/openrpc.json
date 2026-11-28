@@ -809,6 +809,10 @@
         {
           "code": -32003,
           "message": "run_not_found"
+        },
+        {
+          "code": -32019,
+          "message": "revision_conflict"
         }
       ],
       "x-flame-kind": "unary",
@@ -1096,6 +1100,10 @@
         {
           "code": -32039,
           "message": "export_too_large"
+        },
+        {
+          "code": -32005,
+          "message": "workspace_unavailable"
         },
         {
           "code": -32006,
@@ -1755,6 +1763,10 @@
         {
           "code": -32023,
           "message": "session_has_active_run"
+        },
+        {
+          "code": -32005,
+          "message": "workspace_unavailable"
         },
         {
           "code": -32038,
@@ -2739,10 +2751,6 @@
           "message": "vcs_unavailable"
         },
         {
-          "code": -32018,
-          "message": "session_busy"
-        },
-        {
           "code": -32006,
           "message": "capability_not_negotiated"
         }
@@ -2861,10 +2869,6 @@
         {
           "code": -32005,
           "message": "workspace_unavailable"
-        },
-        {
-          "code": -32018,
-          "message": "session_busy"
         },
         {
           "code": -32019,

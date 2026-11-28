@@ -77,8 +77,9 @@ func (s *Handler) ImportSession(ctx context.Context, request protocol.ImportSess
 }
 
 func (s *Handler) commitImportSession(ctx context.Context, in protocol.ImportSessionRequest, outcome atomicOutcome) error {
-	reply := outcome.sessionView(func(session *protocol.Session) any {
-		return &protocol.ImportSessionResponse{Session: session}
+	reply := atomicReply(outcome.complete, func(view sessions.View) ([]byte, error) {
+		presented := presentSession(view)
+		return encodeAtomicResult(outcome.method, &protocol.ImportSessionResponse{Session: &presented})
 	})
 	return outcome.settleRefusal(ctx, s.importSession(ctx, in, reply))
 }

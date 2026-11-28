@@ -182,15 +182,6 @@ func (c *Coordinator) viewForSession(ctx context.Context, value session.Session)
 	return c.view(value, activities[value.ID()])
 }
 
-func (c *Coordinator) ForkView(ctx context.Context, spec ForkSpec) (View, error) {
-	creation, err := c.PrepareFork(ctx, spec)
-	if err != nil {
-		return View{}, err
-	}
-	_, err = creation.apply(ctx)
-	return creation.View, err
-}
-
 func (c *Coordinator) views(ctx context.Context, values []session.Session) ([]View, error) {
 	ids := make([]identity.SessionID, len(values))
 	for index, value := range values {

@@ -180,7 +180,8 @@
         "plugin_unavailable",
         "plugin_stale",
         "session_not_found",
-        "run_not_found"
+        "run_not_found",
+        "revision_conflict"
       ]
     },
     {
@@ -235,6 +236,7 @@
       "errors": [
         "session_busy",
         "export_too_large",
+        "workspace_unavailable",
         "capability_not_negotiated"
       ],
       "features": [
@@ -349,6 +351,7 @@
         "project_not_found",
         "session_busy",
         "session_has_active_run",
+        "workspace_unavailable",
         "prompt_source_too_large",
         "prompt_rejected",
         "unsupported_mime",
@@ -515,7 +518,6 @@
       "errors": [
         "workspace_unavailable",
         "vcs_unavailable",
-        "session_busy",
         "capability_not_negotiated"
       ],
       "features": [
@@ -547,7 +549,6 @@
       "pagination": "none",
       "errors": [
         "workspace_unavailable",
-        "session_busy",
         "revision_conflict",
         "capability_not_negotiated"
       ],
@@ -2466,6 +2467,7 @@
           "mcp.servers.update",
           "projects.background.setPolicy",
           "projects.update",
+          "sessions.fork",
           "sessions.rollback",
           "sessions.update",
           "skills.proposals.approve",
@@ -2532,9 +2534,7 @@
           "sessions.import",
           "sessions.rollback",
           "sessions.update",
-          "workspaces.tasks.create",
           "workspaces.tasks.handoff.apply",
-          "workspaces.tasks.handoff.preview",
           "workspaces.tasks.release"
         ]
       },
@@ -2636,7 +2636,9 @@
           "agentDocs.list",
           "hooks.list",
           "hooks.setTrust",
+          "runs.start",
           "sessions.create",
+          "sessions.import",
           "sessions.update",
           "skills.discovered.get",
           "skills.discovered.list",

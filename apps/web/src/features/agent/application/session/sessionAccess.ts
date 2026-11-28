@@ -41,7 +41,6 @@ export interface AgentSessionStatePort {
   closeSession(id: string): void;
   deleteSession(id: string): void;
   subscribeDeletedSession(listener: (id: string) => void): () => void;
-  reconcileSessions(liveIds: string[]): void;
   restoreLastSession(): void;
 }
 

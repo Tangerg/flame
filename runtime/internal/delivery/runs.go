@@ -38,6 +38,7 @@ func registerRuns(registry *Registry) {
 			Error(), protocol.ErrProjectNotFound.
 			Error(), protocol.ErrSessionBusy.
 			Error(), protocol.ErrSessionHasActiveRun.
+			Error(), protocol.ErrWorkspaceUnavailable.
 			Error(), protocol.ErrPromptSourceTooLarge.
 			Error(), protocol.ErrPromptRejected.
 			Error(), protocol.ErrUnsupportedMime.

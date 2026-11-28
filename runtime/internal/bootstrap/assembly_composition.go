@@ -23,7 +23,7 @@ import (
 )
 
 type policyComposition struct {
-	framework     frameworkComposition
+	framework     *frameworkComposition
 	packages      *pluginpackage.Releases
 	packageSkills *pluginpackage.Skills
 	registry      *plugins.Registry

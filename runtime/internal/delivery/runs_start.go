@@ -169,7 +169,7 @@ func wireRunStartErr(err error) error {
 	switch {
 	case errors.Is(err, runs.ErrCommandKeyConflict):
 		return protocol.NewFailure(protocol.ErrIdempotencyConflict, errIdempotencyRebound.Error(), err)
-	case errors.Is(err, workspaceapp.ErrPromptSourceTooLarge):
+	case errors.Is(err, workspaceapp.ErrPromptSourceTooLarge), errors.Is(err, workspaceapp.ErrCWDUnavailable):
 		return wireWorkspaceError(err)
 	case errors.Is(err, runs.ErrInputRequired):
 		return protocol.NewFailure(protocol.ErrInvalidParams, "input must contain a user text or image block", err)

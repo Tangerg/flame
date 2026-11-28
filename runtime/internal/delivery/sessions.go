@@ -102,9 +102,10 @@ func registerSessions(registry *Registry) {
 
 	registry.command(MethodMeta{
 		Name: sessionsFork, GoName: "ForkSession",
-		Errors: pluginProviderErrors(protocol.ErrSessionNotFound.
-			Error(), protocol.ErrRunNotFound.
-			Error(),
+		Errors: pluginProviderErrors(
+			protocol.ErrSessionNotFound.Error(),
+			protocol.ErrRunNotFound.Error(),
+			protocol.ErrRevisionConflict.Error(),
 		),
 	}, func(service interface {
 		ForkSession(context.Context, protocol.ForkSessionRequest) (*protocol.Session, error)
@@ -154,7 +155,7 @@ func registerSessions(registry *Registry) {
 
 	registry.command(MethodMeta{
 		Name: SessionsImport, GoName: "ImportSession",
-		Errors:          []string{protocol.ErrSessionBusy.Error(), protocol.ErrExportTooLarge.Error()},
+		Errors:          []string{protocol.ErrSessionBusy.Error(), protocol.ErrExportTooLarge.Error(), protocol.ErrWorkspaceUnavailable.Error()},
 		CapabilityRules: requires(protocol.FeatureSessionExport),
 	}, func(service interface {
 		ImportSession(context.Context, protocol.ImportSessionRequest) (*protocol.ImportSessionResponse, error)

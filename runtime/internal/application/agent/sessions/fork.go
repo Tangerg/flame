@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -70,56 +70,49 @@ func resolveForkBoundary(msgs []chat.Message, runs []run.Run, fromRunID identity
 	}, nil
 }
 
-func (c *Coordinator) Fork(ctx context.Context, spec ForkSpec) (session.Session, error) {
-	creation, err := c.PrepareFork(ctx, spec)
-	if err != nil {
-		return session.Session{}, err
-	}
-	return creation.apply(ctx)
-}
-
-func (c *Coordinator) PrepareFork(ctx context.Context, spec ForkSpec) (Creation, error) {
+func (c *Coordinator) Fork(ctx context.Context, spec ForkSpec, complete operation.Reply[View]) error {
 	if err := spec.ParentID.Validate(); err != nil {
-		return Creation{}, fmt.Errorf("sessions: fork: %w", err)
+		return fmt.Errorf("sessions: fork: %w", err)
 	}
 	source, err := c.snapshots.ReadForkMaterial(ctx, spec.ParentID)
 	if err != nil {
-		return Creation{}, err
+		return err
 	}
 	boundary, err := resolveForkBoundary(source.Messages, source.Runs, spec.FromRunID)
 	if err != nil {
-		return Creation{}, err
+		return err
 	}
 	planReplacement, err := c.prepareInitialPlanReplacement(source.planAt(boundary.RunID))
 	if err != nil {
-		return Creation{}, err
+		return err
 	}
 	child, err := source.Session.Fork(c.newID(), spec.Title, c.now())
 	if err != nil {
-		return Creation{}, err
+		return err
 	}
 	forked, err := c.copyForkMaterial(source, child, boundary)
 	if err != nil {
-		return Creation{}, err
+		return err
 	}
 	fork, err := newForkPlan(spec.ParentID, forked, planReplacement)
 	if err != nil {
-		return Creation{}, err
+		return err
 	}
 	view, err := c.view(child, activityIdle)
 	if err != nil {
-		return Creation{}, err
-	}
-	return Creation{value: child, View: view, write: func(tx context.Context) error {
-		_, err := c.writes.ApplyFork(tx, fork)
 		return err
-	}, publish: func() {
-		c.publishSessionMoved(child.ID())
-		if len(forked.Runs) > 0 {
-			c.publishRunsMoved(child.ID(), forked.Runs)
-		}
-		if planReplacement != nil {
-			c.publishPlanMoved(child.ID())
-		}
-	}}, nil
+	}
+	if err := complete(ctx, func(tx context.Context) (View, error) {
+		return view, c.writes.ApplyFork(tx, fork)
+	}); err != nil {
+		return err
+	}
+	c.publishSessionMoved(child.ID())
+	if len(forked.Runs) > 0 {
+		c.publishRunsMoved(child.ID(), forked.Runs)
+	}
+	if planReplacement != nil {
+		c.publishPlanMoved(child.ID())
+	}
+	return nil
 }

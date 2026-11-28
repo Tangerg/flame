@@ -23,7 +23,8 @@ import {
   AgentDockSeparator,
   AgentDockToggle,
 } from "@/ui/agent/index";
-import { useActiveSessionId, useAgentSessions } from "@/features/agent/public/session";
+import { useActiveSessionId, useAgentSessionSummary } from "@/features/agent/public/session";
+import { useRuntimeCommandsAvailable } from "@/features/connection/public/serviceStatus";
 import { registerComposerFocusPresentation } from "@/features/composer/public/focus";
 import {
   openWorkspaceView,
@@ -175,8 +176,10 @@ export function ChatPanel({ ref }: Props) {
   const views = useWorkspaceViews();
   const { layout: dockLayout, save: saveDockLayout } = useDockLayout();
   const [initialDockLayout] = useState(() => dockLayout ?? undefined);
-  const { data: sessions } = useAgentSessions();
   const activeSessionId = useActiveSessionId();
+  const { data: activeSession } = useAgentSessionSummary(activeSessionId || undefined);
+  const runtimeReady = useRuntimeCommandsAvailable();
+  const conversationReady = runtimeReady || activeSession != null;
   const t = useT();
   const inspection = useWorkspaceInspection();
   const [rowWidth, dockRowRef] = useDockRowWidth();
@@ -209,7 +212,7 @@ export function ChatPanel({ ref }: Props) {
     settingsSourceViewId,
     inspection,
     rowWidth,
-    conversationReady: sessions !== undefined,
+    conversationReady,
   });
   const {
     workspaceLayerRef,
@@ -307,7 +310,7 @@ export function ChatPanel({ ref }: Props) {
                   ref={conversationRef}
                   hidden={presentation === "main"}
                   fallbackFocus={presentationRef}
-                  ready={sessions !== undefined}
+                  ready={conversationReady}
                   sessionId={activeSessionId}
                 />
               </Panel>

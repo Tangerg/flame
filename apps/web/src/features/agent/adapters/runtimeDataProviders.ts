@@ -7,8 +7,14 @@ import {
   type ApprovalRulesQuery,
   type ApprovalRuleSummary,
 } from "@/features/agent/application/approvalPolicyQueries";
-import { AGENT_SESSIONS_KEY } from "@/features/agent/application/session/sessionQueries";
-import { readRuntimeSessionSummaries } from "@/features/agent/adapters/runtimeSessionSummary";
+import {
+  AGENT_SESSIONS_KEY,
+  AGENT_SESSION_SUMMARY_KEY,
+} from "@/features/agent/application/session/sessionQueries";
+import {
+  readRuntimeSessionSummaries,
+  readRuntimeSessionSummary,
+} from "@/features/agent/adapters/runtimeSessionSummary";
 export function registerAgentDataProviders(
   ctx: Contributor,
   runtimeClient: () => FlameClient,
@@ -16,6 +22,15 @@ export function registerAgentDataProviders(
   ctx.add(DATA_PROVIDER, {
     key: AGENT_SESSIONS_KEY,
     fetcher: (_params, signal) => readRuntimeSessionSummaries(runtimeClient(), signal),
+  });
+  ctx.add(DATA_PROVIDER, {
+    key: AGENT_SESSION_SUMMARY_KEY,
+    fetcher: (params, signal) =>
+      readRuntimeSessionSummary(
+        runtimeClient(),
+        requiredParams<string>(AGENT_SESSION_SUMMARY_KEY, params),
+        signal,
+      ),
   });
   registerApprovalPolicyDataProviders(ctx, runtimeClient);
 }

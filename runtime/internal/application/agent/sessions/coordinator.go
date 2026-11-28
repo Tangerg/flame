@@ -58,7 +58,7 @@ type RunStore interface {
 }
 
 type WriteSets interface {
-	ApplyFork(ctx context.Context, plan ForkPlan) (session.Session, error)
+	ApplyFork(ctx context.Context, plan ForkPlan) error
 	ApplyRollback(ctx context.Context, plan RollbackPlan) error
 	ApplyRestore(ctx context.Context, plan RestorePlan) error
 	ApplyDelete(ctx context.Context, plan DeletePlan) error

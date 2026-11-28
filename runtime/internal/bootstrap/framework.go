@@ -40,6 +40,8 @@ const (
 
 type frameworkComposition struct {
 	host      framehost.Host
+	owner     frame.Lifetime
+	pool      *mcpadapter.Pool
 	installed *mcpadapter.Installed
 	registry  *plugins.Registry
 	external  *mcpadapter.ExternalConnector
@@ -47,6 +49,20 @@ type frameworkComposition struct {
 	control   http.Handler
 	commands  *plugins.Commands
 	ready     <-chan struct{}
+}
+
+func (f *frameworkComposition) close(ctx context.Context) error {
+	if f.pool != nil {
+		f.pool.BeginShutdown()
+	}
+	// Installed transports can exit only after Frame releases their consumers.
+	_, diagnostic := f.host.Close(ctx)
+	_, releaseErr := f.owner.BeginClose(frame.ErrClosed).WaitReleased(ctx)
+	var poolErr error
+	if f.pool != nil {
+		poolErr = f.pool.Shutdown(ctx)
+	}
+	return errors.Join(diagnostic, releaseErr, poolErr)
 }
 
 func buildPluginPackages(cfg assemblyConfig, lifetime *runtimeLifetime) (*pluginpackage.Releases, error) {
@@ -126,18 +142,15 @@ func buildBrowser(host framehost.Host, stores *persistence.Bundle, packages *plu
 	return bridge, browser, nil
 }
 
-func startFrameworkHost(ctx context.Context, stores *persistence.Bundle, lifetime *runtimeLifetime, owner frame.Lifetime, permission *mcpadapter.CatalogPermission, profile *process.Driver) (framehost.Host, error) {
+func startFrameworkHost(ctx context.Context, stores *persistence.Bundle, lifetime *runtimeLifetime, owner frame.Lifetime, permission *mcpadapter.CatalogPermission, profile *process.Driver) (*frameworkComposition, error) {
 	lifetime.frameworkCauses = owner.ObserveCloseCauses()
 	host, err := framehost.New(ctx, framehost.Config{ReadAcceptedBinding: permission.Read, Authority: stores.Frame, Lifetime: owner, Limits: framehost.Limits{MaxInstallations: maxInstallations}, Drivers: []framehost.Driver{profile}})
 	if err != nil {
-		return framehost.Host{}, err
+		return nil, err
 	}
-	lifetime.toolResources = append(lifetime.toolResources, terminalStep(func(ctx context.Context) error {
-		_, diagnostic := host.Close(ctx)
-		_, releaseErr := owner.BeginClose(frame.ErrClosed).WaitReleased(ctx)
-		return errors.Join(diagnostic, releaseErr)
-	}))
-	return host, nil
+	framework := &frameworkComposition{host: host, owner: owner}
+	lifetime.toolResources = append(lifetime.toolResources, terminalStep(framework.close))
+	return framework, nil
 }
 
 func buildMCPConnectors(stores *persistence.Bundle, config mcpadapter.InstalledConfig) (*mcpadapter.Installed, *mcpadapter.ExternalConnector, error) {
@@ -154,18 +167,18 @@ func buildMCPConnectors(stores *persistence.Bundle, config mcpadapter.InstalledC
 	return installed, external, nil
 }
 
-func buildFramework(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLifetime, packages *pluginpackage.Releases, callbacks *pluginmcp.Callbacks) (frameworkComposition, error) {
+func buildFramework(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLifetime, packages *pluginpackage.Releases, callbacks *pluginmcp.Callbacks) (*frameworkComposition, error) {
 	commands, err := plugins.NewCommands(cfg.stores.PluginCommands, cfg.stores.Admission)
 	if err != nil {
-		return frameworkComposition{}, err
+		return nil, err
 	}
 	callers, err := pluginservices.NewCallerRestorer(commands, cfg.stores.ToolInvocations)
 	if err != nil {
-		return frameworkComposition{}, err
+		return nil, err
 	}
 	source, err := mcpadapter.NewProcessSource(cfg.stores.Installations, packages, callbacks, callers)
 	if err != nil {
-		return frameworkComposition{}, err
+		return nil, err
 	}
 	owner := frame.NewLifetime(context.WithoutCancel(lifetime.context))
 	programs := process.Source(source)
@@ -176,40 +189,41 @@ func buildFramework(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLi
 	}
 	profile, err := process.New(process.Config{Runner: cfg.processRunner, Store: cfg.stores.Frame, Source: programs, CloseTimeout: pluginProcessCloseTimeout, Protocol: source, MaxFrameBytes: sdk.DefaultMaxLineLength})
 	if err != nil {
-		return frameworkComposition{}, err
+		return nil, err
 	}
 	permission, err := mcpadapter.NewCatalogPermission(cfg.stores.Admission, cfg.stores.PendingPluginBindings)
 	if err != nil {
-		return frameworkComposition{}, err
+		return nil, err
 	}
 	if runnerPrograms != nil {
 		runnerPrograms.runner, err = ownProcessRunner(owner, profile, cfg.closeProcessRunner)
 		if err != nil {
-			return frameworkComposition{}, err
+			return nil, err
 		}
 	}
-	host, err := startFrameworkHost(ctx, cfg.stores, lifetime, owner, permission, profile)
+	framework, err := startFrameworkHost(ctx, cfg.stores, lifetime, owner, permission, profile)
 	if err != nil {
-		return frameworkComposition{}, err
+		return nil, err
 	}
+	host := framework.host
 	registry, err := plugins.NewRegistry(host, cfg.stores.Installations, packages, cfg.stores.ProviderSelections, cfg.stores.PluginCompositions)
 	if err != nil {
-		return frameworkComposition{}, err
+		return nil, err
 	}
 	bridge, browser, err := buildBrowser(host, cfg.stores, packages, registry)
 	if err != nil {
-		return frameworkComposition{}, err
+		return nil, err
 	}
 	if err := restoreFramework(ctx, cfg.stores, host, profile.Profile()); err != nil {
-		return frameworkComposition{}, err
+		return nil, err
 	}
 	recovery := &frameworkRecovery{stores: cfg.stores, process: profile, owner: owner, pending: true, ready: make(chan struct{})}
 	if err := recovery.restore(ctx); err != nil && !errors.Is(err, framehost.ErrRecoveryRequired) {
-		return frameworkComposition{}, err
+		return nil, err
 	}
 	if cfg.firstPartyDirectory != "" {
 		if err := initializeFirstPartyPlugins(ctx, cfg.stores, host, packages, cfg.firstPartyDirectory); err != nil {
-			return frameworkComposition{}, err
+			return nil, err
 		}
 	}
 	installed, external, err := buildMCPConnectors(cfg.stores, mcpadapter.InstalledConfig{
@@ -217,13 +231,19 @@ func buildFramework(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLi
 		Permission: permission, Ready: recovery.ready,
 	})
 	if err != nil {
-		return frameworkComposition{}, err
+		return nil, err
 	}
-	control := http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+	framework.installed = installed
+	framework.registry = registry
+	framework.external = external
+	framework.browser = browser
+	framework.control = http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		bridge.Handler().ServeHTTP(writer, request)
 		_ = recovery.restore(request.Context())
 	})
-	return frameworkComposition{host: host, registry: registry, external: external, installed: installed, browser: browser, control: control, commands: commands, ready: recovery.ready}, nil
+	framework.commands = commands
+	framework.ready = recovery.ready
+	return framework, nil
 }
 
 func restoreFramework(ctx context.Context, stores *persistence.Bundle, host framehost.Host, backendProfile framehost.Profile) error {

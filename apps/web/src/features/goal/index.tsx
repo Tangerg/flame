@@ -18,6 +18,7 @@ import { bindGoalRuntime } from "@/features/goal/adapters/runtimeGoalCommandsGat
 import { GoalStatusSurface } from "@/features/goal/ui/GoalStatusSurface";
 import { GoalModeIndicator } from "@/features/goal/ui/GoalModeIndicator";
 import { RUNTIME_SERVER_SCOPE } from "@/features/connection/public/services";
+import { runtimeCapability } from "@/features/connection/public/capabilities";
 
 import { focusComposer } from "@/features/composer/public/focus";
 import { runtimeCommandsAvailable } from "@/features/connection/public/serviceStatus";
@@ -27,9 +28,9 @@ import { createGoalComposerCommand } from "@/features/goal/application/goalCompo
 import {
   GOAL_MATERIAL,
   GOAL_SLASH_COMMAND,
-  type GoalState,
+  type GoalMaterial,
 } from "@/features/goal/application/goalReadModel";
-import { GOAL_COMMAND_SCOPE } from "@/features/goal/application/goalCommands";
+import { GOAL_COMMAND_SCOPE, GOAL_RUNTIME_FEATURE } from "@/features/goal/application/goalCommands";
 const GOAL_SURFACE = "composer.overlay.top:goal";
 
 export function createGoalPlugin(
@@ -48,13 +49,7 @@ export function createGoalPlugin(
       const submissions = goals.submissions;
       ctx.lifetime.defer(() => submissions.reset());
       ctx.lifetime.defer(
-        bindGoalRuntime(
-          agentAccess,
-          runtimeAccess,
-          runtimeClient,
-          goals.commands,
-          ctx.dependencies.scope,
-        ),
+        bindGoalRuntime(agentAccess, runtimeClient, goals.commands, ctx.dependencies.scope),
       );
       contributeLayout(ctx.contributions, "composer.overlay.top", {
         id: "goal",
@@ -69,34 +64,27 @@ export function createGoalPlugin(
       for (const key of toolFamilyNames("goals")) {
         ctx.contributions.add(TOOL_STANDING_SURFACE, GOAL_SURFACE, { key });
       }
+      const readGoal = (sessionId: string) =>
+        agentAccess.getAgentSessionSharedMaterial<GoalMaterial>(sessionId, GOAL_MATERIAL);
       const run = createGoalComposerCommand(submissions, {
         getActiveSessionId: agentAccess.getActiveSessionId,
-        goalState: (sessionId) => {
-          const state = agentAccess.getAgentSessionSharedMaterial<GoalState>(
-            sessionId,
-            GOAL_MATERIAL,
-          );
-          if (state?.goal && !providers.admits(GOAL_WORKFLOW, state.goal.author))
-            return { ...state, available: false };
-          return state;
-        },
-        runtimeAvailable: () =>
+        readGoal,
+        canStart: (existing) =>
+          runtimeCapability(runtimeAccess, GOAL_RUNTIME_FEATURE) &&
+          runtimeCommandsAvailable(runtimeAccess) &&
           providers.selected(GOAL_WORKFLOW) !== undefined &&
-          runtimeCommandsAvailable(runtimeAccess),
+          (existing === null || providers.admits(GOAL_WORKFLOW, existing.author)),
         runOptions: resolveAgentRunStartOptions,
         captureStart: () => {
           const source = providers.selected(GOAL_WORKFLOW);
           const commands = goals.commands.capture();
           return (input) => {
-            const original = agentAccess.getAgentSessionSharedMaterial<GoalState>(
-              input.sessionId,
-              GOAL_MATERIAL,
-            )?.goal;
+            const current = readGoal(input.sessionId);
             if (
               !commands ||
               source === undefined ||
               providers.selected(GOAL_WORKFLOW) !== source ||
-              (original && !providers.admits(GOAL_WORKFLOW, original.author))
+              (current && !providers.admits(GOAL_WORKFLOW, current.author))
             )
               throw new GenerationRetiredError(GOAL_COMMAND_SCOPE);
             return commands.start(input);

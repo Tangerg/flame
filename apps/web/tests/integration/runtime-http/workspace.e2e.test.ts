@@ -1,4 +1,6 @@
 import { OperationFailure, RpcError, asSessionId } from "@flame/runtime-client";
+import { HTTP_HEADERS } from "@flame/runtime-client/wire";
+import { TaskWorktreeCommands } from "@/features/workspace/application/taskWorktreeCommands";
 import { parseVisualDiff } from "../../../../../plugins/diff/component/visualDiff";
 import {
   addInstalledMemory,
@@ -20,6 +22,96 @@ const execFileAsync = promisify(execFile);
 
 describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: workspace", () => {
   const fixture = useRuntimeFixture("workspace");
+
+  it("recovers the original worktree command through the Workspace owner", async () => {
+    const source = join(fixture.root, "task-worktree-command");
+    await mkdir(source);
+    const git = (...args: string[]) =>
+      execFileAsync(
+        "git",
+        [
+          "-c",
+          "user.name=Runtime HTTP E2E",
+          "-c",
+          "user.email=runtime-http-e2e@example.invalid",
+          "-c",
+          "core.hooksPath=/dev/null",
+          "-c",
+          "commit.gpgSign=false",
+          ...args,
+        ],
+        { cwd: source },
+      );
+    const file = "tracked.txt";
+    const baseline = "original source\n";
+    const change = "worktree handoff\n";
+    await git("init", "--quiet", "--template=");
+    await writeFile(join(source, file), baseline);
+    await git("add", file);
+    await git("commit", "--quiet", "-m", "source baseline");
+
+    const originalKeys: string[] = [];
+    let deliverReceipts = false;
+    const client = fixture.createRuntimeClient(async (url, init) => {
+      const headers = new Headers(init?.headers);
+      const response = await fetch(url, init);
+      if (headers.get(HTTP_HEADERS.method) === "workspaces.tasks.create") {
+        const key = headers.get(HTTP_HEADERS.idempotencyKey);
+        if (!key) throw new Error("the worktree command omitted its key");
+        originalKeys.push(key);
+        if (!deliverReceipts && response.ok) {
+          await response.arrayBuffer();
+          throw new Error("the worktree commit receipt was lost");
+        }
+      }
+      return response;
+    });
+    const catalog = () => fixture.client.workspaces.tasks.list();
+    const commands = new TaskWorktreeCommands(
+      () => client.workspaces.tasks,
+      () => {},
+    );
+    commands.replaceTarget();
+    let recoveredPath: string | undefined;
+    try {
+      const request = { source: { path: source }, base: "HEAD" };
+      await expect(commands.create(request)).resolves.toBe(false);
+      expect(commands.snapshot()).toMatchObject({ phase: "unconfirmed", operation: "create" });
+      const original = (await catalog()).data;
+      expect(original).toHaveLength(1);
+      const [worktree] = original;
+      if (!worktree) throw new Error("the Runtime did not commit the original worktree");
+      recoveredPath = join(worktree.workspace.path, file);
+
+      const sent = originalKeys.length;
+      await expect(commands.create(request)).resolves.toBe(false);
+      expect(originalKeys).toHaveLength(sent);
+      deliverReceipts = true;
+      await expect(commands.recover()).resolves.toBe(true);
+      expect(commands.snapshot()).toEqual({ phase: "committed", operation: "create" });
+      expect(originalKeys).toHaveLength(sent + 1);
+      expect(new Set(originalKeys).size).toBe(1);
+      expect((await catalog()).data.map(({ id }) => id)).toEqual([worktree.id]);
+
+      await writeFile(recoveredPath, change);
+      const handoff = await client.workspaces.tasks.preview(worktree.id);
+      await expect(commands.apply({ id: worktree.id, digest: handoff.digest })).resolves.toBe(true);
+      expect(commands.snapshot()).toEqual({ phase: "committed", operation: "apply" });
+      expect((await git("show", `:${file}`)).stdout).toBe(change);
+      await writeFile(recoveredPath, baseline);
+      await expect(commands.release(worktree.id)).resolves.toBe(true);
+      expect(commands.snapshot()).toEqual({ phase: "committed", operation: "release" });
+      expect((await catalog()).data).toEqual([]);
+    } finally {
+      commands.retireTarget();
+      await client.close();
+      for (const worktree of (await catalog()).data) {
+        if (recoveredPath && worktree.workspace.path === dirname(recoveredPath))
+          await writeFile(recoveredPath, baseline);
+        await fixture.client.workspaces.tasks.release(worktree.id);
+      }
+    }
+  }, 30_000);
 
   it("reads current diagnostic tool output through the query binding", async () => {
     const workspace = { path: join(fixture.root, "diagnostic-query") };

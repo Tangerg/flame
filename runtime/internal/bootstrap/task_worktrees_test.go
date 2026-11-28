@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -19,7 +20,8 @@ import (
 	"github.com/Tangerg/scope/core/chatclient"
 )
 
-func TestTaskWorktreesKeepSeparateChangesAndHandoffAfterRestart(t *testing.T) {
+func taskWorktreeTestRepository(t *testing.T) (string, func(...string) string) {
+	t.Helper()
 	source := t.TempDir()
 	git := func(args ...string) string {
 		t.Helper()
@@ -34,6 +36,12 @@ func TestTaskWorktreesKeepSeparateChangesAndHandoffAfterRestart(t *testing.T) {
 		}
 		return strings.TrimSpace(string(raw))
 	}
+	git("init", "--quiet", "--template=", "--initial-branch=target")
+	return source, git
+}
+
+func TestTaskWorktreesKeepSeparateChangesAndHandoffAfterRestart(t *testing.T) {
+	source, git := taskWorktreeTestRepository(t)
 	write := func(root, name string, body []byte) {
 		t.Helper()
 		if err := os.WriteFile(filepath.Join(root, name), body, 0o600); err != nil {
@@ -47,7 +55,6 @@ func TestTaskWorktreesKeepSeparateChangesAndHandoffAfterRestart(t *testing.T) {
 			t.Fatalf("%s in %s = %q, %v", name, root, got, err)
 		}
 	}
-	git("init", "--quiet", "--template=", "--initial-branch=target")
 	write(source, "shared.txt", []byte("base\n"))
 	write(source, ".gitignore", []byte("setup.marker\n"))
 	git("add", ".")
@@ -223,4 +230,113 @@ func TestTaskWorktreesKeepSeparateChangesAndHandoffAfterRestart(t *testing.T) {
 		t.Fatalf("released workspace still exists: %v", err)
 	}
 	requireContents(source, "shared.txt", []byte("second task updated\n"))
+}
+
+func TestTaskWorktreesKeepListingWhenAMovedCheckoutPathIsReused(t *testing.T) {
+	source, git := taskWorktreeTestRepository(t)
+	git("commit", "--quiet", "--allow-empty", "-m", "initial snapshot")
+	cfg := poMCPConfig(t)
+	cfg.defaultWorkspacePath = source
+	r := poMCPOpen(t, cfg)
+
+	request := protocol.CreateTaskWorktreeRequest{Source: protocol.WorkspaceRef{Path: source}, Base: "target"}
+	moved := r.must(delivery.TaskWorktreesCreate, request, "move-task-worktree").(*protocol.TaskWorktree)
+	retained := r.must(delivery.TaskWorktreesCreate, request, "retain-task-worktree").(*protocol.TaskWorktree)
+	newPath := filepath.Join(t.TempDir(), "moved")
+	git("worktree", "move", "--", moved.Workspace.Path, newPath)
+	if err := os.Mkdir(moved.Workspace.Path, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	replacement := filepath.Join(moved.Workspace.Path, "notes.txt")
+	const notes = "keep these notes"
+	if err := os.WriteFile(replacement, []byte(notes), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	requireUnavailable := func(releaseKey string) {
+		t.Helper()
+		list := r.must(delivery.TaskWorktreesList, struct{}{}, "").(*protocol.Page[protocol.TaskWorktree])
+		if len(list.Data) != 2 ||
+			!slices.ContainsFunc(list.Data, func(task protocol.TaskWorktree) bool { return task.ID == moved.ID && !task.Available }) ||
+			!slices.ContainsFunc(list.Data, func(task protocol.TaskWorktree) bool { return task.ID == retained.ID && task.Available }) {
+			t.Fatalf("worktree catalog lost the retained and moved entries: %+v", list.Data)
+		}
+		release := r.endpoint.Invoke(t.Context(), delivery.TaskWorktreesRelease, protocol.TaskWorktreeRequest{ID: moved.ID},
+			protocol.CallMetadata{IdempotencyKey: releaseKey})
+		if release.Failure == nil || !errors.Is(release.Failure, protocol.ErrRevisionConflict) {
+			t.Fatalf("release did not report the replaced checkout: %v", release.Failure)
+		}
+	}
+
+	requireUnavailable("release-plain-replacement")
+	contents, err := os.ReadFile(replacement)
+	if err != nil || string(contents) != notes {
+		t.Fatalf("replacement directory lost its contents: %q, %v", contents, err)
+	}
+	if err := os.Rename(moved.Workspace.Path, filepath.Join(t.TempDir(), "notes")); err != nil {
+		t.Fatal(err)
+	}
+	git("worktree", "add", "--quiet", "--detach", "--", moved.Workspace.Path, moved.Base)
+	requireUnavailable("release-unowned-git-replacement")
+	if _, err := os.Stat(filepath.Join(moved.Workspace.Path, ".git")); err != nil {
+		t.Fatalf("replacement worktree lost its Git checkout: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(newPath, ".git")); err != nil {
+		t.Fatalf("moved worktree lost its Git checkout: %v", err)
+	}
+}
+
+func TestTaskWorktreePreviewDoesNotNeedMutationAdmission(t *testing.T) {
+	source, git := taskWorktreeTestRepository(t)
+	const name = "handoff.txt"
+	if err := os.WriteFile(filepath.Join(source, name), []byte("original\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	git("add", name)
+	git("commit", "--quiet", "-m", "initial checkout")
+	cfg := poMCPConfig(t)
+	cfg.defaultWorkspacePath = source
+	r := poMCPOpen(t, cfg)
+	task := r.must(delivery.TaskWorktreesCreate, protocol.CreateTaskWorktreeRequest{
+		Source: protocol.WorkspaceRef{Path: source}, Base: "target",
+	}, "create-preview-task").(*protocol.TaskWorktree)
+	if err := os.WriteFile(filepath.Join(task.Workspace.Path, name), []byte("handoff\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	query := protocol.TaskWorktreeRequest{ID: task.ID}
+	expected := r.must(delivery.TaskWorktreesPreview, query, "").(*protocol.WorktreeHandoff)
+	apply := protocol.ApplyWorktreeHandoffRequest{ID: task.ID, Digest: expected.Digest}
+
+	for _, target := range []struct{ name, path string }{
+		{"source", task.Source.Path}, {"task", task.Workspace.Path},
+	} {
+		t.Run(target.name, func(t *testing.T) {
+			release, acquired, err := r.host.application.admissions.AcquireWorkingTreeMutation(target.path)
+			if err != nil || !acquired {
+				t.Fatalf("reserve working tree %q: acquired=%t, %v", target.path, acquired, err)
+			}
+			defer release()
+			meta := protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)}}
+			observed := r.endpoint.Invoke(t.Context(), delivery.TaskWorktreesPreview, query, meta)
+			if observed.Failure != nil {
+				t.Fatalf("read handoff while %s is reserved: %v", target.name, observed.Failure)
+			}
+			got := observed.Value.(*protocol.WorktreeHandoff)
+			if got.Digest != expected.Digest || got.Patch != expected.Patch {
+				t.Fatalf("reservation changed the handoff preview: %+v", got)
+			}
+			meta.IdempotencyKey = "apply-with-reserved-" + target.name
+			blocked := r.endpoint.Invoke(t.Context(), delivery.TaskWorktreesApply, apply, meta)
+			if !errors.Is(blocked.Failure, protocol.ErrSessionBusy) {
+				t.Fatalf("handoff could write while %s is reserved: %v", target.name, blocked.Failure)
+			}
+			if got := git("diff", "--cached", "--", name); got != "" {
+				t.Fatalf("preview or refused handoff modified the index: %q", got)
+			}
+		})
+	}
+	r.must(delivery.TaskWorktreesApply, apply, "apply-without-reservation")
+	if got := git("show", ":"+name); got != "handoff" {
+		t.Fatalf("confirmed handoff staged %q, want handoff", got)
+	}
 }

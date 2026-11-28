@@ -50,6 +50,7 @@ type taskWorktreeBackend interface {
 
 type worktreeMutationGate interface {
 	AcquireWorkingTreeMutation(string) (func(), bool, error)
+	AcquireWorkingTreeRemoval(string) (func(), bool, error)
 }
 
 type worktreeSessions interface {
@@ -75,11 +76,6 @@ func (w *TaskWorktrees) Create(ctx context.Context, source, base, setup string) 
 	if err != nil {
 		return TaskWorktree{}, err
 	}
-	release, err := w.claim(path)
-	if err != nil {
-		return TaskWorktree{}, err
-	}
-	defer release()
 	return w.backend.Create(ctx, path, base, setup)
 }
 
@@ -88,20 +84,17 @@ func (w *TaskWorktrees) List(ctx context.Context) ([]TaskWorktree, error) {
 }
 
 func (w *TaskWorktrees) Preview(ctx context.Context, id string) (WorktreeHandoff, error) {
-	return w.handoff(ctx, id, "", false)
-}
-
-func (w *TaskWorktrees) Handoff(ctx context.Context, id, digest string) (WorktreeHandoff, error) {
-	return w.handoff(ctx, id, digest, true)
-}
-
-func (w *TaskWorktrees) handoff(ctx context.Context, id, digest string, apply bool) (WorktreeHandoff, error) {
-	task, err := w.backend.Get(ctx, id)
+	task, err := w.availableTask(ctx, id)
 	if err != nil {
 		return WorktreeHandoff{}, err
 	}
-	if !task.Available {
-		return WorktreeHandoff{}, ErrTaskWorktreeNotFound
+	return w.backend.Preview(ctx, task)
+}
+
+func (w *TaskWorktrees) ApplyHandoff(ctx context.Context, id, digest string) (WorktreeHandoff, error) {
+	task, err := w.availableTask(ctx, id)
+	if err != nil {
+		return WorktreeHandoff{}, err
 	}
 	release, err := w.claim(task.Path)
 	if err != nil {
@@ -114,8 +107,8 @@ func (w *TaskWorktrees) handoff(ctx context.Context, id, digest string, apply bo
 	}
 	defer releaseSource()
 	preview, err := w.backend.Preview(ctx, task)
-	if err != nil || !apply {
-		return preview, err
+	if err != nil {
+		return WorktreeHandoff{}, err
 	}
 	if digest != preview.Digest {
 		return WorktreeHandoff{}, ErrTaskWorktreeChanged
@@ -129,9 +122,12 @@ func (w *TaskWorktrees) Release(ctx context.Context, id string) error {
 		return err
 	}
 	if task.Available {
-		release, err := w.claim(task.Path)
+		release, ok, err := w.gate.AcquireWorkingTreeRemoval(task.Path)
 		if err != nil {
 			return err
+		}
+		if !ok {
+			return ErrTaskWorktreeBusy
 		}
 		defer release()
 	}
@@ -145,6 +141,17 @@ func (w *TaskWorktrees) Release(ctx context.Context, id string) error {
 		}
 	}
 	return w.backend.Release(ctx, task)
+}
+
+func (w *TaskWorktrees) availableTask(ctx context.Context, id string) (TaskWorktree, error) {
+	task, err := w.backend.Get(ctx, id)
+	if err != nil {
+		return TaskWorktree{}, err
+	}
+	if !task.Available {
+		return TaskWorktree{}, ErrTaskWorktreeNotFound
+	}
+	return task, nil
 }
 
 func (w *TaskWorktrees) claim(path string) (func(), error) {

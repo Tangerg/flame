@@ -31,6 +31,7 @@ import {
   unresolvedSteer,
 } from "@/features/agent/adapters/runtimeSessionMaterial";
 import { type AgentCommands } from "@/features/agent/application/agentCommandOwner";
+import { readRuntimeSessionSummary } from "@/features/agent/adapters/runtimeSessionSummary";
 
 type RuntimeCapabilities = Pick<RuntimeAccess["capabilities"], "hasCapability">;
 type CreateSessionMutation = ReturnType<FlameClient["sessions"]["create"]>;
@@ -79,14 +80,8 @@ export class RuntimeAgentGateway implements AgentRuntimeGateway {
     }
   }
 
-  async sessionExists(sessionId: string, signal: AbortSignal): Promise<boolean> {
-    try {
-      await this.runtimeClient().sessions.get(asSessionId(sessionId), signal);
-      return true;
-    } catch (error) {
-      if (isErrorType(error, "session_not_found")) return false;
-      throw error;
-    }
+  loadSessionSummary(sessionId: string, signal?: AbortSignal) {
+    return readRuntimeSessionSummary(this.runtimeClient(), sessionId, signal);
   }
 
   async deleteSession(sessionId: string) {

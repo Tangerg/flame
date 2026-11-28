@@ -3,7 +3,6 @@ import { type RuntimeAccess } from "@/features/connection/public/runtime";
 import { parseJSON } from "@frame/sdk/json";
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { RetirableTaskCohort } from "@/lib/taskQueue";
-import { createPublicationSlot } from "@/lib/publicationSlot";
 import { t } from "@/lib/i18n/index";
 
 import { invalidateAgentSessions, sessionDisplayTitle } from "@/features/agent/public/session";
@@ -17,18 +16,17 @@ export function createConversationImport(
   agentAccess: AgentAccess,
   runtimeAccess: RuntimeAccess,
   notifications: NotificationFeed,
+  files: FileTransferPort,
 ) {
-  class ConversationImportGeneration {
+  class ConversationImportTarget {
     readonly #gateway: ConversationImportGateway;
-    readonly #files: FileTransferPort;
     readonly #cohort = new RetirableTaskCohort(
-      new GenerationRetiredError("conversation_import_generation"),
+      new GenerationRetiredError("conversation_import_target"),
     );
     #importOperation: Promise<void> | null = null;
 
-    constructor(gateway: ConversationImportGateway, files: FileTransferPort) {
+    constructor(gateway: ConversationImportGateway) {
       this.#gateway = gateway;
-      this.#files = files;
     }
 
     importJson(): Promise<void> {
@@ -44,7 +42,6 @@ export function createConversationImport(
 
     retire(): void {
       this.#cohort.retire();
-      this.#importOperation = null;
     }
 
     async #runImport(): Promise<void> {
@@ -55,7 +52,7 @@ export function createConversationImport(
         }
         let text: string | null;
         try {
-          text = await this.#cohort.run(() => this.#files.pickText("application/json,.json"));
+          text = await this.#cohort.run(() => files.pickText("application/json,.json"));
         } catch (error) {
           if (this.#cohort.retired) return;
           console.error("[import] selected file read failed:", error);
@@ -74,24 +71,24 @@ export function createConversationImport(
         }
 
         const session = await this.#cohort.run(() => this.#gateway.importConversation(artifact));
-        try {
-          await this.#cohort.run(invalidateAgentSessions);
-          await this.#cohort.run(() => agentAccess.synchronizeRewrittenSessionView(session.id));
-        } catch (error) {
-          if (this.#cohort.retired) return;
-          console.error("[import] imported Session view could not be refreshed:", error);
-          agentAccess.selectAgentSession(session.id);
-          notifications.notify("error", t("convExport.importRefreshFailed"), { source: "import" });
-          return;
-        }
         this.#cohort.assertCurrent();
         agentAccess.selectAgentSession(session.id);
+        invalidateAgentSessions([session.id]);
         notifications.show({
           level: "success",
           message: t("convExport.importSuccess", {
             title: sessionDisplayTitle(t, session.title),
           }),
         });
+        void this.#cohort
+          .run(() => agentAccess.synchronizeRewrittenSessionView(session.id))
+          .catch((error: unknown) => {
+            if (this.#cohort.retired) return;
+            console.error("[import] imported Session view could not be refreshed:", error);
+            notifications.notify("error", t("convExport.importRefreshFailed"), {
+              source: "import",
+            });
+          });
       } catch (error) {
         if (this.#cohort.retired) return;
         console.error("[import] sessions.import failed:", error);
@@ -105,61 +102,20 @@ export function createConversationImport(
     }
   }
 
-  interface ConversationImportOwnerDependencies {
-    readonly gateway: ConversationImportGateway;
-    readonly files: FileTransferPort;
-  }
-
-  class ConversationImportOwner {
-    readonly #files: FileTransferPort;
-    #generation: ConversationImportGeneration;
-    #disposed = false;
-
-    private constructor(dependencies: ConversationImportOwnerDependencies) {
-      this.#files = dependencies.files;
-      this.#generation = new ConversationImportGeneration(dependencies.gateway, this.#files);
-    }
-
-    static install(dependencies: ConversationImportOwnerDependencies): ConversationImportOwner {
-      const owner = new ConversationImportOwner(dependencies);
-      conversationImportPublication.publish(owner, (predecessor) => predecessor.dispose());
-      return owner;
-    }
-
-    static current(): ConversationImportOwner {
-      const owner = conversationImportPublication.current();
-      if (!owner || owner.#disposed) throw new Error("Conversation import owner is not installed");
-      return owner;
-    }
-
-    importJson(): Promise<void> {
-      return this.#generation.importJson();
-    }
-
-    replaceRuntimeGeneration(createGateway: () => ConversationImportGateway): void {
-      if (this.#disposed || !conversationImportPublication.owns(this)) return;
-      const predecessor = this.#generation;
-      this.#generation = new ConversationImportGeneration(createGateway(), this.#files);
-      predecessor.retire();
-    }
-
-    dispose(): void {
-      if (this.#disposed) return;
-      this.#disposed = true;
-      this.#generation.retire();
-      conversationImportPublication.withdraw(this);
-    }
-  }
-
-  const conversationImportPublication = createPublicationSlot<ConversationImportOwner>();
-
-  function importConversationJson(): Promise<void> {
-    return ConversationImportOwner.current().importJson();
-  }
-
+  let target: ConversationImportTarget | null = null;
   return {
-    install: ConversationImportOwner.install,
-    importConversationJson,
+    importConversationJson(): Promise<void> {
+      if (!target) throw new Error("Conversation import has no Runtime target");
+      return target.importJson();
+    },
+    replaceTarget(gateway: ConversationImportGateway): void {
+      target?.retire();
+      target = new ConversationImportTarget(gateway);
+    },
+    retireTarget(): void {
+      target?.retire();
+      target = null;
+    },
   };
 }
 export type ConversationImport = ReturnType<typeof createConversationImport>;

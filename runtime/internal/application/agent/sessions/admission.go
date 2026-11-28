@@ -13,6 +13,7 @@ type Admissions interface {
 	AcquireSession(ctx context.Context, sessionID identity.SessionID) (release func(), ok bool, err error)
 	AcquireWorkspaceRollback(ctx context.Context, sessionID identity.SessionID) (release func(), ok bool, err error)
 	AcquireWorkingTreeMutation(cwd string) (release func(), ok bool, err error)
+	AcquireWorkspaceBinding(cwd string) (release func(), ok bool, err error)
 }
 
 type WorkingTreeAdmission struct {

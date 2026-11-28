@@ -6,11 +6,3 @@ interface WorkspaceScope {
 }
 
 export const WORKSPACE_SCOPE = service<WorkspaceScope>("flame.workspace.scope");
-
-export interface WorkspaceMutationLifecycle {
-  replaceRuntimeGeneration(): void;
-}
-
-export const WORKSPACE_MUTATION_LIFECYCLE = service<WorkspaceMutationLifecycle>(
-  "flame.workspace.mutationLifecycle",
-);
