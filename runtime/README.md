@@ -103,9 +103,11 @@ exact patch that Git applies. Text patches must be valid UTF-8. Git's binary
 patches retain arbitrary file bytes. Use the `diff` attribute in `.gitattributes`
 to mark files that Git should treat as binary. Release uses Git's non-forced
 removal for an owned registration at its original base, even if the checkout
-directory is missing. Release retires the catalog file and leaves unrelated
-files beside the checkout in place. Release is blocked if a Session's saved
-workspace path lies inside the checkout or resolves to a directory inside it.
+directory is missing. Git refuses non-ignored untracked files even when a
+repository's status preferences hide them. Release retires the catalog file
+and leaves unrelated files beside the checkout in place. Release is blocked if a
+Session's saved workspace path lies inside the checkout or resolves to a directory
+inside it.
 A worktree moved with Git appears unavailable. Move it back to the managed path
 or remove its registration in Git before releasing the task. A checkout without
 a matching Git custody stamp appears unavailable and stays on disk.

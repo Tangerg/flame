@@ -135,7 +135,7 @@ func (b *TaskWorktrees) PrepareRelease(ctx context.Context, task work.TaskWorktr
 func (b *TaskWorktrees) removeTask(ctx context.Context, id string, registration *taskRegistration) error {
 	if registration != nil {
 		common := filepath.Dir(filepath.Dir(registration.directory))
-		if _, err := taskGitValue(ctx, common, "worktree", "remove", "--", registration.checkout); err != nil {
+		if err := git.RemoveWorktree(ctx, common, registration.checkout); err != nil {
 			return errors.Join(work.ErrTaskWorktreeChanged, err)
 		}
 	}

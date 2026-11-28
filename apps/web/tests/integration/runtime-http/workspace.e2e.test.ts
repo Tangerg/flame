@@ -19,7 +19,7 @@ import {
   updateInstalledMemory,
 } from "./memoryOperations";
 import { execFile } from "node:child_process";
-import { mkdir, readFile, realpath, stat, symlink, writeFile } from "node:fs/promises";
+import { mkdir, readFile, realpath, stat, symlink, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
@@ -96,6 +96,19 @@ describe("Go Runtime ↔ HTTP: Git command receipts", () => {
     expect((await git("show", `:${file}`)).stdout).toBe(material);
     await writeFile(taskFile, baseline);
     const release = ["workspaces.tasks.release", { id: task.id }, "release"] as const;
+    const draft = join(task.workspace.path, "draft.txt");
+    const draftContents = "untracked work\n";
+    await git("config", "status.showUntrackedFiles", "no");
+    await writeFile(draft, draftContents);
+    const releaseWithDraft = [release[0], release[1], "release-with-draft"] as const;
+    const refused = await send(...releaseWithDraft);
+    expect(refused).toMatchObject({
+      error: { data: { problem: { type: "revision_conflict" }, recordedOutcome: true } },
+    });
+    await expect(readFile(draft, "utf8")).resolves.toBe(draftContents);
+    await unlink(draft);
+    await expect(send(...releaseWithDraft)).resolves.toEqual(refused);
+
     const released = await send(...release);
     expect(released).toEqual({ jsonrpc: JSONRPC_VERSION, id: release[0], result: {} });
     await expect(stat(task.workspace.path)).rejects.toMatchObject({ code: "ENOENT" });

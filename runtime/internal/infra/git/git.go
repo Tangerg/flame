@@ -77,16 +77,18 @@ func isNotRepositoryDiagnostic(diagnostic string) bool {
 	return strings.HasPrefix(diagnostic, "fatal: not a git repository")
 }
 
+func RemoveWorktree(ctx context.Context, repository, checkout string) error {
+	// Git's removal guard uses status. A display preference must not hide
+	// untracked files from that check.
+	_, err := run(ctx, repository, "-c", "status.showUntrackedFiles=normal", "worktree", "remove", "--", checkout)
+	return err
+}
+
 func run(ctx context.Context, dir string, args ...string) ([]byte, error) {
 	return runAllowingExitCode(ctx, dir, -1, args...)
 }
 
 func runAllowingExitCode(ctx context.Context, dir string, allowedExitCode int, args ...string) ([]byte, error) {
-	// Workspace VCS operations are observations. Suppress Git's optional index
-	// refreshes so commands such as status do not take index.lock merely to
-	// improve a later read. Some Git commands still perform mandatory metadata
-	// refreshes; the workspace watcher compares semantic Git state before it
-	// publishes and therefore does not expose those implementation writes.
 	result, err := process.At(ctx, dir, args...)
 	return readCommandOutput(args, result, err, allowedExitCode)
 }
