@@ -14,6 +14,7 @@ var (
 	ErrTaskWorktreeBusy     = errors.New("workspace: a task or its destination is in use")
 	ErrTaskWorktreeChanged  = errors.New("workspace: the worktree or destination changed")
 	ErrTaskWorktreeInput    = errors.New("workspace: a valid commit or branch is required")
+	ErrHandoffPatchEncoding = errors.New("workspace: handoff patch contains invalid UTF-8 bytes")
 )
 
 const (

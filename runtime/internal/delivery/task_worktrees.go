@@ -137,7 +137,7 @@ func (s *Handler) releaseTaskWorktree(ctx context.Context, in protocol.TaskWorkt
 func presentWorktreeHandoff(preview workspace.WorktreeHandoff) *protocol.WorktreeHandoff {
 	return &protocol.WorktreeHandoff{
 		Worktree: presentTaskWorktree(preview.Worktree), Branch: preview.Branch, Head: preview.Head,
-		Digest: preview.Digest, Patch: strings.ToValidUTF8(preview.Patch, "�"),
+		Digest: preview.Digest, Patch: preview.Patch,
 	}
 }
 
@@ -162,7 +162,7 @@ func taskWorktreeError(err error) error {
 		return protocol.NewFailure(protocol.ErrSessionBusy, err.Error(), err)
 	case errors.Is(err, workspace.ErrTaskWorktreeChanged):
 		return protocol.NewFailure(protocol.ErrRevisionConflict, err.Error(), err)
-	case errors.Is(err, workspace.ErrTaskWorktreeInput):
+	case errors.Is(err, workspace.ErrTaskWorktreeInput), errors.Is(err, workspace.ErrHandoffPatchEncoding):
 		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 	default:
 		return wireWorkspaceError(err)

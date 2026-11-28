@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	work "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
@@ -45,6 +46,9 @@ func (b *TaskWorktrees) Preview(ctx context.Context, task work.TaskWorktree) (wo
 	patch, err := git.WorktreePatch(ctx, task.Path, task.Base, maxHandoffPatchBytes)
 	if err != nil {
 		return work.WorktreeHandoff{}, vcsError(err)
+	}
+	if !utf8.Valid(patch) {
+		return work.WorktreeHandoff{}, work.ErrHandoffPatchEncoding
 	}
 	digest := sha256.New()
 	fmt.Fprintf(digest, "%q\n%q\n%q\n%q\n", task.ID, task.Source, head.reference, head.commit)

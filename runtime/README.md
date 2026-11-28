@@ -96,7 +96,10 @@ and edits. Once the base commit is captured,
 registration uses the shared Git repository. The selected checkout remains the
 handoff destination. Handoff previews bind tracked and untracked
 changes to the original checkout's branch and HEAD. Accepting a current preview
-stages its changes in that clean destination. Release uses Git's non-forced
+stages its changes in that clean destination. The preview and receipt carry the
+exact patch that Git applies. Text patches must be valid UTF-8. Git's binary
+patches retain arbitrary file bytes. Use the `diff` attribute in `.gitattributes`
+to mark files that Git should treat as binary. Release uses Git's non-forced
 removal for an owned registration at its original base, even if the checkout
 directory is missing. Release retires the catalog file and leaves unrelated
 files beside the checkout in place. Release is blocked if a Session's saved

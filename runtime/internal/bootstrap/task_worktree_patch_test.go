@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
@@ -103,6 +104,59 @@ func TestTaskWorktreePreviewReportsPatchCapacity(t *testing.T) {
 		protocol.TaskWorktreeRequest{ID: task.ID}, protocol.CallMetadata{})
 	if result.Failure == nil || !errors.Is(result.Failure, protocol.ErrInvalidParams) {
 		t.Fatalf("oversized binary handoff preview = %+v, %v; want invalid params", result.Value, result.Failure)
+	}
+}
+
+func TestTaskWorktreeHandoffRequiresALosslessPreview(t *testing.T) {
+	source, git := taskWorktreeTestRepository(t)
+	const textFile, binaryFile = "material.txt", "asset.dat"
+	const original, material = "original\n", "caf\xe9\n"
+	write := func(root, name, contents string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(root, name), []byte(contents), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write(source, textFile, original)
+	write(source, binaryFile, original)
+	write(source, ".gitattributes", binaryFile+" -diff\n")
+	git("add", ".")
+	git("commit", "--quiet", "-m", "handoff material")
+	cfg := poMCPConfig(t)
+	cfg.defaultWorkspacePath = source
+	r := poMCPOpen(t, cfg)
+	task := r.must(delivery.TaskWorktreesCreate, protocol.CreateTaskWorktreeRequest{
+		Source: protocol.WorkspaceRef{Path: source}, Base: "HEAD",
+	}, "create-task-for-handoff-encoding").(*protocol.TaskWorktree)
+	request := protocol.TaskWorktreeRequest{ID: task.ID}
+	write(task.Workspace.Path, textFile, material)
+	if raw := git("-C", task.Workspace.Path, "diff", "--binary", "HEAD", "--", textFile); utf8.ValidString(raw) {
+		t.Fatalf("Git classified the legacy bytes as a UTF-8 patch: %q", raw)
+	}
+	result := r.endpoint.Invoke(protocolLifecycleContext(t.Context()), delivery.TaskWorktreesPreview, request, protocol.CallMetadata{})
+	if result.Failure == nil || !errors.Is(result.Failure, protocol.ErrInvalidParams) {
+		t.Fatalf("legacy text preview = %+v, %v; want explicit UTF-8 refusal", result.Value, result.Failure)
+	}
+	if status := git("status", "--porcelain"); status != "" {
+		t.Fatalf("refused preview changed its destination: %s", status)
+	}
+
+	write(task.Workspace.Path, textFile, original)
+	write(task.Workspace.Path, binaryFile, material)
+	preview := r.must(delivery.TaskWorktreesPreview, request, "").(*protocol.WorktreeHandoff)
+	if !strings.Contains(preview.Patch, "GIT binary patch\n") || !utf8.ValidString(preview.Patch) {
+		t.Fatalf("reviewed binary patch = %q; want Git's binary representation", preview.Patch)
+	}
+	apply := protocol.ApplyWorktreeHandoffRequest{ID: task.ID, Digest: preview.Digest}
+	receipt := r.must(delivery.TaskWorktreesApply, apply, "apply-native-binary-handoff").(*protocol.WorktreeHandoff)
+	if receipt.Patch != preview.Patch || receipt.Digest != preview.Digest {
+		t.Fatalf("receipt = %+v; want reviewed patch %+v", receipt, preview)
+	}
+	if staged, want := git("rev-parse", ":"+binaryFile), git("-C", task.Workspace.Path, "hash-object", "--", binaryFile); staged != want {
+		t.Errorf("staged blob = %s; want %s", staged, want)
+	}
+	if got, err := os.ReadFile(filepath.Join(source, binaryFile)); err != nil || string(got) != material {
+		t.Errorf("destination bytes = %q, %v; want %q", got, err, material)
 	}
 }
 
