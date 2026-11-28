@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-11-28.1` · 115 methods
+Protocol `2026-11-28.2` · 115 methods
 
 ## Methods
 
@@ -514,6 +514,7 @@ Forbidden on every variant: `durable`.
 | `models.changed` | `sequence` | — |
 | `approvals.changed` | `sequence` | — |
 | `projects.changed` | `sequence` | — |
+| `taskWorktrees.changed` | `sequence` | — |
 | `resync` | `sequence`, `topics` | `watchIds` |
 
 ### `ArtifactOutcome`

@@ -99,6 +99,7 @@ func registerEventUnions(s *Shapes) {
 		{Tag: string(protocol.RuntimeModelsChanged), Required: []string{"sequence"}},
 		{Tag: string(protocol.RuntimeApprovalsChanged), Required: []string{"sequence"}},
 		{Tag: string(protocol.RuntimeProjectsChanged), Required: []string{"sequence"}},
+		{Tag: string(protocol.RuntimeTaskWorktreesChanged), Required: []string{"sequence"}},
 
 		{Tag: string(protocol.RuntimeResync), Required: []string{"sequence", "topics"}, Optional: []string{"watchIds"}},
 	}

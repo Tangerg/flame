@@ -3,6 +3,7 @@ export {
   WORKSPACE_LIST_FILES_KEY,
   WORKSPACE_FOLDERS_KEY,
   WORKSPACE_READ_FILE_KEY,
+  WORKSPACE_TASK_WORKTREES_KEY,
   useWorkspaceFileChanges,
   useWorkspaceListFiles,
   useWorkspaceFolders,

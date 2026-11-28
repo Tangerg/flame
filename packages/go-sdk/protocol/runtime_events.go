@@ -5,40 +5,42 @@ package protocol
 type RuntimeEventType string
 
 const (
-	RuntimeFilesChanged      RuntimeEventType = "files.changed"
-	RuntimeSkillsChanged     RuntimeEventType = "skills.changed"
-	RuntimeMCPChanged        RuntimeEventType = "mcp.changed"
-	RuntimePluginsChanged    RuntimeEventType = "plugins.changed"
-	RuntimePluginDataChanged RuntimeEventType = "plugins.dataChanged"
-	RuntimeSessionsChanged   RuntimeEventType = "sessions.changed"
-	RuntimeRunsChanged       RuntimeEventType = "runs.changed"
-	RuntimePlanChanged       RuntimeEventType = "plan.changed"
-	RuntimeGoalsChanged      RuntimeEventType = "goals.changed"
-	RuntimeInterruptsChanged RuntimeEventType = "interrupts.changed"
-	RuntimeHooksChanged      RuntimeEventType = "hooks.changed"
-	RuntimeModelsChanged     RuntimeEventType = "models.changed"
-	RuntimeApprovalsChanged  RuntimeEventType = "approvals.changed"
-	RuntimeProjectsChanged   RuntimeEventType = "projects.changed"
-	RuntimeResync            RuntimeEventType = "resync"
+	RuntimeFilesChanged         RuntimeEventType = "files.changed"
+	RuntimeSkillsChanged        RuntimeEventType = "skills.changed"
+	RuntimeMCPChanged           RuntimeEventType = "mcp.changed"
+	RuntimePluginsChanged       RuntimeEventType = "plugins.changed"
+	RuntimePluginDataChanged    RuntimeEventType = "plugins.dataChanged"
+	RuntimeSessionsChanged      RuntimeEventType = "sessions.changed"
+	RuntimeRunsChanged          RuntimeEventType = "runs.changed"
+	RuntimePlanChanged          RuntimeEventType = "plan.changed"
+	RuntimeGoalsChanged         RuntimeEventType = "goals.changed"
+	RuntimeInterruptsChanged    RuntimeEventType = "interrupts.changed"
+	RuntimeHooksChanged         RuntimeEventType = "hooks.changed"
+	RuntimeModelsChanged        RuntimeEventType = "models.changed"
+	RuntimeApprovalsChanged     RuntimeEventType = "approvals.changed"
+	RuntimeProjectsChanged      RuntimeEventType = "projects.changed"
+	RuntimeTaskWorktreesChanged RuntimeEventType = "taskWorktrees.changed"
+	RuntimeResync               RuntimeEventType = "resync"
 )
 
 type RuntimeTopic string
 
 const (
-	TopicFilesChanged      = RuntimeTopic(RuntimeFilesChanged)
-	TopicSkillsChanged     = RuntimeTopic(RuntimeSkillsChanged)
-	TopicMCPChanged        = RuntimeTopic(RuntimeMCPChanged)
-	TopicPluginsChanged    = RuntimeTopic(RuntimePluginsChanged)
-	TopicPluginDataChanged = RuntimeTopic(RuntimePluginDataChanged)
-	TopicSessionsChanged   = RuntimeTopic(RuntimeSessionsChanged)
-	TopicRunsChanged       = RuntimeTopic(RuntimeRunsChanged)
-	TopicPlanChanged       = RuntimeTopic(RuntimePlanChanged)
-	TopicGoalsChanged      = RuntimeTopic(RuntimeGoalsChanged)
-	TopicInterruptsChanged = RuntimeTopic(RuntimeInterruptsChanged)
-	TopicHooksChanged      = RuntimeTopic(RuntimeHooksChanged)
-	TopicModelsChanged     = RuntimeTopic(RuntimeModelsChanged)
-	TopicApprovalsChanged  = RuntimeTopic(RuntimeApprovalsChanged)
-	TopicProjectsChanged   = RuntimeTopic(RuntimeProjectsChanged)
+	TopicFilesChanged         = RuntimeTopic(RuntimeFilesChanged)
+	TopicSkillsChanged        = RuntimeTopic(RuntimeSkillsChanged)
+	TopicMCPChanged           = RuntimeTopic(RuntimeMCPChanged)
+	TopicPluginsChanged       = RuntimeTopic(RuntimePluginsChanged)
+	TopicPluginDataChanged    = RuntimeTopic(RuntimePluginDataChanged)
+	TopicSessionsChanged      = RuntimeTopic(RuntimeSessionsChanged)
+	TopicRunsChanged          = RuntimeTopic(RuntimeRunsChanged)
+	TopicPlanChanged          = RuntimeTopic(RuntimePlanChanged)
+	TopicGoalsChanged         = RuntimeTopic(RuntimeGoalsChanged)
+	TopicInterruptsChanged    = RuntimeTopic(RuntimeInterruptsChanged)
+	TopicHooksChanged         = RuntimeTopic(RuntimeHooksChanged)
+	TopicModelsChanged        = RuntimeTopic(RuntimeModelsChanged)
+	TopicApprovalsChanged     = RuntimeTopic(RuntimeApprovalsChanged)
+	TopicProjectsChanged      = RuntimeTopic(RuntimeProjectsChanged)
+	TopicTaskWorktreesChanged = RuntimeTopic(RuntimeTaskWorktreesChanged)
 )
 
 func RuntimeTopics() []RuntimeTopic {
@@ -46,7 +48,7 @@ func RuntimeTopics() []RuntimeTopic {
 		TopicFilesChanged, TopicSkillsChanged, TopicMCPChanged, TopicPluginsChanged, TopicPluginDataChanged,
 		TopicSessionsChanged, TopicRunsChanged, TopicPlanChanged, TopicGoalsChanged,
 		TopicInterruptsChanged, TopicHooksChanged,
-		TopicModelsChanged, TopicApprovalsChanged, TopicProjectsChanged,
+		TopicModelsChanged, TopicApprovalsChanged, TopicProjectsChanged, TopicTaskWorktreesChanged,
 	}
 }
 

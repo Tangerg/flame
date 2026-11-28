@@ -10518,6 +10518,11 @@
           "value": "\"skills.changed\""
         },
         {
+          "name": "RuntimeTaskWorktreesChanged",
+          "type": "RuntimeEventType",
+          "value": "\"taskWorktrees.changed\""
+        },
+        {
           "name": "SafetyClassExec",
           "type": "SafetyClass",
           "value": "\"exec\""
@@ -10713,6 +10718,11 @@
           "value": "\"skills.changed\""
         },
         {
+          "name": "TopicTaskWorktreesChanged",
+          "type": "RuntimeTopic",
+          "value": "\"taskWorktrees.changed\""
+        },
+        {
           "name": "TrajectoryEntryEndpoint",
           "type": "TrajectoryEntryType",
           "value": "\"endpoint\""
@@ -10745,7 +10755,7 @@
         {
           "name": "Version",
           "type": "untyped string",
-          "value": "\"2026-11-28.1\""
+          "value": "\"2026-11-28.2\""
         },
         {
           "name": "WorkspaceAvailable",

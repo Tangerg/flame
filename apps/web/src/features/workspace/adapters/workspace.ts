@@ -15,8 +15,6 @@ import { bindConversationImportRuntime } from "@/features/workspace/adapters/run
 import { pickTextFile } from "@/features/workspace/adapters/fileTransfer";
 import { type NotificationFeed } from "@/features/notifications/public/notifications";
 import { TaskWorktreeCommands } from "@/features/workspace/application/taskWorktreeCommands";
-import { taskWorktreesQueryKey } from "@/features/workspace/application/workspaceQueries";
-import { replaceCachedRead } from "@/lib/queryClient";
 export function createWorkspace(
   client: () => FlameClient,
   navigation: Navigator,
@@ -38,12 +36,7 @@ export function createWorkspace(
     pickText: pickTextFile,
   });
   const worktrees = () => client().workspaces.tasks;
-  const taskWorktreeCommands = new TaskWorktreeCommands(worktrees, () => {
-    void replaceCachedRead({
-      queryKey: taskWorktreesQueryKey(runtime.endpoint.currentRuntimeEndpoint()),
-      exact: true,
-    });
-  });
+  const taskWorktreeCommands = new TaskWorktreeCommands(worktrees);
   const access: WorkspaceAccess = {
     navigation: navigationState,
     local: createLocalWorkspaceActions(host, canAccessLocalWorkspace),

@@ -9,6 +9,7 @@ import {
   WORKSPACE_FILES_CHANGED_KEY,
   WORKSPACE_LIST_FILES_KEY,
   WORKSPACE_READ_FILE_KEY,
+  WORKSPACE_TASK_WORKTREES_KEY,
 } from "@/features/workspace/public/queries";
 import {
   workspaceInvalidations,
@@ -31,6 +32,7 @@ const QUERY_KEYS: Record<
   models: MODELS_KEY,
   projects: PROJECTS_KEY,
   providers: PROVIDERS_KEY,
+  taskWorktrees: WORKSPACE_TASK_WORKTREES_KEY,
 };
 
 function invalidateWorkspaceTargets(

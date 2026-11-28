@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-11-28.1",
+  "protocolVersion": "2026-11-28.2",
   "features": [
     "reasoning",
     "multimodal",
@@ -3533,6 +3533,9 @@
       "type": "projects.changed"
     },
     {
+      "type": "taskWorktrees.changed"
+    },
+    {
       "type": "resync"
     }
   ],
@@ -5110,6 +5113,12 @@
         },
         {
           "tag": "projects.changed",
+          "required": [
+            "sequence"
+          ]
+        },
+        {
+          "tag": "taskWorktrees.changed",
           "required": [
             "sequence"
           ]

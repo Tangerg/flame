@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-11-28.1";
+export const PROTOCOL_VERSION = "2026-11-28.2";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 32;
@@ -2078,13 +2078,14 @@ export type RuntimeEvent =
   | { type: "models.changed"; sequence: number }
   | { type: "approvals.changed"; sequence: number }
   | { type: "projects.changed"; sequence: number }
+  | { type: "taskWorktrees.changed"; sequence: number }
   | { type: "resync"; sequence: number; topics: RuntimeTopic[]; watchIds?: string[] };
 
 export interface RuntimeEventNotification {
   event: RuntimeEvent;
 }
 
-export type RuntimeEventType = "files.changed" | "skills.changed" | "mcp.changed" | "plugins.changed" | "plugins.dataChanged" | "sessions.changed" | "runs.changed" | "plan.changed" | "goals.changed" | "interrupts.changed" | "hooks.changed" | "models.changed" | "approvals.changed" | "projects.changed" | "resync";
+export type RuntimeEventType = "files.changed" | "skills.changed" | "mcp.changed" | "plugins.changed" | "plugins.dataChanged" | "sessions.changed" | "runs.changed" | "plan.changed" | "goals.changed" | "interrupts.changed" | "hooks.changed" | "models.changed" | "approvals.changed" | "projects.changed" | "taskWorktrees.changed" | "resync";
 
 export interface RuntimeInfo {
   endpoints: RuntimeInfoEndpoints;
@@ -2122,7 +2123,7 @@ export interface RuntimeSubscribeRequest {
 export interface RuntimeSubscribeResponse {
 }
 
-export type RuntimeTopic = "files.changed" | "skills.changed" | "mcp.changed" | "plugins.changed" | "plugins.dataChanged" | "sessions.changed" | "runs.changed" | "plan.changed" | "goals.changed" | "interrupts.changed" | "hooks.changed" | "models.changed" | "approvals.changed" | "projects.changed";
+export type RuntimeTopic = "files.changed" | "skills.changed" | "mcp.changed" | "plugins.changed" | "plugins.dataChanged" | "sessions.changed" | "runs.changed" | "plan.changed" | "goals.changed" | "interrupts.changed" | "hooks.changed" | "models.changed" | "approvals.changed" | "projects.changed" | "taskWorktrees.changed";
 
 export type SafetyClass = "safe" | "write" | "exec" | "network";
 
@@ -2781,8 +2782,8 @@ export const WIRE_ENUMS = {
   RunOutcomeType: ["completed", "timedOut", "failed", "canceled", "lost"],
   RunReplayScope: ["runtimeInstanceRootSegment"],
   RunStatus: ["running", "waiting", "finished"],
-  RuntimeEventType: ["files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "projects.changed", "resync"],
-  RuntimeTopic: ["files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "projects.changed"],
+  RuntimeEventType: ["files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "projects.changed", "taskWorktrees.changed", "resync"],
+  RuntimeTopic: ["files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "projects.changed", "taskWorktrees.changed"],
   SafetyClass: ["safe", "write", "exec", "network"],
   ScriptCallStatus: ["succeeded", "failed", "rejected", "unconfirmed", "notDispatched"],
   ScriptStatus: ["completed", "failed", "timedOut", "callLimitExceeded", "outputLimitExceeded", "resultLimitExceeded", "canceled"],

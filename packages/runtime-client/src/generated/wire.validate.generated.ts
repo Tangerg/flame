@@ -4288,6 +4288,18 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         runIds: absent(),
         servers: absent(),
         sessionIds: absent(),
+        topics: absent(),
+        type: literal("taskWorktrees.changed"),
+        watchId: absent(),
+        watchIds: absent(),
+        workspace: absent(),
+      }, ["sequence", "type"]),
+      fields({
+        names: absent(),
+        paths: absent(),
+        runIds: absent(),
+        servers: absent(),
+        sessionIds: absent(),
         type: literal("resync"),
         watchId: absent(),
         workspace: absent(),
@@ -4297,7 +4309,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   RuntimeEventNotification: object({
     event: ref(() => CHECKS.RuntimeEvent),
   }, ["event"]),
-  RuntimeEventType: enumOf(["files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "projects.changed", "resync"]),
+  RuntimeEventType: enumOf(["files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "projects.changed", "taskWorktrees.changed", "resync"]),
   RuntimeInfo: object({
     endpoints: ref(() => CHECKS.RuntimeInfoEndpoints),
     protocolVersion: text(),
@@ -4327,7 +4339,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     watches: array(ref(() => CHECKS.WatchSpec)),
   }, ["topics"]),
   RuntimeSubscribeResponse: object({}, []),
-  RuntimeTopic: enumOf(["files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "projects.changed"]),
+  RuntimeTopic: enumOf(["files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "projects.changed", "taskWorktrees.changed"]),
   SafetyClass: enumOf(["safe", "write", "exec", "network"]),
   ScriptCall: object({
     arguments: record(anything()),

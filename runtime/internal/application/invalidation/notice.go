@@ -13,27 +13,28 @@ import (
 type Resource string
 
 const (
-	Resync     Resource = "resync"
-	Plugins    Resource = "plugins"
-	Sessions   Resource = "sessions"
-	Runs       Resource = "runs"
-	Interrupts Resource = "interrupts"
-	Goals      Resource = "goals"
-	Plan       Resource = "plan"
-	PluginData Resource = "pluginData"
-	Hooks      Resource = "hooks"
-	Skills     Resource = "skills"
-	MCP        Resource = "mcp"
-	Models     Resource = "models"
-	Approvals  Resource = "approvals"
-	Projects   Resource = "projects"
+	Resync        Resource = "resync"
+	Plugins       Resource = "plugins"
+	Sessions      Resource = "sessions"
+	Runs          Resource = "runs"
+	Interrupts    Resource = "interrupts"
+	Goals         Resource = "goals"
+	Plan          Resource = "plan"
+	PluginData    Resource = "pluginData"
+	Hooks         Resource = "hooks"
+	Skills        Resource = "skills"
+	MCP           Resource = "mcp"
+	Models        Resource = "models"
+	Approvals     Resource = "approvals"
+	Projects      Resource = "projects"
+	TaskWorktrees Resource = "taskWorktrees"
 )
 
 func (r Resource) Valid() bool {
 	return r == Plugins || r == Resync || r == Sessions || r == Runs || r == Interrupts ||
 		r == Goals || r == Plan || r == PluginData ||
 		r == Hooks || r == Skills || r == MCP || r == Models ||
-		r == Approvals || r == Projects
+		r == Approvals || r == Projects || r == TaskWorktrees
 }
 
 func (r Resource) String() string {

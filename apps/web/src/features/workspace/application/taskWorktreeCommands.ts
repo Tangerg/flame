@@ -28,10 +28,7 @@ export class TaskWorktreeCommands {
   #state: TaskWorktreeCommandState = { phase: "idle" };
   readonly #listeners = new Set<() => void>();
 
-  constructor(
-    private readonly worktrees: () => TaskWorktrees,
-    private readonly refreshCatalog: () => void,
-  ) {}
+  constructor(private readonly worktrees: () => TaskWorktrees) {}
 
   readonly snapshot = (): TaskWorktreeCommandStatus => this.#state;
 
@@ -92,14 +89,12 @@ export class TaskWorktreeCommands {
       if (target.retired) return false;
       if (receipt && mutationSettlementIsUnknown(error)) {
         this.#publish({ phase: "unconfirmed", operation, original: receipt, error });
-        this.refreshCatalog();
       } else {
         this.#publish({ phase: "failed", error });
       }
       return false;
     }
     this.#publish({ phase: "committed", operation });
-    this.refreshCatalog();
     return true;
   }
 

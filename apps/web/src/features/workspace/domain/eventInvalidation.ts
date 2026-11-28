@@ -12,7 +12,8 @@ export type WorkspaceInvalidationTarget =
   | "projects"
   | "providers"
   | "sessionUsage"
-  | "sessions";
+  | "sessions"
+  | "taskWorktrees";
 
 export interface WorkspaceInvalidationEvent {
   type: RuntimeEventType;
@@ -128,6 +129,7 @@ const TOPIC_INVALIDATIONS = {
   "approvals.changed": ["approvalMode", "approvalRules"],
   "plugins.dataChanged": [],
   "projects.changed": ["projects"],
+  "taskWorktrees.changed": ["taskWorktrees"],
 } as const satisfies Record<
   RuntimeTopic,
   readonly WorkspaceInvalidationTarget[]

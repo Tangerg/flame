@@ -15,7 +15,13 @@ import { mkdir, realpath, symlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
-import { collectRunEvents, nextRuntimeEvent, originalOpeningEvents, within } from "./observation";
+import {
+  collectRunEvents,
+  nextRuntimeEvent,
+  originalOpeningEvents,
+  watchRuntimeTopic,
+  within,
+} from "./observation";
 import { useRuntimeFixture } from "./fixture";
 
 const execFileAsync = promisify(execFile);
@@ -68,16 +74,15 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: workspace", () => {
       return response;
     });
     const catalog = () => fixture.client.workspaces.tasks.list();
-    const commands = new TaskWorktreeCommands(
-      () => client.workspaces.tasks,
-      () => {},
-    );
+    const { events } = await watchRuntimeTopic(fixture.client, "taskWorktrees.changed");
+    const commands = new TaskWorktreeCommands(() => client.workspaces.tasks);
     commands.replaceTarget();
     let recoveredPath: string | undefined;
     try {
       const request = { source: { path: source }, base: "HEAD" };
       await expect(commands.create(request)).resolves.toBe(false);
       expect(commands.snapshot()).toMatchObject({ phase: "unconfirmed", operation: "create" });
+      await nextRuntimeEvent(events, "taskWorktrees.changed");
       const original = (await catalog()).data;
       expect(original).toHaveLength(1);
       const [worktree] = original;
@@ -104,6 +109,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: workspace", () => {
       await writeFile(recoveredPath, baseline);
       await expect(commands.release(worktree.id)).resolves.toBe(true);
       expect(commands.snapshot()).toEqual({ phase: "committed", operation: "release" });
+      await nextRuntimeEvent(events, "taskWorktrees.changed");
       expect((await catalog()).data).toEqual([]);
     } finally {
       commands.retireTarget();

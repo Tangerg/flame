@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
@@ -64,14 +65,15 @@ type worktreeSessions interface {
 }
 
 type TaskWorktrees struct {
-	scope   *Scope
-	backend taskWorktreeBackend
-	gate    worktreeMutationGate
-	session worktreeSessions
+	scope         *Scope
+	backend       taskWorktreeBackend
+	gate          worktreeMutationGate
+	session       worktreeSessions
+	invalidations invalidation.Publish
 }
 
-func NewTaskWorktrees(scope *Scope, backend taskWorktreeBackend, gate worktreeMutationGate, sessions worktreeSessions) *TaskWorktrees {
-	return &TaskWorktrees{scope: scope, backend: backend, gate: gate, session: sessions}
+func NewTaskWorktrees(scope *Scope, backend taskWorktreeBackend, gate worktreeMutationGate, sessions worktreeSessions, invalidations invalidation.Publish) *TaskWorktrees {
+	return &TaskWorktrees{scope: scope, backend: backend, gate: gate, session: sessions, invalidations: invalidations}
 }
 
 func (w *TaskWorktrees) Create(ctx context.Context, source, base, setup string, complete operation.Reply[TaskWorktree]) error {
@@ -82,7 +84,7 @@ func (w *TaskWorktrees) Create(ctx context.Context, source, base, setup string, 
 	if err != nil {
 		return err
 	}
-	return w.backend.Create(ctx, path, base, setup, complete)
+	return w.publishCatalogChange(w.backend.Create(ctx, path, base, setup, complete))
 }
 
 func (w *TaskWorktrees) List(ctx context.Context) ([]TaskWorktree, error) {
@@ -148,7 +150,14 @@ func (w *TaskWorktrees) Release(ctx context.Context, id string, complete operati
 			return ErrTaskWorktreeBusy
 		}
 	}
-	return w.backend.Release(ctx, task, complete)
+	return w.publishCatalogChange(w.backend.Release(ctx, task, complete))
+}
+
+func (w *TaskWorktrees) publishCatalogChange(err error) error {
+	if err == nil {
+		w.invalidations.Notify(invalidation.Notice{Resource: invalidation.TaskWorktrees})
+	}
+	return err
 }
 
 func (w *TaskWorktrees) availableTask(ctx context.Context, id string) (TaskWorktree, error) {
