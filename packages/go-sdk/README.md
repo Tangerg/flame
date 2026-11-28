@@ -37,8 +37,9 @@ prepare new files or directories.
 
 A macOS sandbox workspace with `RestrictReads` confines repository commands to
 their scratch copy, system tools, and explicitly named read-only toolchain paths.
-It uses a fixed system PATH, denies network access and writes outside scratch, and
-launches with a fresh environment. The regular workspace policy continues to
+It uses a fixed system PATH, allows the system `/bin/sh` to resolve its interpreter,
+denies network access and writes outside scratch, and launches with a fresh
+environment. The regular workspace policy continues to
 take its configured hidden home. Workspace creation fails when the platform has
 no sandbox backend.
 

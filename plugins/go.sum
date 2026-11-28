@@ -12,8 +12,8 @@ github.com/Azure/azure-sdk-for-go/sdk/internal v1.13.0 h1:Terj1CMW4+NY5CpWjSRkqL
 github.com/Azure/azure-sdk-for-go/sdk/internal v1.13.0/go.mod h1:7Ut2Qw9vcwpLW5Q4MBy43uSxXS7tK2yjs94OJ6j5thE=
 github.com/Tangerg/acp v0.4.0 h1:MA3hTqJ3EKp5NZPygV+N1qDE8BkWwkgFGOmmTTLQDQY=
 github.com/Tangerg/acp v0.4.0/go.mod h1:/Yg/2UzV5oCkn7k85oQOBzXorhEiD5ACt2hCCgdIUDc=
-github.com/Tangerg/flame/packages/go-sdk v0.1.95-dev.20261128.t44ed49dc116b h1:KVJzQo48vvWKKwbhgZm7U/2WyzIXWDBCrb3yHkcSt4E=
-github.com/Tangerg/flame/packages/go-sdk v0.1.95-dev.20261128.t44ed49dc116b/go.mod h1:ac/7XqIV7/hoHSUsgCZ6a87CEGwHhIMJ15JRwqDK7cw=
+github.com/Tangerg/flame/packages/go-sdk v0.1.96-dev.20261128.ta7ff1d0cad58 h1:DVr7wPbf9OmJ1bgwIk87Qz2lBWQHdxqgRzahTE93aTk=
+github.com/Tangerg/flame/packages/go-sdk v0.1.96-dev.20261128.ta7ff1d0cad58/go.mod h1:ac/7XqIV7/hoHSUsgCZ6a87CEGwHhIMJ15JRwqDK7cw=
 github.com/Tangerg/frame v0.5.0 h1:x3uYmasJFadXT8q04awNt1Vd5Mfxq0jH91UyzYkul4w=
 github.com/Tangerg/frame v0.5.0/go.mod h1:4DlxVue90iin6SHiaHrMGiako9t9mNrHG7Ed3+YdMdg=
 github.com/Tangerg/go-sdk v1.9.0-scope.1 h1:2cV13pDEdGqNGfunLoeFxHw9Fb2IFk5x9d4EwxSmVjs=

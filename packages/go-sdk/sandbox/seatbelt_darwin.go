@@ -22,6 +22,7 @@ import (
 
 const (
 	sandboxExecPath         = "/usr/bin/sandbox-exec"
+	systemShellSelector     = "/private/var/select/sh"
 	sandboxProcessWaitDelay = time.Second
 )
 
@@ -68,6 +69,8 @@ func restrictedCommand(root, script string, readOnly []string) Command {
 	profile.WriteString("(allow file-read-data (literal \"/\"))\n")
 	profile.WriteString("(allow file-read* (literal \"/dev/null\") (literal \"/dev/urandom\"))\n")
 	profile.WriteString("(allow file-write* (literal \"/dev/null\"))\n")
+	// /bin/sh resolves the system selector before launching its interpreter.
+	fmt.Fprintf(&profile, "(allow file-read-metadata (literal %s))\n", strconv.Quote(systemShellSelector))
 	roots := []string{root, "/bin", "/sbin", "/usr/bin", "/usr/sbin", "/usr/lib", "/usr/libexec", "/usr/share", "/System/Library"}
 	roots = append(roots, readOnly...)
 	ancestors := make(map[string]struct{})

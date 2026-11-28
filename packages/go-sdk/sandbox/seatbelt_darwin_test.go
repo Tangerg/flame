@@ -14,6 +14,15 @@ import (
 	toolshell "github.com/Tangerg/scope/tools/shell"
 )
 
+func TestRestrictedWorkspacePreservesSystemShellOutput(t *testing.T) {
+	output, err := RunInPlace(t.Context(), Config{RestrictReads: true}, t.TempDir(), toolshell.Input{
+		Cmd: `/bin/sh -c 'printf ready'`,
+	})
+	if err != nil || output.ExitCode != 0 || string(output.Stdout) != "ready" || len(output.Stderr) != 0 {
+		t.Fatalf("restricted shell exit %d, stdout %q, stderr %q, error %v", output.ExitCode, output.Stdout, output.Stderr, err)
+	}
+}
+
 func TestRestrictedWorkspaceRunsCheckWithoutHostAccess(t *testing.T) {
 	source, scratch, private := t.TempDir(), t.TempDir(), t.TempDir()
 	secret := filepath.Join(private, "secret.txt")
