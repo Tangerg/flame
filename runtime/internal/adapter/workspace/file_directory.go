@@ -142,7 +142,7 @@ func (s fileSelection) excludedChildren(ctx context.Context, children []os.DirEn
 	repository := false
 	if !includeIgnored && len(names) > 0 {
 		var err error
-		ignored, err = git.IgnoredPaths(ctx, directory, names)
+		ignored, err = git.IgnoredChildren(ctx, directory, names)
 		switch {
 		case err == nil:
 			repository = true

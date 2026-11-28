@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"testing"
 
@@ -62,4 +63,39 @@ func TestWorkspaceFileListsUseTheSelectedGitRepository(t *testing.T) {
 	verify("untracked nested repository")
 	git("add", "--", name)
 	verify("tracked gitlink")
+}
+
+func TestWorkspaceDirectoryListingTreatsNamesAsLiteralPaths(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not support colons in file names")
+	}
+	source, git := taskWorktreeTestRepository(t)
+	git("commit", "--quiet", "--allow-empty", "-m", "initial checkout")
+	const rules, hidden, visible = ".gitignore", ":(literal)hidden.txt", ":(glob)visible.txt"
+	for _, file := range []struct{ name, content string }{
+		{rules, hidden + "\n"},
+		{hidden, "ignored\n"},
+		{visible, "visible\n"},
+	} {
+		if err := os.WriteFile(filepath.Join(source, file.name), []byte(file.content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cfg := poMCPConfig(t)
+	cfg.defaultWorkspacePath = source
+	r := poMCPOpen(t, cfg)
+	page, err := r.api.ListWorkspaceFiles(protocolLifecycleContext(t.Context()), protocol.ListFilesRequest{
+		Workspace: protocol.WorkspaceRef{Path: source},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	paths := make([]string, 0, len(page.Data))
+	for _, entry := range page.Data {
+		paths = append(paths, entry.Path)
+	}
+	slices.Sort(paths)
+	if want := []string{rules, visible}; !slices.Equal(paths, want) {
+		t.Fatalf("directory listing = %q; want %q", paths, want)
+	}
 }

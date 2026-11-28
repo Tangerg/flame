@@ -3,38 +3,47 @@ package git
 import (
 	"bytes"
 	"context"
-	"strconv"
+	"fmt"
+	"strings"
+
+	"github.com/Tangerg/flame/runtime/internal/infra/git/process"
 )
 
-func IgnoredPaths(ctx context.Context, root string, paths []string) (map[string]bool, error) {
-	repository, err := IsRepo(ctx, root)
+const (
+	workingDirectoryPrefix = "./"
+	noIgnoredPaths         = 1
+)
+
+func IgnoredChildren(ctx context.Context, dir string, names []string) (map[string]bool, error) {
+	repository, err := IsRepo(ctx, dir)
 	if err != nil {
 		return nil, err
 	}
 	if !repository {
 		return nil, ErrNotRepo
 	}
+	var input strings.Builder
+	// A leading colon is pathspec syntax, and check-ignore rejects literal pathspecs.
+	for _, name := range names {
+		input.WriteString(workingDirectoryPrefix)
+		input.WriteString(name)
+		input.WriteByte(0)
+	}
+	result, err := process.CheckIgnore(ctx, dir, strings.NewReader(input.String()))
+	output, err := readCommandOutput([]string{"check-ignore"}, result, err, noIgnoredPaths)
+	if err != nil {
+		return nil, err
+	}
 	ignored := make(map[string]bool)
-	const batch = 128
-	for start := 0; start < len(paths); start += batch {
-		args := append([]string{"check-ignore", "--"}, paths[start:min(start+batch, len(paths))]...)
-		output, err := runAllowingExitCode(ctx, root, 1, args...)
-		if err != nil {
-			return nil, err
+	for value := range bytes.SplitSeq(output, []byte{0}) {
+		if len(value) == 0 {
+			continue
 		}
-		for value := range bytes.SplitSeq(bytes.TrimSuffix(output, []byte{10}), []byte{10}) {
-			if len(value) > 0 {
-				name := string(value)
-				if name[0] == '"' {
-					decoded, err := strconv.Unquote(name)
-					if err != nil {
-						return nil, err
-					}
-					name = decoded
-				}
-				ignored[name] = true
-			}
+		name, ok := strings.CutPrefix(string(value), workingDirectoryPrefix)
+		if !ok {
+			return nil, fmt.Errorf("git check-ignore: unqualified path %q", value)
 		}
+		ignored[name] = true
 	}
 	return ignored, nil
 }

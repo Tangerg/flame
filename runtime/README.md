@@ -75,7 +75,8 @@ Read-only Git status, diff and file listing compare the workspace against an iso
 
 Workspace filename suggestions use the optional `nameQuery` of `workspace.files.list`. The Runtime ranks the complete admitted file set before paging. Exact paths precede basename and path subsequences. The glob matcher compiles each bounded pattern once per listing.
 Listing a selected directory uses that directory's Git repository and presents
-paths relative to the workspace.
+paths relative to the workspace. Ignore queries use literal directory entry
+names and Git's NUL-delimited pathname protocol.
 
 Session reads, workspace catalog grouping and Session filters use the stored
 workspace reference. Filesystem inspection refreshes its availability and

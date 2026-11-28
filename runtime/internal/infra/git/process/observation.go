@@ -47,7 +47,12 @@ func observeWorktree(ctx context.Context, env, prefix, args []string) (Result, e
 	if len(args) > 1 && args[0] == "diff" && args[1] == "--no-index" {
 		return observePaths(ctx, env, prefix, args)
 	}
-	return observeRepository(ctx, env, prefix, args)
+	return observeRepository(ctx, env, prefix, args, nil)
+}
+
+func CheckIgnore(ctx context.Context, dir string, names io.Reader) (Result, error) {
+	prefix, env := worktreeInvocation(dir)
+	return observeRepository(ctx, env, prefix, []string{"check-ignore", "--stdin", "-z"}, names)
 }
 
 func observePaths(ctx context.Context, env, prefix, args []string) (_ Result, err error) {
@@ -62,7 +67,7 @@ func observePaths(ctx context.Context, env, prefix, args []string) (_ Result, er
 	return Run(ctx, readViewEnvironment(env, view), nil, append(slices.Clone(prefix), args...)...)
 }
 
-func observeRepository(ctx context.Context, env, prefix, args []string) (_ Result, err error) {
+func observeRepository(ctx context.Context, env, prefix, args []string, input io.Reader) (_ Result, err error) {
 	q := repositoryQuery{ctx: ctx, env: env, prefix: prefix}
 	root, err := q.run("rev-parse", "--show-toplevel")
 	if err != nil || root.ExitCode != 0 {
@@ -89,7 +94,7 @@ func observeRepository(ctx context.Context, env, prefix, args []string) (_ Resul
 		return Result{}, err
 	}
 	env = append(env, "GIT_WORK_TREE="+tree, "GIT_OBJECT_DIRECTORY="+filepath.Join(common, objectsDirectory))
-	return Run(ctx, env, nil, append(slices.Clone(prefix), args...)...)
+	return Run(ctx, env, input, append(slices.Clone(prefix), args...)...)
 }
 
 func readViewEnvironment(env []string, view string) []string {

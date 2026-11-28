@@ -98,6 +98,10 @@ func runAllowingExitCode(ctx context.Context, dir string, allowedExitCode int, a
 	// refreshes; the workspace watcher compares semantic Git state before it
 	// publishes and therefore does not expose those implementation writes.
 	result, err := process.At(ctx, dir, args...)
+	return readCommandOutput(args, result, err, allowedExitCode)
+}
+
+func readCommandOutput(args []string, result process.Result, err error, allowedExitCode int) ([]byte, error) {
 	if err != nil {
 		return nil, gitProcessError(args, err)
 	}

@@ -136,7 +136,7 @@ func At(ctx context.Context, dir string, args ...string) (Result, error) {
 	prefix, env := worktreeInvocation(dir)
 	if len(args) > 0 {
 		switch args[0] {
-		case "status", "diff", "ls-files", "check-ignore":
+		case "status", "diff", "ls-files":
 			return observeWorktree(ctx, env, prefix, args)
 		}
 	}
