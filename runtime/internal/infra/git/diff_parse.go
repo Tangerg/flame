@@ -65,18 +65,19 @@ const (
 )
 
 type unifiedDiffParser struct {
-	maxFiles    int
-	maxRows     int
-	files       []DiffFile
-	current     *DiffFile
-	left        hunkRange
-	right       hunkRange
-	rows        int
-	currentRows int
-	retainRows  bool
-	lastRow     *Row
-	scratch     Row
-	acceptedEnd int
+	maxFiles     int
+	maxRows      int
+	files        []DiffFile
+	current      *DiffFile
+	preimagePath string
+	left         hunkRange
+	right        hunkRange
+	rows         int
+	currentRows  int
+	retainRows   bool
+	lastRow      *Row
+	scratch      Row
+	acceptedEnd  int
 }
 
 func (parser *unifiedDiffParser) consume(encoded []byte, offset int) (bool, error) {
@@ -121,9 +122,10 @@ func (parser *unifiedDiffParser) startFile(header string, offset int) (bool, err
 		return true, err
 	}
 	parser.current = &DiffFile{
-		Path:   diffHeaderPath(header),
+		Path:   sameFilePatchPath(header),
 		Status: StatusModified,
 	}
+	parser.preimagePath = ""
 	parser.left = hunkRange{}
 	parser.right = hunkRange{}
 	parser.currentRows = 0
@@ -140,6 +142,9 @@ func (parser *unifiedDiffParser) flush(end int) (bool, error) {
 	}
 	if len(parser.files) >= parser.maxFiles || parser.rows+parser.currentRows > parser.maxRows {
 		return false, nil
+	}
+	if parser.current.Path == "" {
+		return false, fmt.Errorf("git: patch file has no path")
 	}
 	parser.rows += parser.currentRows
 	parser.files = append(parser.files, *parser.current)
@@ -162,19 +167,14 @@ func (parser *unifiedDiffParser) applyMetadata(line string) bool {
 		parser.current.Status = StatusRenamed
 	case strings.HasPrefix(line, binaryFilesHeader):
 		parser.current.Binary = true
-		if path := binaryPatchPath(line); path != "" {
-			parser.current.Path = path
-		}
-	case strings.HasPrefix(line, oldFileHeader):
-		path := parsePatchPath(strings.TrimPrefix(line, oldFileHeader), oldPathPrefix)
-		if parser.current.Path == "" && path != nullPatchPath {
-			parser.current.Path = path
-		}
-	case strings.HasPrefix(line, newFileHeader):
+	case parser.current.Path == "" && strings.HasPrefix(line, oldFileHeader):
+		parser.preimagePath = parsePatchPath(strings.TrimPrefix(line, oldFileHeader), oldPathPrefix)
+	case parser.current.Path == "" && strings.HasPrefix(line, newFileHeader):
 		path := parsePatchPath(strings.TrimPrefix(line, newFileHeader), newPathPrefix)
-		if path != nullPatchPath {
-			parser.current.Path = path
+		if path == nullPatchPath {
+			path = parser.preimagePath
 		}
+		parser.current.Path = path
 	default:
 		return false
 	}
@@ -256,6 +256,7 @@ func (parser *unifiedDiffParser) rowBudgetExhausted() bool {
 }
 
 func parsePatchPath(value, prefix string) string {
+	value, _, _ = strings.Cut(value, "\t")
 	if strings.HasPrefix(value, "\"") {
 		if unquoted, err := strconv.Unquote(value); err == nil {
 			value = unquoted
@@ -264,50 +265,18 @@ func parsePatchPath(value, prefix string) string {
 	return strings.TrimPrefix(value, prefix)
 }
 
-func diffHeaderPath(value string) string {
-	if strings.HasPrefix(value, "\"") {
-		_, remainder, ok := cutQuotedPath(value)
-		if !ok {
-			return ""
-		}
-		path, _, ok := cutQuotedPath(strings.TrimSpace(remainder))
-		if !ok {
-			return ""
-		}
-		return strings.TrimPrefix(path, "b/")
-	}
-	_, path, found := strings.Cut(value, " b/")
-	if !found {
+func sameFilePatchPath(header string) string {
+	// Git repeats the path with equal-width prefixes, even when it contains spaces.
+	separator := len(header) / 2
+	if len(header)%2 == 0 || header[separator] != ' ' {
 		return ""
 	}
-	return path
-}
-
-func cutQuotedPath(value string) (string, string, bool) {
-	for index := 1; index < len(value); index++ {
-		if value[index] != '"' {
-			continue
-		}
-		backslashes := 0
-		for cursor := index - 1; cursor >= 0 && value[cursor] == '\\'; cursor-- {
-			backslashes++
-		}
-		if backslashes%2 != 0 {
-			continue
-		}
-		unquoted, err := strconv.Unquote(value[:index+1])
-		return unquoted, value[index+1:], err == nil
-	}
-	return "", value, false
-}
-
-func binaryPatchPath(line string) string {
-	const marker = " and b/"
-	index := strings.LastIndex(line, marker)
-	if index < 0 {
+	before := parsePatchPath(header[:separator], oldPathPrefix)
+	after := parsePatchPath(header[separator+1:], newPathPrefix)
+	if before != after {
 		return ""
 	}
-	return strings.TrimSuffix(line[index+len(marker):], " differ")
+	return after
 }
 
 type hunkRange struct {

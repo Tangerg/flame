@@ -6,7 +6,7 @@ require (
 	github.com/Tangerg/acp v0.4.0
 	github.com/Tangerg/flame/packages/go-sdk v0.1.96-dev.20261128.ta7ff1d0cad58
 	github.com/Tangerg/flame/packages/local-runtime v0.1.14-dev.20261123.tca9fa5e1c260
-	github.com/Tangerg/flame/runtime v0.1.212-dev.20261128.t1ad6c7b98665
+	github.com/Tangerg/flame/runtime v0.1.213-dev.20261128.td498f643198f
 	github.com/Tangerg/frame v0.5.0
 	github.com/Tangerg/oolong/extensions/highlight v0.27.2
 	github.com/Tangerg/oolong/extensions/latex v0.30.0
