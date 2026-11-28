@@ -133,15 +133,16 @@ func (s fileSelection) page(ctx context.Context, children []os.DirEntry, include
 }
 
 func (s fileSelection) excludedChildren(ctx context.Context, children []os.DirEntry, includeIgnored bool) ([]bool, error) {
-	paths := make([]string, len(children))
+	names := make([]string, len(children))
 	for index, child := range children {
-		paths[index] = path.Join(s.physical, child.Name())
+		names[index] = child.Name()
 	}
+	directory := s.selectedPath()
 	ignored := map[string]bool{}
 	repository := false
-	if !includeIgnored && len(paths) > 0 {
+	if !includeIgnored && len(names) > 0 {
 		var err error
-		ignored, err = git.IgnoredPaths(ctx, s.root, paths)
+		ignored, err = git.IgnoredPaths(ctx, directory, names)
 		switch {
 		case err == nil:
 			repository = true
@@ -155,13 +156,13 @@ func (s fileSelection) excludedChildren(ctx context.Context, children []os.DirEn
 		switch {
 		case child.Name() == git.MetadataDirectory:
 			excluded[index] = true
-		case ignored[paths[index]] && child.IsDir():
-			tracked, err := git.HasTrackedFiles(ctx, s.root, paths[index])
+		case ignored[names[index]] && child.IsDir():
+			tracked, err := git.HasTrackedFiles(ctx, directory, names[index])
 			if err != nil {
 				return nil, err
 			}
 			excluded[index] = !tracked
-		case ignored[paths[index]]:
+		case ignored[names[index]]:
 			excluded[index] = true
 		default:
 			excluded[index] = !repository && !includeIgnored && child.IsDir() && backstopExclude[child.Name()]

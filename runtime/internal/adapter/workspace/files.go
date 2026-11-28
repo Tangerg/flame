@@ -71,17 +71,32 @@ func (scope fileSelection) trackedFiles(ctx context.Context, includeIgnored bool
 	if includeIgnored {
 		return nil, false, nil
 	}
-	files, err := git.ListFiles(ctx, scope.root, scope.physical, maxListEntries)
+	// A pathspec in the enclosing repository stops at a Git link.
+	directory, selectedFile := scope.selectedPath(), ""
+	if !scope.directory {
+		directory, selectedFile = filepath.Split(directory)
+	}
+	files, err := git.ListFiles(ctx, directory, selectedFile, maxListEntries)
 	switch {
-	case err == nil:
-		return scope.project(files), true, nil
 	case errors.Is(err, git.ErrNotRepo), errors.Is(err, git.ErrUnavailable):
 		return nil, false, nil
 	case errors.Is(err, git.ErrResultTooLarge):
 		return nil, false, fmt.Errorf("%w: %w", workspaceapp.ErrFileListTooLarge, err)
-	default:
+	case err != nil:
 		return nil, false, err
 	}
+	if selectedFile != "" {
+		if slices.Contains(files, selectedFile) {
+			return []string{scope.logical}, true, nil
+		}
+		return nil, true, nil
+	}
+	if scope.logical != "" {
+		for index, file := range files {
+			files[index] = scope.logical + "/" + file
+		}
+	}
+	return files, true, nil
 }
 
 func (scope fileSelection) listUntracked(ctx context.Context, opts workspaceapp.FileListOptions, glob fileGlob) ([]workspaceapp.FileEntry, error) {
@@ -181,25 +196,8 @@ func resolveFileSelection(root, sub string) (fileSelection, error) {
 	}, nil
 }
 
-func (scope fileSelection) project(files []string) []string {
-	if !scope.directory {
-		if slices.Contains(files, scope.physical) {
-			return []string{scope.logical}
-		}
-		return nil
-	}
-	if scope.logical == scope.physical {
-		return files
-	}
-	projected := make([]string, 0, len(files))
-	for _, file := range files {
-		relative, ok := listingRelativePath(file, scope.physical)
-		if !ok {
-			continue
-		}
-		projected = append(projected, path.Join(scope.logical, relative))
-	}
-	return projected
+func (scope fileSelection) selectedPath() string {
+	return filepath.Join(scope.root, filepath.FromSlash(scope.physical))
 }
 
 func (scope fileSelection) inspect(logical string) (workspaceapp.FileEntry, bool, error) {

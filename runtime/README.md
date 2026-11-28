@@ -74,6 +74,8 @@ Run accounting retains unreported model identities until the first reported usag
 Read-only Git status, diff and file listing compare the workspace against an isolated metadata view. It retains the original HEAD, index (including linked worktrees and split indexes), object store, path attributes and ignore rules. Repository hooks, external clean filters, lazy remote fetches and recursive submodule worktree scans cannot run as part of a query. Changed submodule commits remain visible. Set the process temporary directory outside the worktree so inspection cannot enumerate its own metadata.
 
 Workspace filename suggestions use the optional `nameQuery` of `workspace.files.list`. The Runtime ranks the complete admitted file set before paging. Exact paths precede basename and path subsequences. The glob matcher compiles each bounded pattern once per listing.
+Listing a selected directory uses that directory's Git repository and presents
+paths relative to the workspace.
 
 Session reads, workspace catalog grouping and Session filters use the stored
 workspace reference. Filesystem inspection refreshes its availability and
