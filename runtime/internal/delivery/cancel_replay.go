@@ -86,7 +86,7 @@ func (s *Handler) replayCancellation(ctx context.Context, in protocol.CancelRunR
 		encodedFailure = data
 		return data, err
 	}
-	payload, err := call.replay.InvokeDeferred(ctx, call.key, call.fingerprint, func(complete *operation.DeferredCompletion) ([]byte, error) {
+	payload, err := call.replay.InvokeDeferred(ctx, call.key, call.fingerprint, call.admit, func(complete *operation.DeferredCompletion) ([]byte, error) {
 		receipt := &cancellationReceipt{key: call.key, method: method, completion: complete}
 		result, err := s.cancelRun(ctx, in, receipt)
 		_, settlementFailed := errors.AsType[*runs.CancellationSettlementError](err)

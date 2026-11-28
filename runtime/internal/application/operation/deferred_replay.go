@@ -86,6 +86,7 @@ func (r *Replay) atomicResult(ctx context.Context, key, fingerprint string) ([]b
 func (r *Replay) InvokeDeferred(
 	ctx context.Context,
 	key, fingerprint string,
+	admit ReplayAdmission,
 	execute func(*DeferredCompletion) ([]byte, error),
 	settle func(data []byte, recoverPending bool) ([]byte, error),
 ) ([]byte, error) {
@@ -109,6 +110,9 @@ func (r *Replay) InvokeDeferred(
 		return r.finishRecord(ctx, previous)
 	}
 
+	if err := admit.check(ctx); err != nil {
+		return nil, err
+	}
 	completion := &DeferredCompletion{
 		replay: r, record: ReplayRecord{Key: key, Fingerprint: fingerprint},
 	}

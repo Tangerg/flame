@@ -526,7 +526,7 @@ export const WIRE_METHOD_POLICY = {
   "sessions.rollback": {
     operation: "command",
     response: "unary",
-    idempotency: "replayResponse",
+    idempotency: "requiredReplayResponse",
     replayCursor: "none",
     pagination: "none",
   },

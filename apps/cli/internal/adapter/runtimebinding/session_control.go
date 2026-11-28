@@ -23,11 +23,6 @@ func (r *Connection) RollbackSession(ctx context.Context, input conversation.Rol
 	if err := input.Validate(); err != nil {
 		return conversation.RollbackResult{}, err
 	}
-	if input.RestoresFiles() {
-		if err := r.requireFeature(protocol.FeatureCheckpoints); err != nil {
-			return conversation.RollbackResult{}, err
-		}
-	}
 	options, err := r.commandOptionsFor(input.CommandID)
 	if err != nil {
 		return conversation.RollbackResult{}, err

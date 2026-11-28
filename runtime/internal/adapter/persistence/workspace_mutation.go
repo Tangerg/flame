@@ -39,19 +39,17 @@ func (s *WorkspaceMutationStore) Record(ctx context.Context, m sessions.Workspac
 			}
 			return false, sessions.ErrWorkspaceMutationPending
 		}
-		if m.Receipt.Key != "" {
-			_, claimed, err := s.receipts.Claim(tx, operation.ReplayClaim{
-				Key: m.Receipt.Key, Fingerprint: m.Receipt.Fingerprint,
-			})
-			if err != nil {
-				return false, err
-			}
-			if !claimed {
-				return false, operation.ErrInProgress
-			}
+		_, claimed, err := s.receipts.Claim(tx, operation.ReplayClaim{
+			Key: m.Receipt.Key, Fingerprint: m.Receipt.Fingerprint,
+		})
+		if err != nil {
+			return false, err
+		}
+		if !claimed {
+			return false, operation.ErrInProgress
 		}
 		result, err := s.db.connection(tx).ExecContext(tx, `INSERT INTO pending_workspace_mutations(session_id, cwd, to_run_id, restore_history, receipt_key)
-			 SELECT sessions.id, sessions.workspace_path, runs.run_id, ?, NULLIF(?, '')
+			 SELECT sessions.id, sessions.workspace_path, runs.run_id, ?, ?
 			   FROM sessions JOIN runs ON runs.run_id = ? AND runs.session_id = sessions.id
 			  WHERE sessions.id = ? AND sessions.workspace_path = ?`, m.RestoreHistory, m.Receipt.Key, m.ToRunID, m.SessionID, m.CWD)
 		if err != nil {
@@ -79,10 +77,10 @@ func (s *WorkspaceMutationStore) Complete(ctx context.Context, m sessions.Worksp
 	err := s.db.independent(ctx, func(tx context.Context) error {
 		result, err := s.db.connection(tx).ExecContext(tx, `DELETE FROM pending_workspace_mutations
 		  WHERE session_id = ? AND cwd = ? AND to_run_id = ? AND restore_history = ?
-		    AND receipt_key IS NULLIF(?, '')
-		    AND (receipt_key IS NULL OR EXISTS (
+		    AND receipt_key = ?
+		    AND EXISTS (
 		        SELECT 1 FROM idempotency_records WHERE key = receipt_key AND kind = ? AND fingerprint = ?
-		    ))`, m.SessionID, m.CWD, m.ToRunID, m.RestoreHistory, m.Receipt.Key, idempotencyPendingResponse, m.Receipt.Fingerprint)
+		    )`, m.SessionID, m.CWD, m.ToRunID, m.RestoreHistory, m.Receipt.Key, idempotencyPendingResponse, m.Receipt.Fingerprint)
 		if err != nil {
 			return err
 		}
@@ -94,11 +92,8 @@ func (s *WorkspaceMutationStore) Complete(ctx context.Context, m sessions.Worksp
 			return errors.New("workspace mutation lost its original intent")
 		}
 		payload, err := write(tx)
-		if err != nil || m.Receipt.Key == "" {
+		if err != nil {
 			return err
-		}
-		if len(payload) == 0 {
-			return errors.New("keyed workspace mutation omitted its outcome")
 		}
 		_, err = s.receipts.Complete(tx, operation.ReplayRecord{
 			Key: m.Receipt.Key, Fingerprint: m.Receipt.Fingerprint, Payload: payload,
@@ -126,7 +121,7 @@ func (s *WorkspaceMutationStore) SessionPending(ctx context.Context, sessionID i
 func (s *WorkspaceMutationStore) ListPending(ctx context.Context) ([]sessions.WorkspaceMutation, error) {
 	return scopedValue(ctx, s.db.read, func(ctx context.Context) ([]sessions.WorkspaceMutation, error) {
 		rows, err := s.db.connection(ctx).QueryContext(ctx, `SELECT m.session_id, m.cwd, m.to_run_id, m.restore_history,
-			   COALESCE(m.receipt_key, ''), COALESCE(r.fingerprint, '')
+			   m.receipt_key, r.fingerprint
 			  FROM pending_workspace_mutations m
 			  LEFT JOIN idempotency_records r ON r.key = m.receipt_key AND r.kind = ?
 			  ORDER BY m.session_id`, idempotencyPendingResponse)
@@ -171,8 +166,8 @@ func validateWorkspaceMutation(m sessions.WorkspaceMutation) error {
 	if m.CWD == "" {
 		return errors.New("sqlite: workspace mutation has no working tree")
 	}
-	if (m.Receipt.Key == "") != (m.Receipt.Fingerprint == "") {
-		return errors.New("sqlite: workspace mutation has an incomplete receipt reservation")
+	if m.Receipt.Key == "" || m.Receipt.Fingerprint == "" {
+		return errors.New("sqlite: workspace mutation requires a receipt reservation")
 	}
 	return nil
 }

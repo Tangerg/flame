@@ -10,7 +10,7 @@ import (
 
 func (s *Handler) replayMCPAuthorization(ctx context.Context, input protocol.CreateMCPAuthorizationAttemptRequest, call keyedCall) protocol.OperationResult {
 	receipt := operation.ReplayClaim{Key: call.key, Fingerprint: call.fingerprint}
-	payload, err := call.replay.InvokeRecoverable(ctx, call.key, call.fingerprint, func(retained bool) error {
+	payload, err := call.replay.InvokeRecoverable(ctx, call.key, call.fingerprint, call.admit, func(retained bool) error {
 		if retained {
 			return s.mcp.RecoverAuthorization(ctx, receipt)
 		}

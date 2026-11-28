@@ -7,12 +7,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
-	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -62,6 +60,14 @@ func TestFileRollbackRetriesTheOriginalIntent(t *testing.T) {
 	request := protocol.RollbackSessionRequest{
 		SessionID: session.ID, ToRunID: runIDs[0], RestoreType: protocol.RestoreBoth,
 		ExpectedLastRootRunID: runIDs[2], ExpectedWorkspacePath: session.Workspace.Ref.Path,
+	}
+	if value, err := endpoint.Call[protocol.RollbackSessionRequest, *protocol.RollbackSessionResponse](
+		ctx, rollbackCrashMethod, request, protocol.CallMetadata{},
+	); value != nil || !errors.Is(err, protocol.ErrInvalidParams) {
+		t.Errorf("unkeyed workspace rollback = %+v, %v; want invalid params", value, err)
+	}
+	if got, err := os.ReadFile(material); err != nil || string(got) != "workspace edit" {
+		t.Fatalf("unkeyed rollback changed the working tree: %q, %v", got, err)
 	}
 	for _, stale := range []struct {
 		name string
@@ -116,10 +122,10 @@ func TestFileRollbackRetriesTheOriginalIntent(t *testing.T) {
 	if got, err := os.ReadFile(material); err != nil || string(got) != checkpoint {
 		t.Fatalf("file restore did not reach checkout before the history refusal: %q, %v", got, err)
 	}
-	if _, err := api.RollbackSession(ctx, protocol.RollbackSessionRequest{
+	if _, err := callSessionRollback(ctx, endpoint, protocol.RollbackSessionRequest{
 		SessionID: session.ID, ToRunID: runIDs[1], RestoreType: protocol.RestoreHistory,
 		ExpectedLastRootRunID: runIDs[2], ExpectedWorkspacePath: session.Workspace.Ref.Path,
-	}); !errors.Is(err, protocol.ErrSessionBusy) {
+	}, "history-would-displace-files-rollback"); !errors.Is(err, protocol.ErrSessionBusy) {
 		t.Fatalf("history-only rollback could displace the original draft: %v", err)
 	}
 	if _, err := endpoint.Call[protocol.RollbackSessionRequest, *protocol.RollbackSessionResponse](ctx, rollbackCrashMethod, request,
@@ -192,15 +198,22 @@ func TestUnfinishedFileRollbackFencesTheSessionUntilRecovery(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	unfinished := sessions.WorkspaceMutation{
-		WorkspaceRollbackSpec: sessions.WorkspaceRollbackSpec{
-			SessionID: testsupport.MustSessionID(session.ID), ToRunID: testsupport.MustRunID(started.RunID), RestoreHistory: true,
-		},
-		CWD: session.Workspace.Ref.Path,
+	original := protocol.RollbackSessionRequest{
+		SessionID: session.ID, ToRunID: started.RunID, RestoreType: protocol.RestoreBoth,
+		ExpectedLastRootRunID: started.RunID, ExpectedWorkspacePath: session.Workspace.Ref.Path,
 	}
-	if _, err := stores.WorkspaceMutations.Record(ctx, unfinished); err != nil {
-		t.Fatalf("record unfinished rollback: %v", err)
+	const originalKey = "recover-unfinished-file-rollback"
+	questionCrashDatabase(t, home, `CREATE TRIGGER block_rollback_receipt BEFORE UPDATE OF payload ON idempotency_records
+		BEGIN SELECT RAISE(ABORT, 'test withheld rollback receipt'); END`)
+	if _, err := callSessionRollback(ctx, first.Endpoint(), original, originalKey); !errors.Is(err, protocol.ErrIdempotencyInProgress) {
+		t.Fatalf("file rollback with a refused receipt = %v, want an unfinished operation", err)
 	}
+	questionCrashDatabase(t, home, "DROP TRIGGER block_rollback_receipt")
+	pending, err := stores.WorkspaceMutations.ListPending(ctx)
+	if err != nil || len(pending) != 1 || pending[0].Receipt.Key != originalKey {
+		t.Fatalf("original rollback did not retain its receipt identity: %+v, %v", pending, err)
+	}
+	unfinished := pending[0]
 
 	if _, _, err := api.StartRun(ctx, protocol.StartRunRequest{
 		SessionID: session.ID,
@@ -208,10 +221,10 @@ func TestUnfinishedFileRollbackFencesTheSessionUntilRecovery(t *testing.T) {
 	}); !errors.Is(err, protocol.ErrSessionBusy) {
 		t.Fatalf("runs.start over an unrecovered tree = %v, want session_busy", err)
 	}
-	if _, err := api.RollbackSession(ctx, protocol.RollbackSessionRequest{
+	if _, err := callSessionRollback(ctx, first.Endpoint(), protocol.RollbackSessionRequest{
 		SessionID: session.ID, ToRunID: started.RunID, RestoreType: protocol.RestoreFiles,
 		ExpectedLastRootRunID: started.RunID, ExpectedWorkspacePath: session.Workspace.Ref.Path,
-	}); !errors.Is(err, protocol.ErrSessionBusy) {
+	}, "another-file-rollback"); !errors.Is(err, protocol.ErrSessionBusy) {
 		t.Fatalf("a second rollback over an unrecovered tree = %v, want session_busy", err)
 	}
 	if pending, err := stores.WorkspaceMutations.ListPending(ctx); err != nil ||
@@ -234,6 +247,9 @@ func TestUnfinishedFileRollbackFencesTheSessionUntilRecovery(t *testing.T) {
 	}
 	if content, err := os.ReadFile(material); err != nil || string(content) != "checkpoint material" {
 		t.Fatalf("material after recovery = %q, error = %v", content, err)
+	}
+	if receipt, err := callSessionRollback(ctx, restarted.Endpoint(), original, originalKey); err != nil || receipt == nil || receipt.Session == nil || receipt.Session.ID != session.ID {
+		t.Fatalf("original rollback receipt after restart = %+v, %v", receipt, err)
 	}
 	resumedRun, events, err := api.StartRun(ctx, protocol.StartRunRequest{
 		SessionID: session.ID,

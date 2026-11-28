@@ -29,42 +29,42 @@ const (
 	resumedAttempt
 )
 
-func (c *Coordinator) RollbackWorkspace(ctx context.Context, spec WorkspaceRollbackSpec, basis RollbackBasis) (RollbackResult, error) {
+func (c *Coordinator) RollbackWorkspace(ctx context.Context, spec WorkspaceRollbackSpec, basis RollbackBasis) error {
 	if spec.ToRunID.IsZero() {
-		return RollbackResult{}, errors.New("sessions: file restore requires target Run")
+		return errors.New("sessions: file restore requires target Run")
 	}
 	release, claimed, err := c.admissions.AcquireWorkspaceRollback(ctx, spec.SessionID)
 	if err != nil {
-		return RollbackResult{}, err
+		return err
 	}
 	if !claimed {
-		return RollbackResult{}, run.ErrSessionBusy
+		return run.ErrSessionBusy
 	}
 	defer release()
 
 	current, err := c.Get(ctx, spec.SessionID)
 	if err != nil {
-		return RollbackResult{}, err
+		return err
 	}
 	cwd := current.Workspace().Path()
 	tree, claimed, err := c.ClaimWorkingTreeMutation(cwd)
 	if err != nil {
-		return RollbackResult{}, err
+		return err
 	}
 	if !claimed {
-		return RollbackResult{}, fmt.Errorf("%w: working tree %q has a Run in flight", run.ErrSessionBusy, cwd)
+		return fmt.Errorf("%w: working tree %q has a Run in flight", run.ErrSessionBusy, cwd)
 	}
 	defer tree.Release()
 
 	boundary, err := c.resolveWorkspaceRollbackBoundary(ctx, spec)
 	if err != nil {
-		return RollbackResult{}, err
+		return err
 	}
 	if err := boundary.requireBasis(basis, cwd); err != nil {
-		return RollbackResult{}, err
+		return err
 	}
 	if surviving, found := boundary.survivingContinuation(); found {
-		return RollbackResult{}, fmt.Errorf(
+		return fmt.Errorf(
 			"%w: Run %q is %s and this boundary keeps it; settle it before restoring files under it",
 			run.ErrSessionBusy, surviving.ID(), surviving.State(),
 		)
@@ -72,7 +72,7 @@ func (c *Coordinator) RollbackWorkspace(ctx context.Context, spec WorkspaceRollb
 	mutation := WorkspaceMutation{WorkspaceRollbackSpec: spec, CWD: cwd}
 	recorded, err := c.mutations.Record(ctx, mutation)
 	if err != nil {
-		return RollbackResult{}, err
+		return err
 	}
 	attempt := resumedAttempt
 	if recorded {
@@ -89,28 +89,26 @@ func (c *Coordinator) resolveWorkspaceRollbackBoundary(ctx context.Context, spec
 	return boundary.keepingHistory(), nil
 }
 
-func (c *Coordinator) restoreWorkspace(ctx context.Context, m WorkspaceMutation, boundary resolvedRollbackBoundary, attempt rollbackAttempt) (RollbackResult, error) {
+func (c *Coordinator) restoreWorkspace(ctx context.Context, m WorkspaceMutation, boundary resolvedRollbackBoundary, attempt rollbackAttempt) error {
 	if err := c.quiesceRollbackWorkspace(m.SessionID, m.CWD); err != nil {
-		return RollbackResult{}, c.refuseWorkspaceRollback(ctx, m, attempt, err)
+		return c.refuseWorkspaceRollback(ctx, m, attempt, err)
 	}
 	if err := c.checkpoints.Restore(ctx, m.SessionID, m.CWD, m.ToRunID); err != nil {
 		if errors.Is(err, ErrCheckpointRestoreIncomplete) {
 			c.transientState.ForgetWorkspace(m.CWD)
-			return RollbackResult{}, errors.Join(ErrRollbackRecoveryPending, err)
+			return errors.Join(ErrRollbackRecoveryPending, err)
 		}
-		return RollbackResult{}, c.refuseWorkspaceRollback(ctx, m, attempt, err)
+		return c.refuseWorkspaceRollback(ctx, m, attempt, err)
 	}
 	c.transientState.ForgetWorkspace(m.CWD)
 	if boundary.keepsHistory() {
 		if err := c.sandbox.Discard(m.SessionID); err != nil {
-			return RollbackResult{}, errors.Join(ErrRollbackRecoveryPending, err)
+			return errors.Join(ErrRollbackRecoveryPending, err)
 		}
 	}
-	var result RollbackResult
 	err := c.completeRollback(ctx, m.SessionID, boundary, func(ctx context.Context, write func(context.Context) (RollbackResult, error)) error {
 		return c.mutations.Complete(ctx, m, func(tx context.Context) ([]byte, error) {
-			var err error
-			result, err = write(tx)
+			result, err := write(tx)
 			if err != nil {
 				return nil, err
 			}
@@ -118,9 +116,9 @@ func (c *Coordinator) restoreWorkspace(ctx context.Context, m WorkspaceMutation,
 		})
 	})
 	if err != nil {
-		return RollbackResult{}, errors.Join(ErrRollbackRecoveryPending, err)
+		return errors.Join(ErrRollbackRecoveryPending, err)
 	}
-	return result, nil
+	return nil
 }
 
 func (c *Coordinator) quiesceRollbackWorkspace(sessionID identity.SessionID, cwd string) error {
@@ -175,6 +173,5 @@ func (c *Coordinator) recoverWorkspaceRollback(ctx context.Context, m WorkspaceM
 	if err != nil {
 		return err
 	}
-	_, err = c.restoreWorkspace(ctx, m, boundary, resumedAttempt)
-	return err
+	return c.restoreWorkspace(ctx, m, boundary, resumedAttempt)
 }

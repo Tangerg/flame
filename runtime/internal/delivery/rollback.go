@@ -17,25 +17,6 @@ import (
 
 const toRunIDField = "toRunId"
 
-func (s *Handler) RollbackSession(ctx context.Context, in protocol.RollbackSessionRequest) (*protocol.RollbackSessionResponse, error) {
-	restoreType, err := rollbackTypeFromWire(in)
-	if err != nil {
-		return nil, err
-	}
-	if restoreType != protocol.RestoreHistory {
-		result, err := s.rollbackWorkspace(ctx, in, restoreType, sessions.WorkspaceRollbackReceipt{})
-		if err != nil {
-			return nil, err
-		}
-		return presentRollbackResult(result), nil
-	}
-	var result sessions.RollbackResult
-	if err := s.rollbackHistory(ctx, in, operation.DirectReply(&result)); err != nil {
-		return nil, err
-	}
-	return presentRollbackResult(result), nil
-}
-
 func (s *Handler) rollbackHistory(ctx context.Context, in protocol.RollbackSessionRequest, complete operation.Reply[sessions.RollbackResult]) error {
 	sessionID, parseErr := sessionParameter(in.SessionID)
 	if parseErr != nil {
@@ -55,27 +36,27 @@ func (s *Handler) rollbackHistory(ctx context.Context, in protocol.RollbackSessi
 	return nil
 }
 
-func (s *Handler) rollbackWorkspace(ctx context.Context, in protocol.RollbackSessionRequest, restoreType protocol.RestoreType, receipt sessions.WorkspaceRollbackReceipt) (sessions.RollbackResult, error) {
+func (s *Handler) rollbackWorkspace(ctx context.Context, in protocol.RollbackSessionRequest, restoreType protocol.RestoreType, receipt sessions.WorkspaceRollbackReceipt) error {
 	sessionID, parseErr := sessionParameter(in.SessionID)
 	if parseErr != nil {
-		return sessions.RollbackResult{}, parseErr
+		return parseErr
 	}
 	toRunID, err := wireIdentity(toRunIDField, in.ToRunID, identity.ParseRun)
 	if err != nil {
-		return sessions.RollbackResult{}, err
+		return err
 	}
 	basis, err := rollbackBasis(in)
 	if err != nil {
-		return sessions.RollbackResult{}, err
+		return err
 	}
-	result, err := s.sessions.RollbackWorkspace(ctx, sessions.WorkspaceRollbackSpec{
+	err = s.sessions.RollbackWorkspace(ctx, sessions.WorkspaceRollbackSpec{
 		SessionID: sessionID, ToRunID: toRunID,
 		RestoreHistory: restoreType == protocol.RestoreBoth, Receipt: receipt,
 	}, basis)
 	if err != nil {
-		return sessions.RollbackResult{}, wireRollbackErr(err, sessionID)
+		return wireRollbackErr(err, sessionID)
 	}
-	return result, nil
+	return nil
 }
 
 func rollbackBasis(in protocol.RollbackSessionRequest) (sessions.RollbackBasis, error) {
@@ -102,9 +83,9 @@ func (s *Handler) replayRollback(ctx context.Context, in protocol.RollbackSessio
 			return outcome.settleRefusal(ctx, s.rollbackHistory(ctx, in, reply))
 		})
 	}
-	payload, err := call.replay.InvokeRecoverable(ctx, call.key, call.fingerprint, func(_ bool) error {
+	payload, err := call.replay.InvokeRecoverable(ctx, call.key, call.fingerprint, call.admit, func(_ bool) error {
 		receipt := sessions.WorkspaceRollbackReceipt{Key: call.key, Fingerprint: call.fingerprint}
-		_, err := s.rollbackWorkspace(ctx, in, restoreType, receipt)
+		err := s.rollbackWorkspace(ctx, in, restoreType, receipt)
 		if errors.Is(err, sessions.ErrRollbackRecoveryPending) {
 			return errors.Join(operation.ErrOutcomePending, err)
 		}

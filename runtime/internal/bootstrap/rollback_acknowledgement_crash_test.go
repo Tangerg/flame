@@ -32,6 +32,12 @@ const (
 	rollbackReceiptCommit = "receipt commit"
 )
 
+func callSessionRollback(ctx context.Context, endpoint *delivery.Endpoint, request protocol.RollbackSessionRequest, key string) (*protocol.RollbackSessionResponse, error) {
+	return endpoint.Call[protocol.RollbackSessionRequest, *protocol.RollbackSessionResponse](
+		ctx, rollbackCrashMethod, request, protocol.CallMetadata{IdempotencyKey: key},
+	)
+}
+
 func TestRollbackAcknowledgementCrashHelper(t *testing.T) {
 	cut := os.Getenv("FLAME_TEST_ROLLBACK_CRASH_CUT")
 	if cut == "" {

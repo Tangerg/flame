@@ -34,11 +34,11 @@ func encodeAcknowledgement(err error) ([]byte, error) {
 }
 
 type keyedCall struct {
-	replay            *operation.Replay
-	method            *Method
-	key               string
-	fingerprint       string
-	checkCapabilities func(context.Context) error
+	replay      *operation.Replay
+	method      *Method
+	key         string
+	fingerprint string
+	admit       operation.ReplayAdmission
 }
 
 type ownedReplay func(target any, ctx context.Context, parameters any, call keyedCall) protocol.OperationResult
@@ -46,26 +46,26 @@ type ownedReplay func(target any, ctx context.Context, parameters any, call keye
 var errIdempotencyRebound = errors.New("idempotency key is already bound to another operation")
 
 func (e *Endpoint) replayOperation(ctx context.Context, method *Method, parameters admittedParameters, key string) protocol.OperationResult {
-	check := func(ctx context.Context) error {
-		if failure := e.enforceCapabilities(ctx, method.Meta, parameters.members); failure != nil {
-			return failure
+	var admit operation.ReplayAdmission
+	switch method.Meta.Idempotency {
+	case idempotencyRequiredReplayResponse:
+		// A stable receipt can be read while the capability it took to produce it is unavailable.
+		admit = func(ctx context.Context) error {
+			if failure := e.enforceCapabilities(ctx, method.Meta, parameters.members); failure != nil {
+				return failure
+			}
+			return nil
 		}
-		return nil
-	}
-	// Required response replays have a stable wire shape. Their receipt owner checks
-	// live capabilities when the request would start a new external effect.
-	if method.Meta.Idempotency == idempotencyReplayResponse {
-		if err := check(ctx); err != nil {
-			return failed(projectError(err))
+	case idempotencyReplayResponse:
+		if failure := e.enforceCapabilities(ctx, method.Meta, parameters.members); failure != nil {
+			return failed(failure)
 		}
 	}
 	fingerprint, err := operationFingerprint(method.Meta.Name, parameters.value)
 	if err != nil {
 		return failed(projectError(fmt.Errorf("idempotency: fingerprint operation: %w", err)))
 	}
-	call := keyedCall{
-		replay: e.idempotency, method: method, key: key, fingerprint: fingerprint, checkCapabilities: check,
-	}
+	call := keyedCall{replay: e.idempotency, method: method, key: key, fingerprint: fingerprint, admit: admit}
 	return method.ownedReplay(e.target, ctx, parameters.value, call)
 }
 
@@ -96,17 +96,11 @@ func (r *Registry) externalCommand[Capability, Params, Value, Result any](
 	present func(Value) Result,
 	projectRefusal func(error) error,
 ) {
-	meta.Kind = kindUnary
-	meta.Operation = OperationCommand
-	meta.Idempotency = idempotencyRequiredReplayResponse
-	meta.ReplayCursor = replayCursorNone
-	meta.Pagination = paginationNone
-	meta.Params = reflect.TypeFor[Params]()
 	meta.Result = reflect.TypeFor[Result]()
 	if meta.Result == acknowledgementType {
 		meta.Result = nil
 	}
-	r.add(meta, nil).withOwnedReplay(func(owner Capability, ctx context.Context, in Params, call keyedCall) protocol.OperationResult {
+	r.requiredReplayCommand(meta, func(owner Capability, ctx context.Context, in Params, call keyedCall) protocol.OperationResult {
 		refuse := func(cause error) ([]byte, error) {
 			return encodeAcknowledgement(projectRefusal(cause))
 		}
@@ -121,13 +115,13 @@ func (r *Registry) externalCommand[Capability, Params, Value, Result any](
 				})
 			})
 		}
-		payload, err := call.replay.InvokeExternal(ctx, call.key, call.fingerprint, call.checkCapabilities, execute, refuse)
+		payload, err := call.replay.InvokeExternal(ctx, call.key, call.fingerprint, call.admit, execute, refuse)
 		return call.result(ctx, payload, err)
 	})
 }
 
 func (c keyedCall) invokeAtomic(ctx context.Context, commit func(atomicOutcome) error) protocol.OperationResult {
-	payload, err := c.replay.InvokeAtomic(ctx, c.key, c.fingerprint, func(complete *operation.AtomicCompletion) error {
+	payload, err := c.replay.InvokeAtomic(ctx, c.key, c.fingerprint, c.admit, func(complete *operation.AtomicCompletion) error {
 		return commit(atomicOutcome{method: c.method, complete: complete})
 	})
 	return c.result(ctx, payload, err)

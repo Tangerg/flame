@@ -329,7 +329,7 @@ func currentSchema() []string {
 			cwd            TEXT    NOT NULL,
 			to_run_id      TEXT    NOT NULL,
 			restore_history INTEGER NOT NULL CHECK (restore_history IN (0,1)),
-			receipt_key    TEXT    UNIQUE REFERENCES idempotency_records(key) ON DELETE RESTRICT,
+			receipt_key    TEXT    NOT NULL UNIQUE REFERENCES idempotency_records(key) ON DELETE RESTRICT,
 			FOREIGN KEY (to_run_id, session_id) REFERENCES runs(run_id, session_id) ON DELETE RESTRICT
 		)`,
 		`CREATE TABLE IF NOT EXISTS pending_skill_move (

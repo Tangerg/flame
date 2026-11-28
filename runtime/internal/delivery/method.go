@@ -407,7 +407,7 @@ func (m MethodMeta) validateCapabilityRules() error {
 				)
 			}
 			if m.Idempotency == idempotencyRequiredReplayResponse && publishedFeature.ClientOptIn {
-				return fmt.Errorf("%s: an external receipt cannot depend on client opt-in feature %q", m.Name, feature)
+				return fmt.Errorf("%s: a required replay cannot depend on client opt-in feature %q", m.Name, feature)
 			}
 			if slices.Contains(rule.Requires[:featureIndex], feature) {
 				return fmt.Errorf(

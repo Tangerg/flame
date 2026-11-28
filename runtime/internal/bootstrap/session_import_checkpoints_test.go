@@ -62,7 +62,7 @@ func TestSessionImportRetiresCheckpointsFromTheReplacedHistory(t *testing.T) {
 		SessionID: session.ID, ToRunID: started.RunID, RestoreType: protocol.RestoreFiles,
 		ExpectedLastRootRunID: started.RunID, ExpectedWorkspacePath: session.Workspace.Ref.Path,
 	}
-	if _, err := api.RollbackSession(ctx, rollback); err != nil {
+	if _, err := callSessionRollback(ctx, second.Endpoint(), rollback, "restore-original-checkpoint"); err != nil {
 		t.Fatalf("original checkpoint is unavailable before import: %v", err)
 	}
 	if err := os.WriteFile(path, []byte("current material\n"), 0o600); err != nil {
@@ -77,13 +77,13 @@ func TestSessionImportRetiresCheckpointsFromTheReplacedHistory(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	third, api, _ := openProtocolRuntimeWithStores(t, model)
+	third, _, _ := openProtocolRuntimeWithStores(t, model)
 	t.Cleanup(func() {
 		if err := third.Close(); err != nil {
 			t.Error(err)
 		}
 	})
-	if _, err := api.RollbackSession(ctx, rollback); !errors.Is(err, protocol.ErrCheckpointUnavailable) {
+	if _, err := callSessionRollback(ctx, third.Endpoint(), rollback, "restore-replaced-checkpoint"); !errors.Is(err, protocol.ErrCheckpointUnavailable) {
 		t.Fatalf("restored history reused its predecessor's file checkpoint: %v", err)
 	}
 	if content, err := os.ReadFile(path); err != nil || string(content) != "current material\n" {

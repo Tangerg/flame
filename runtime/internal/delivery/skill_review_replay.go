@@ -27,7 +27,7 @@ func registerSkillReview(registry *Registry, method Name, goName string, apply s
 		}
 		return mapSkillProposalErr(apply(s.workspaceSkills, ctx, review))
 	}).withOwnedReplay(func(s *Handler, ctx context.Context, in protocol.SkillProposalRef, call keyedCall) protocol.OperationResult {
-		payload, err := call.replay.InvokeDeferred(ctx, call.key, call.fingerprint, func(complete *operation.DeferredCompletion) ([]byte, error) {
+		payload, err := call.replay.InvokeDeferred(ctx, call.key, call.fingerprint, call.admit, func(complete *operation.DeferredCompletion) ([]byte, error) {
 			review, err := s.prepareSkillReview(in)
 			if err != nil {
 				return encodeAcknowledgement(mapSkillProposalErr(err))

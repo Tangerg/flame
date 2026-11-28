@@ -14,19 +14,19 @@ func TestGeneratedSessionTitleFollowsItsOriginalHistory(t *testing.T) {
 	const manualTitle = "My chosen title"
 	for _, test := range []struct {
 		name      string
-		mutate    func(context.Context, *testing.T, *delivery.Handler, protocol.SessionArtifact, string) error
+		mutate    func(context.Context, *testing.T, *delivery.Handler, *delivery.Endpoint, protocol.SessionArtifact, string) error
 		wantTitle string
 	}{
 		{
 			name: "restore history",
-			mutate: func(ctx context.Context, _ *testing.T, api *delivery.Handler, empty protocol.SessionArtifact, _ string) error {
+			mutate: func(ctx context.Context, _ *testing.T, api *delivery.Handler, _ *delivery.Endpoint, empty protocol.SessionArtifact, _ string) error {
 				_, err := api.ImportSession(ctx, protocol.ImportSessionRequest{Artifact: empty})
 				return err
 			},
 		},
 		{
 			name: "delete and reimport",
-			mutate: func(ctx context.Context, _ *testing.T, api *delivery.Handler, empty protocol.SessionArtifact, _ string) error {
+			mutate: func(ctx context.Context, _ *testing.T, api *delivery.Handler, _ *delivery.Endpoint, empty protocol.SessionArtifact, _ string) error {
 				if err := api.DeleteSession(ctx, empty.Session.ID); err != nil {
 					return err
 				}
@@ -36,17 +36,17 @@ func TestGeneratedSessionTitleFollowsItsOriginalHistory(t *testing.T) {
 		},
 		{
 			name: "rollback history",
-			mutate: func(ctx context.Context, _ *testing.T, api *delivery.Handler, empty protocol.SessionArtifact, originalRunID string) error {
-				_, err := api.RollbackSession(ctx, protocol.RollbackSessionRequest{
+			mutate: func(ctx context.Context, _ *testing.T, _ *delivery.Handler, endpoint *delivery.Endpoint, empty protocol.SessionArtifact, originalRunID string) error {
+				_, err := callSessionRollback(ctx, endpoint, protocol.RollbackSessionRequest{
 					SessionID: empty.Session.ID, RestoreType: protocol.RestoreHistory,
 					ExpectedLastRootRunID: originalRunID, ExpectedWorkspacePath: empty.Session.Workspace.Path,
-				})
+				}, "discard-original-title-history")
 				return err
 			},
 		},
 		{
 			name: "rollback keeps original Run",
-			mutate: func(ctx context.Context, t *testing.T, api *delivery.Handler, empty protocol.SessionArtifact, originalRunID string) error {
+			mutate: func(ctx context.Context, t *testing.T, api *delivery.Handler, endpoint *delivery.Endpoint, empty protocol.SessionArtifact, originalRunID string) error {
 				followup, events, err := api.StartRun(ctx, protocol.StartRunRequest{
 					SessionID: empty.Session.ID,
 					Input:     []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "A follow-up to discard."}},
@@ -55,10 +55,10 @@ func TestGeneratedSessionTitleFollowsItsOriginalHistory(t *testing.T) {
 					return err
 				}
 				waitForRunEvents(t, collectRunEvents(events), "follow-up Run to finish")
-				result, err := api.RollbackSession(ctx, protocol.RollbackSessionRequest{
+				result, err := callSessionRollback(ctx, endpoint, protocol.RollbackSessionRequest{
 					SessionID: empty.Session.ID, ToRunID: originalRunID, RestoreType: protocol.RestoreHistory,
 					ExpectedLastRootRunID: followup.RunID, ExpectedWorkspacePath: empty.Session.Workspace.Path,
-				})
+				}, "discard-followup-title-history")
 				if err == nil && len(result.DroppedRuns) != 1 {
 					t.Fatalf("rollback dropped %d Runs, want one follow-up", len(result.DroppedRuns))
 				}
@@ -68,7 +68,7 @@ func TestGeneratedSessionTitleFollowsItsOriginalHistory(t *testing.T) {
 		},
 		{
 			name: "edit favorite",
-			mutate: func(ctx context.Context, _ *testing.T, api *delivery.Handler, empty protocol.SessionArtifact, _ string) error {
+			mutate: func(ctx context.Context, _ *testing.T, api *delivery.Handler, _ *delivery.Endpoint, empty protocol.SessionArtifact, _ string) error {
 				current, err := api.GetSession(ctx, empty.Session.ID)
 				if err != nil {
 					return err
@@ -82,7 +82,7 @@ func TestGeneratedSessionTitleFollowsItsOriginalHistory(t *testing.T) {
 		},
 		{
 			name: "explicit title",
-			mutate: func(ctx context.Context, _ *testing.T, api *delivery.Handler, empty protocol.SessionArtifact, _ string) error {
+			mutate: func(ctx context.Context, _ *testing.T, api *delivery.Handler, _ *delivery.Endpoint, empty protocol.SessionArtifact, _ string) error {
 				current, err := api.GetSession(ctx, empty.Session.ID)
 				if err != nil {
 					return err
@@ -148,7 +148,7 @@ func TestGeneratedSessionTitleFollowsItsOriginalHistory(t *testing.T) {
 			case <-ctx.Done():
 				t.Fatal("utility model did not begin generating the title")
 			}
-			if err := test.mutate(ctx, t, api, *empty.Artifact, started.RunID); err != nil {
+			if err := test.mutate(ctx, t, api, host.Endpoint(), *empty.Artifact, started.RunID); err != nil {
 				t.Fatal(err)
 			}
 			updated, err := api.GetSession(ctx, created.ID)

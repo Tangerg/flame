@@ -149,6 +149,19 @@ func (r *Registry) command[Capability, Params, Response any](
 	return r.registerUnary(meta, call)
 }
 
+func (r *Registry) requiredReplayCommand[Capability, Params any](
+	meta MethodMeta,
+	settle func(Capability, context.Context, Params, keyedCall) protocol.OperationResult,
+) {
+	meta.Kind = kindUnary
+	meta.Operation = OperationCommand
+	meta.Idempotency = idempotencyRequiredReplayResponse
+	meta.ReplayCursor = replayCursorNone
+	meta.Pagination = paginationNone
+	meta.Params = reflect.TypeFor[Params]()
+	r.add(meta, nil).withOwnedReplay(settle)
+}
+
 func (r *Registry) extension[Capability, Params, Response any](meta MethodMeta, prepare func(Capability, context.Context, Params) (frame.MethodKind, func(context.Context) (Response, error), error)) {
 	meta.Kind = kindUnary
 	meta.Result = reflect.TypeFor[Response]()

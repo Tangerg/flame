@@ -1907,6 +1907,14 @@ One workspace checkpoint adapter owns snapshots, restoration and Session cleanup
 Restore projects storage refusals into application categories without replacing
 their causes; snapshot cancellation retains the inspection error chain.
 
+Protocol 2026-11-28.5 requires the caller's idempotency key for every
+`sessions.rollback` restore scope. A workspace rollback records its file
+restore intent and receipt reservation together. Recovery and receipt reads
+use that original key. Current checkpoint capability gates a restore that
+still needs to run. Replaying a recorded result only needs the original
+request and store. Open a fresh Runtime data directory for the required
+receipt reference in the workspace rollback schema.
+
 Session deletion and history replacement commit their resource retirement in the
 same SQLite transaction as the history mutation. An uncommitted command never
 authorizes checkpoint destruction. After commit, Runtime removes the predecessor's

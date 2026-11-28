@@ -19,7 +19,7 @@ import {
   updateInstalledMemory,
 } from "./memoryOperations";
 import { execFile } from "node:child_process";
-import { mkdir, realpath, stat, symlink, writeFile } from "node:fs/promises";
+import { mkdir, readFile, realpath, stat, symlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
@@ -54,10 +54,10 @@ function workspaceGit(cwd: string) {
     );
 }
 
-describe("Go Runtime ↔ HTTP: task worktree receipts", () => {
+describe("Go Runtime ↔ HTTP: Git command receipts", () => {
   const fixture = useRuntimeFixture("git-receipts");
 
-  it("reads committed Worktree receipts while Git is unavailable", async () => {
+  it("reads committed Git receipts while Git is unavailable", async () => {
     const source = join(fixture.root, "source");
     const file = "tracked.txt";
     const baseline = "original checkout\n";
@@ -100,6 +100,30 @@ describe("Go Runtime ↔ HTTP: task worktree receipts", () => {
     expect(released).toEqual({ jsonrpc: JSONRPC_VERSION, id: release[0], result: {} });
     await expect(stat(task.workspace.path)).rejects.toMatchObject({ code: "ENOENT" });
 
+    await git("commit", "--quiet", "-m", "approved handoff");
+    const { id } = await fixture.client.sessions.create({ workspace: { path: source } });
+    const sessionId = asSessionId(id);
+    const run = await fixture.client.runs.start({
+      sessionId,
+      input: [{ type: "text", text: "Capture the handed-off checkout." }],
+    });
+    await collectRunEvents(originalOpeningEvents(run));
+    await writeFile(join(source, file), "edit after the checkpoint\n");
+    const rollback = [
+      "sessions.rollback",
+      {
+        sessionId,
+        restoreType: "files",
+        toRunId: run.result.runId,
+        expectedLastRootRunId: run.result.runId,
+        expectedWorkspacePath: await realpath(source),
+      },
+      "rollback",
+    ] as const;
+    const rolledBack = await send(...rollback);
+    expect(rolledBack).toMatchObject({ result: { session: { id }, droppedRuns: [] } });
+    await expect(readFile(join(source, file), "utf8")).resolves.toBe(material);
+
     const restart = async (executableSearchPath?: string) => {
       await fixture.client.close();
       await fixture.stopRuntimeProcess();
@@ -116,9 +140,9 @@ describe("Go Runtime ↔ HTTP: task worktree receipts", () => {
     };
     const newKey = "create-after-restart";
     await expect(send(create[0], create[1], newKey)).resolves.toMatchObject(denied);
-    await expect(Promise.all([send(...create), send(...apply), send(...release)])).resolves.toEqual(
-      [created, applied, released],
-    );
+    await expect(
+      Promise.all([send(...create), send(...apply), send(...release), send(...rollback)]),
+    ).resolves.toEqual([created, applied, released, rolledBack]);
 
     const rebound = await send(apply[0], { id: "different-task", digest }, apply[2]);
     expect(rebound).toMatchObject({

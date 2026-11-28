@@ -10750,7 +10750,7 @@
         {
           "name": "Version",
           "type": "untyped string",
-          "value": "\"2026-11-28.4\""
+          "value": "\"2026-11-28.5\""
         },
         {
           "name": "WorkspaceAvailable",

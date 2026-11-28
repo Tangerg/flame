@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-11-28.4` · 115 methods
+Protocol `2026-11-28.5` · 115 methods
 
 ## Methods
 
@@ -21,7 +21,7 @@ Protocol `2026-11-28.4` · 115 methods
 | `sessions.update` | command | unary | replayResponse | none | none | — | `relocate`, `isolation` | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `revision_conflict`, `workspace_unavailable`, `project_not_found`, `session_busy`, `capability_not_negotiated` |
 | `sessions.delete` | command | unary | replayResponse | none | none | — | — | `session_not_found` |
 | `sessions.fork` | command | unary | replayResponse | none | none | — | — | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `run_not_found`, `revision_conflict` |
-| `sessions.rollback` | command | unary | replayResponse | none | none | — | `checkpoints` | `session_not_found`, `run_not_found`, `session_busy`, `revision_conflict`, `checkpoint_unavailable`, `checkpoint_conflict`, `capability_not_negotiated` |
+| `sessions.rollback` | command | unary | requiredReplayResponse | none | none | — | `checkpoints` | `session_not_found`, `run_not_found`, `session_busy`, `revision_conflict`, `checkpoint_unavailable`, `checkpoint_conflict`, `capability_not_negotiated` |
 | `sessions.export` | query | unary | none | none | none | — | `sessionExport` | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `session_busy`, `export_too_large`, `capability_not_negotiated` |
 | `sessions.import` | command | unary | replayResponse | none | none | — | `sessionExport` | `session_busy`, `export_too_large`, `workspace_unavailable`, `capability_not_negotiated` |
 | `projects.background.get` | query | unary | none | none | none | — | — | `project_not_found` |

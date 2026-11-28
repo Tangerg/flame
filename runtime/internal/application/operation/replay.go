@@ -44,6 +44,15 @@ type ReplayClaim struct {
 	RunID       identity.RunID
 }
 
+type ReplayAdmission func(context.Context) error
+
+func (a ReplayAdmission) check(ctx context.Context) error {
+	if a != nil {
+		return a(ctx)
+	}
+	return nil
+}
+
 type ReplayStore interface {
 	Lookup(context.Context, string, string) (ReplayRecord, bool, error)
 	Transact(context.Context, func(context.Context) error) error
@@ -69,7 +78,7 @@ func (r *Replay) Serialize(ctx context.Context, key string) (func(), error) {
 	return r.inFlight.Acquire(ctx, key)
 }
 
-func (r *Replay) InvokeRecoverable(ctx context.Context, key, fingerprint string, execute func(retained bool) error, refuse func(error) ([]byte, error)) ([]byte, error) {
+func (r *Replay) InvokeRecoverable(ctx context.Context, key, fingerprint string, admit ReplayAdmission, execute func(retained bool) error, refuse func(error) ([]byte, error)) ([]byte, error) {
 	release, err := r.inFlight.Acquire(ctx, key)
 	if err != nil {
 		return nil, err
@@ -81,6 +90,9 @@ func (r *Replay) InvokeRecoverable(ctx context.Context, key, fingerprint string,
 	}
 	if found && record.Settled() {
 		return settledPayload(record)
+	}
+	if err := admit.check(ctx); err != nil {
+		return nil, err
 	}
 	workErr := execute(found)
 	// The workflow can commit after the caller stops observing it. Only its
@@ -157,7 +169,7 @@ func (c *AtomicCompletion) Attempted() bool { return c.attempted }
 
 var errAtomicResultExists = errors.New("idempotency: another writer committed the outcome")
 
-func (r *Replay) InvokeAtomic(ctx context.Context, key, fingerprint string, execute func(*AtomicCompletion) error) ([]byte, error) {
+func (r *Replay) InvokeAtomic(ctx context.Context, key, fingerprint string, admit ReplayAdmission, execute func(*AtomicCompletion) error) ([]byte, error) {
 	release, err := r.inFlight.Acquire(ctx, key)
 	if err != nil {
 		return nil, err
@@ -169,6 +181,9 @@ func (r *Replay) InvokeAtomic(ctx context.Context, key, fingerprint string, exec
 	}
 	if found {
 		return settledPayload(previous)
+	}
+	if err := admit.check(ctx); err != nil {
+		return nil, err
 	}
 	var payload []byte
 	completion := &AtomicCompletion{commit: func(ctx context.Context, write func(context.Context) ([]byte, error)) error {

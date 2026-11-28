@@ -129,9 +129,9 @@ func TestOffloadedToolResultCommitsWithItsItem(t *testing.T) {
 	if err != nil || exported.Artifact == nil {
 		t.Fatalf("expected a portable Session artifact: %v", err)
 	}
-	if _, err := api.RollbackSession(ctx, protocol.RollbackSessionRequest{
+	if _, err := callSessionRollback(ctx, host.Endpoint(), protocol.RollbackSessionRequest{
 		SessionID: session.ID, ExpectedLastRootRunID: started.RunID, ExpectedWorkspacePath: session.Workspace.Ref.Path,
-	}); err != nil {
+	}, "retire-tool-offload-history"); err != nil {
 		t.Fatal(err)
 	}
 	assertRemoved(session.ID)

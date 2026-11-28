@@ -8,7 +8,7 @@ import (
 func (r *Replay) InvokeExternal(
 	ctx context.Context,
 	key, fingerprint string,
-	admit func(context.Context) error,
+	admit ReplayAdmission,
 	execute func(Reply[[]byte]) error,
 	refuse func(error) ([]byte, error),
 ) ([]byte, error) {
@@ -24,7 +24,7 @@ func (r *Replay) InvokeExternal(
 	if found {
 		return settledPayload(previous)
 	}
-	if err := admit(ctx); err != nil {
+	if err := admit.check(ctx); err != nil {
 		return nil, err
 	}
 

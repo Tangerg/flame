@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-11-28.4",
+  "protocolVersion": "2026-11-28.5",
   "features": [
     "reasoning",
     "multimodal",
@@ -189,7 +189,7 @@
       "name": "sessions.rollback",
       "kind": "unary",
       "operation": "command",
-      "idempotency": "replayResponse",
+      "idempotency": "requiredReplayResponse",
       "replayCursor": "none",
       "pagination": "none",
       "errors": [

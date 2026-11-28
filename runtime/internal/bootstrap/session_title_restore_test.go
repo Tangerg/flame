@@ -16,6 +16,9 @@ import (
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
+	sqlite3 "modernc.org/sqlite"
+	sqlite3lib "modernc.org/sqlite/lib"
 )
 
 func TestRefusedHistoryChangePreservesOriginalGeneratedTitle(t *testing.T) {
@@ -124,11 +127,11 @@ func TestRefusedHistoryChangePreservesOriginalGeneratedTitle(t *testing.T) {
 				if err != nil {
 					return err
 				}
-				_, err = runtime.api.RollbackSession(ctx, protocol.RollbackSessionRequest{
+				_, err = callSessionRollback(ctx, runtime.host.Endpoint(), protocol.RollbackSessionRequest{
 					SessionID: artifact.Session.ID, RestoreType: protocol.RestoreHistory,
 					ExpectedLastRootRunID: snapshot.Runs[len(snapshot.Runs)-1].ID,
 					ExpectedWorkspacePath: snapshot.Session.Workspace.Ref.Path,
-				})
+				}, "discard-stale-title-history")
 				return err
 			},
 		},
@@ -173,7 +176,8 @@ func TestRefusedHistoryChangePreservesOriginalGeneratedTitle(t *testing.T) {
 			}
 			err = test.mutate(ctx, *empty.Artifact)
 			if test.refuseWrite {
-				if err == nil || !strings.Contains(err.Error(), "title history write refused") {
+				refusal, ok := errors.AsType[*sqlite3.Error](err)
+				if !ok || refusal.Code() != sqlite3lib.SQLITE_CONSTRAINT_TRIGGER {
 					t.Fatalf("expected storage to refuse the history write, got %v", err)
 				}
 			} else if !errors.Is(err, test.want) {

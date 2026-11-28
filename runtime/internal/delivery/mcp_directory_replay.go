@@ -10,7 +10,7 @@ import (
 func directoryReplay[Params any](invoke func(*Handler, context.Context, Params, operation.ReplayClaim) error) func(*Handler, context.Context, Params, keyedCall) protocol.OperationResult {
 	return func(s *Handler, ctx context.Context, in Params, call keyedCall) protocol.OperationResult {
 		receipt := operation.ReplayClaim{Key: call.key, Fingerprint: call.fingerprint}
-		payload, err := call.replay.InvokeRecoverable(ctx, call.key, call.fingerprint, func(retained bool) error {
+		payload, err := call.replay.InvokeRecoverable(ctx, call.key, call.fingerprint, call.admit, func(retained bool) error {
 			if retained {
 				return s.mcp.RecoverDirectoryChange(ctx, receipt)
 			}

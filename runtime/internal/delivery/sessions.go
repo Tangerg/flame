@@ -2,6 +2,7 @@ package delivery
 
 import (
 	"context"
+	"reflect"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
@@ -115,8 +116,9 @@ func registerSessions(registry *Registry) {
 		commitForkSession(context.Context, protocol.ForkSessionRequest, atomicOutcome) error
 	}).commitForkSession))
 
-	registry.command(MethodMeta{
+	registry.requiredReplayCommand(MethodMeta{
 		Name: sessionsRollback, GoName: "RollbackSession",
+		Result: reflect.TypeFor[*protocol.RollbackSessionResponse](),
 		Errors: []string{protocol.ErrSessionNotFound.
 			Error(), protocol.ErrRunNotFound.
 			Error(), protocol.ErrSessionBusy.
@@ -135,13 +137,7 @@ func registerSessions(registry *Registry) {
 				Requires: []string{protocol.FeatureCheckpoints},
 			},
 		},
-	}, func(service interface {
-		RollbackSession(context.Context, protocol.RollbackSessionRequest) (*protocol.RollbackSessionResponse, error)
-	}, ctx context.Context, request protocol.RollbackSessionRequest) (*protocol.RollbackSessionResponse, error) {
-		return service.RollbackSession(ctx, request)
-	}).withOwnedReplay((interface {
-		replayRollback(context.Context, protocol.RollbackSessionRequest, keyedCall) protocol.OperationResult
-	}).replayRollback)
+	}, (*Handler).replayRollback)
 
 	registry.query(MethodMeta{
 		Name: sessionsExport, GoName: "ExportSession",
