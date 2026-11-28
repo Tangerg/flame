@@ -1,0 +1,1226 @@
+{
+  "protocol": "io.github.tangerg.flame/plugin/1",
+  "reference": "flame.methods.v1",
+  "composition": "collection",
+  "scope": "installation",
+  "methods": [
+    {
+      "name": "flame.methods/approve.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Approve or reject the original method report and retain the human decision.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.QXBwcm92ZUlucHV0": {
+            "additionalProperties": false,
+            "properties": {
+              "decision": {
+                "type": "string"
+              },
+              "digest": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "projectId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "projectId",
+              "id",
+              "digest"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "decision": {
+            "type": "string"
+          },
+          "digest": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "projectId",
+          "id",
+          "digest"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w": {
+            "type": "string"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.RGVjaXNpb24": {
+            "additionalProperties": false,
+            "properties": {
+              "at": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+              },
+              "digest": {
+                "type": "string"
+              },
+              "disposition": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "digest",
+              "at"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.RXhlY3V0aW9u": {
+            "additionalProperties": false,
+            "properties": {
+              "base": {
+                "type": "string"
+              },
+              "change": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.UnVu"
+              },
+              "checks": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.UmV2aWV3"
+                },
+                "type": "array"
+              },
+              "decision": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.RGVjaXNpb24"
+              },
+              "digest": {
+                "type": "string"
+              },
+              "handoff": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "patch": {
+                "type": "string"
+              },
+              "projectId": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "review": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.UnVu"
+              },
+              "state": {
+                "type": "string"
+              },
+              "version": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.VmVyc2lvbg"
+              },
+              "workspace": {
+                "type": "string"
+              },
+              "worktreeId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "projectId",
+              "version",
+              "workspace",
+              "worktreeId",
+              "base",
+              "state",
+              "checks"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.UmV2aWV3": {
+            "additionalProperties": false,
+            "properties": {
+              "result": {
+                "type": "string"
+              },
+              "runId": {
+                "type": "string"
+              },
+              "slot": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "slot",
+              "runId",
+              "status"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.UnVu": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "sessionId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "sessionId"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.VmVyc2lvbg": {
+            "additionalProperties": false,
+            "properties": {
+              "change": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "model": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              },
+              "reviewA": {
+                "type": "string"
+              },
+              "reviewB": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "title",
+              "change",
+              "reviewA",
+              "reviewB",
+              "provider",
+              "model",
+              "id"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "base": {
+            "type": "string"
+          },
+          "change": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.UnVu"
+          },
+          "checks": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.UmV2aWV3"
+            },
+            "type": "array"
+          },
+          "decision": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.RGVjaXNpb24"
+          },
+          "digest": {
+            "type": "string"
+          },
+          "handoff": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "patch": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "review": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.UnVu"
+          },
+          "state": {
+            "type": "string"
+          },
+          "version": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.VmVyc2lvbg"
+          },
+          "workspace": {
+            "type": "string"
+          },
+          "worktreeId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "version",
+          "workspace",
+          "worktreeId",
+          "base",
+          "state",
+          "checks"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.methods/board.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "Read the current project method and recent executions.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.UHJvamVjdElucHV0": {
+            "additionalProperties": false,
+            "properties": {
+              "projectId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "projectId"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "projectId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "projectId"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w": {
+            "type": "string"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.Qm9hcmQ": {
+            "additionalProperties": false,
+            "properties": {
+              "executions": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.RXhlY3V0aW9u"
+                },
+                "type": "array"
+              },
+              "latest": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.VmVyc2lvbg"
+              }
+            },
+            "required": [
+              "executions"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.RGVjaXNpb24": {
+            "additionalProperties": false,
+            "properties": {
+              "at": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+              },
+              "digest": {
+                "type": "string"
+              },
+              "disposition": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "digest",
+              "at"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.RXhlY3V0aW9u": {
+            "additionalProperties": false,
+            "properties": {
+              "base": {
+                "type": "string"
+              },
+              "change": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.UnVu"
+              },
+              "checks": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.UmV2aWV3"
+                },
+                "type": "array"
+              },
+              "decision": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.RGVjaXNpb24"
+              },
+              "digest": {
+                "type": "string"
+              },
+              "handoff": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "patch": {
+                "type": "string"
+              },
+              "projectId": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "review": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.UnVu"
+              },
+              "state": {
+                "type": "string"
+              },
+              "version": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.VmVyc2lvbg"
+              },
+              "workspace": {
+                "type": "string"
+              },
+              "worktreeId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "projectId",
+              "version",
+              "workspace",
+              "worktreeId",
+              "base",
+              "state",
+              "checks"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.UmV2aWV3": {
+            "additionalProperties": false,
+            "properties": {
+              "result": {
+                "type": "string"
+              },
+              "runId": {
+                "type": "string"
+              },
+              "slot": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "slot",
+              "runId",
+              "status"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.UnVu": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "sessionId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "sessionId"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.VmVyc2lvbg": {
+            "additionalProperties": false,
+            "properties": {
+              "change": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "model": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              },
+              "reviewA": {
+                "type": "string"
+              },
+              "reviewB": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "title",
+              "change",
+              "reviewA",
+              "reviewB",
+              "provider",
+              "model",
+              "id"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "executions": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.RXhlY3V0aW9u"
+            },
+            "type": "array"
+          },
+          "latest": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.VmVyc2lvbg"
+          }
+        },
+        "required": [
+          "executions"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.methods/execution.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "Read the original method execution and captured evidence.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.RXhlY3V0aW9uSW5wdXQ": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "projectId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "projectId",
+              "id"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "projectId",
+          "id"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w": {
+            "type": "string"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.RGVjaXNpb24": {
+            "additionalProperties": false,
+            "properties": {
+              "at": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+              },
+              "digest": {
+                "type": "string"
+              },
+              "disposition": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "digest",
+              "at"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.RXhlY3V0aW9u": {
+            "additionalProperties": false,
+            "properties": {
+              "base": {
+                "type": "string"
+              },
+              "change": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.UnVu"
+              },
+              "checks": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.UmV2aWV3"
+                },
+                "type": "array"
+              },
+              "decision": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.RGVjaXNpb24"
+              },
+              "digest": {
+                "type": "string"
+              },
+              "handoff": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "patch": {
+                "type": "string"
+              },
+              "projectId": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "review": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.UnVu"
+              },
+              "state": {
+                "type": "string"
+              },
+              "version": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.VmVyc2lvbg"
+              },
+              "workspace": {
+                "type": "string"
+              },
+              "worktreeId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "projectId",
+              "version",
+              "workspace",
+              "worktreeId",
+              "base",
+              "state",
+              "checks"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.UmV2aWV3": {
+            "additionalProperties": false,
+            "properties": {
+              "result": {
+                "type": "string"
+              },
+              "runId": {
+                "type": "string"
+              },
+              "slot": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "slot",
+              "runId",
+              "status"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.UnVu": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "sessionId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "sessionId"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.VmVyc2lvbg": {
+            "additionalProperties": false,
+            "properties": {
+              "change": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "model": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              },
+              "reviewA": {
+                "type": "string"
+              },
+              "reviewB": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "title",
+              "change",
+              "reviewA",
+              "reviewB",
+              "provider",
+              "model",
+              "id"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "base": {
+            "type": "string"
+          },
+          "change": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.UnVu"
+          },
+          "checks": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.UmV2aWV3"
+            },
+            "type": "array"
+          },
+          "decision": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.RGVjaXNpb24"
+          },
+          "digest": {
+            "type": "string"
+          },
+          "handoff": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "patch": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "review": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.UnVu"
+          },
+          "state": {
+            "type": "string"
+          },
+          "version": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.VmVyc2lvbg"
+          },
+          "workspace": {
+            "type": "string"
+          },
+          "worktreeId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "version",
+          "workspace",
+          "worktreeId",
+          "base",
+          "state",
+          "checks"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.methods/save.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Save an immutable project method version.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.U2F2ZUlucHV0": {
+            "additionalProperties": false,
+            "properties": {
+              "change": {
+                "type": "string"
+              },
+              "model": {
+                "type": "string"
+              },
+              "projectId": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              },
+              "reviewA": {
+                "type": "string"
+              },
+              "reviewB": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "projectId",
+              "title",
+              "change",
+              "reviewA",
+              "reviewB",
+              "provider",
+              "model"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "change": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "reviewA": {
+            "type": "string"
+          },
+          "reviewB": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "projectId",
+          "title",
+          "change",
+          "reviewA",
+          "reviewB",
+          "provider",
+          "model"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.VmVyc2lvbg": {
+            "additionalProperties": false,
+            "properties": {
+              "change": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "model": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              },
+              "reviewA": {
+                "type": "string"
+              },
+              "reviewB": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "title",
+              "change",
+              "reviewA",
+              "reviewB",
+              "provider",
+              "model",
+              "id"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "change": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "reviewA": {
+            "type": "string"
+          },
+          "reviewB": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "change",
+          "reviewA",
+          "reviewB",
+          "provider",
+          "model",
+          "id"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.methods/start.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Admit one execution of a captured method on a managed worktree.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.U3RhcnRJbnB1dA": {
+            "additionalProperties": false,
+            "properties": {
+              "projectId": {
+                "type": "string"
+              },
+              "versionId": {
+                "type": "string"
+              },
+              "worktreeId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "projectId",
+              "versionId",
+              "worktreeId"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "projectId": {
+            "type": "string"
+          },
+          "versionId": {
+            "type": "string"
+          },
+          "worktreeId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "projectId",
+          "versionId",
+          "worktreeId"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w": {
+            "type": "string"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.RGVjaXNpb24": {
+            "additionalProperties": false,
+            "properties": {
+              "at": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+              },
+              "digest": {
+                "type": "string"
+              },
+              "disposition": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "digest",
+              "at"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.RXhlY3V0aW9u": {
+            "additionalProperties": false,
+            "properties": {
+              "base": {
+                "type": "string"
+              },
+              "change": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.UnVu"
+              },
+              "checks": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.UmV2aWV3"
+                },
+                "type": "array"
+              },
+              "decision": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.RGVjaXNpb24"
+              },
+              "digest": {
+                "type": "string"
+              },
+              "handoff": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "patch": {
+                "type": "string"
+              },
+              "projectId": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "review": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.UnVu"
+              },
+              "state": {
+                "type": "string"
+              },
+              "version": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.VmVyc2lvbg"
+              },
+              "workspace": {
+                "type": "string"
+              },
+              "worktreeId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "projectId",
+              "version",
+              "workspace",
+              "worktreeId",
+              "base",
+              "state",
+              "checks"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.UmV2aWV3": {
+            "additionalProperties": false,
+            "properties": {
+              "result": {
+                "type": "string"
+              },
+              "runId": {
+                "type": "string"
+              },
+              "slot": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "slot",
+              "runId",
+              "status"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.UnVu": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "sessionId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "sessionId"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.VmVyc2lvbg": {
+            "additionalProperties": false,
+            "properties": {
+              "change": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "model": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              },
+              "reviewA": {
+                "type": "string"
+              },
+              "reviewB": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "title",
+              "change",
+              "reviewA",
+              "reviewB",
+              "provider",
+              "model",
+              "id"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "base": {
+            "type": "string"
+          },
+          "change": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.UnVu"
+          },
+          "checks": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.UmV2aWV3"
+            },
+            "type": "array"
+          },
+          "decision": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.RGVjaXNpb24"
+          },
+          "digest": {
+            "type": "string"
+          },
+          "handoff": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "patch": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "review": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.UnVu"
+          },
+          "state": {
+            "type": "string"
+          },
+          "version": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.VmVyc2lvbg"
+          },
+          "workspace": {
+            "type": "string"
+          },
+          "worktreeId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "version",
+          "workspace",
+          "worktreeId",
+          "base",
+          "state",
+          "checks"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

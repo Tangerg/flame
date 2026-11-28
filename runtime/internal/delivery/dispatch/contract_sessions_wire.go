@@ -61,6 +61,17 @@ func registerSessionValues(s *Shapes) {
 		s.valueConstraint(FieldConstraintSpec{GoType: request, Constraints: requiredResourceIdentity("sessionId")})
 	}
 	s.valueConstraint(FieldConstraintSpec{
+		GoType:      typeOf[protocol.PreviewSessionForkRequest](),
+		Constraints: append(requiredResourceIdentity("sessionId"), resourceIdentity("fromRunId")...),
+	})
+	s.valueConstraint(FieldConstraintSpec{
+		GoType: typeOf[protocol.ForkWorktreeConfirmation](),
+		Constraints: []FieldConstraint{
+			{Field: "id", Kind: ConstraintPattern, Value: `^[0-9a-f]{32}$`},
+			{Field: "digest", Kind: ConstraintPattern, Value: `^[0-9a-f]{64}$`},
+		},
+	})
+	s.valueConstraint(FieldConstraintSpec{
 		GoType:      typeOf[protocol.ForkSessionRequest](),
 		Constraints: append(requiredResourceIdentity("sessionId"), resourceIdentity("fromRunId")...),
 	})

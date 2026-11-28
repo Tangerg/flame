@@ -73,34 +73,11 @@ func (g reviewGit) verify(lifetime context.Context, key string, credential crede
 	if err != nil {
 		return fmt.Errorf("github: create review attempt directory: %w", err)
 	}
-	bare := filepath.Join(directory, "repository.git")
-	checkout := filepath.Join(directory, "checkout")
-	format := "sha1"
-	if len(revision.HeadSHA) == 64 {
-		format = "sha256"
-	}
-	if _, err := runReviewGit(ctx, directory, "", "init", "--quiet", "--bare", "--template=", "--object-format="+format, bare); err != nil {
-		return fmt.Errorf("github: initialize review repository: %w", err)
-	}
-	remote := g.origin + "/" + repository.String() + ".git"
-	authorization := ""
-	if g.origin == "https://github.com" && credential.configured() {
-		authorization = "Authorization: Basic " + base64.StdEncoding.EncodeToString([]byte("x-access-token:"+credential.token))
-	}
-	if err := fetchReviewCommits(ctx, bare, remote, authorization, revision.BaseSHA, revision.HeadSHA); err != nil {
-		return fmt.Errorf("github: fetch captured base and head: %w", err)
-	}
-	if _, err := runReviewGit(ctx, bare, "", "worktree", "add", "--detach", "--quiet", checkout, revision.HeadSHA); err != nil {
-		return fmt.Errorf("github: create worktree at the captured head: %w", err)
-	}
-	head, err := runReviewGit(ctx, checkout, "", "rev-parse", "--verify", "HEAD")
+	checkout, err := g.checkout(ctx, directory, credential, repository, revision.BaseSHA, revision.HeadSHA)
 	if err != nil {
-		return fmt.Errorf("github: verify worktree head: %w", err)
+		return err
 	}
-	if !strings.EqualFold(strings.TrimSpace(head), revision.HeadSHA) {
-		return errors.New("github: worktree head differs from the captured commit")
-	}
-	result.CheckedHead = strings.TrimSpace(head)
+	result.CheckedHead = revision.HeadSHA
 	diagnostic, err := runReviewGit(ctx, checkout, "", "diff", "--no-ext-diff", "--no-textconv", "--check", revision.BaseSHA, revision.HeadSHA, "--")
 	switch {
 	case err == nil:
@@ -111,6 +88,7 @@ func (g reviewGit) verify(lifetime context.Context, key string, credential crede
 		return fmt.Errorf("github: check captured diff: %w", err)
 	}
 	if len(findings) != 0 {
+		remote, authorization := g.fetchAuthority(credential, repository)
 		recheckFindings(ctx, checkout, remote, authorization, revision, findings, result)
 	}
 	if err := ctx.Err(); err != nil {
@@ -118,6 +96,45 @@ func (g reviewGit) verify(lifetime context.Context, key string, credential crede
 	}
 	policy.run(lifetime, filepath.Join(directory, "checks"), checkout, result.Project)
 	return lifetime.Err()
+}
+
+func (g reviewGit) fetchAuthority(credential credential, repository repository) (string, string) {
+	authorization := ""
+	if g.origin == "https://github.com" && credential.configured() {
+		authorization = "Authorization: Basic " + base64.StdEncoding.EncodeToString([]byte("x-access-token:"+credential.token))
+	}
+	return g.origin + "/" + repository.String() + ".git", authorization
+}
+
+func (g reviewGit) checkout(ctx context.Context, directory string, credential credential, repository repository, base, head string) (string, error) {
+	bare := filepath.Join(directory, "repository.git")
+	checkout := filepath.Join(directory, "checkout")
+	format := "sha1"
+	if len(head) == 64 {
+		format = "sha256"
+	}
+	if _, err := runReviewGit(ctx, directory, "", "init", "--quiet", "--bare", "--template=", "--object-format="+format, bare); err != nil {
+		return "", fmt.Errorf("github: initialize verification repository: %w", err)
+	}
+	remote, authorization := g.fetchAuthority(credential, repository)
+	commits := []string{head}
+	if base != head {
+		commits = []string{base, head}
+	}
+	if err := fetchReviewCommits(ctx, bare, remote, authorization, commits...); err != nil {
+		return "", fmt.Errorf("github: fetch captured commits: %w", err)
+	}
+	if _, err := runReviewGit(ctx, bare, "", "worktree", "add", "--detach", "--quiet", checkout, head); err != nil {
+		return "", fmt.Errorf("github: create worktree at the captured head: %w", err)
+	}
+	checked, err := runReviewGit(ctx, checkout, "", "rev-parse", "--verify", "HEAD")
+	if err != nil {
+		return "", fmt.Errorf("github: verify worktree head: %w", err)
+	}
+	if !strings.EqualFold(strings.TrimSpace(checked), head) {
+		return "", errors.New("github: worktree head differs from the captured commit")
+	}
+	return checkout, nil
 }
 
 func fetchReviewCommits(ctx context.Context, directory, remote, authorization string, commits ...string) error {

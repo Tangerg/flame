@@ -30,6 +30,8 @@ type installationDependencyWire struct {
 }
 
 type interactionCheckpointPayloadWire struct {
+	VerificationOnly    bool                           `json:"verificationOnly,omitzero"`
+	ToolProfile         domaintool.Profile             `json:"toolProfile,omitzero"`
 	SkillDiscoveries    map[domaintool.Group]string    `json:"skillDiscoveries,omitzero"`
 	ModelProvider       jsontext.Value                 `json:"modelProvider"`
 	ToolProposals       *[]contributionBindingWire     `json:"toolProposals"`
@@ -80,6 +82,7 @@ type interactionContentBlockWire struct {
 }
 
 type interactionCheckpointState struct {
+	toolProfile         domaintool.Profile
 	modelProvider       *modeladapter.ProviderCapture
 	bindings            []plugin.Activation
 	resources           []plugin.Dependency
@@ -107,6 +110,7 @@ func (i interactionCheckpointState) restoredStart(continuation runs.ExecutionCon
 		WorkspaceCWD:             continuation.Workspace,
 		Project:                  continuation.Project,
 		Isolated:                 continuation.Isolated,
+		ToolProfile:              i.toolProfile,
 		GoalIncarnationID:        continuation.GoalIncarnationID,
 		ModelSelection:           continuation.RootModelSelection(),
 		InterruptTypes:           slices.Clone(continuation.Capabilities.InterruptTypes),
@@ -282,6 +286,13 @@ func (wire interactionCheckpointPayloadWire) restore() (interactionCheckpointSta
 		return interactionCheckpointState{}, err
 	}
 	state.mcpManifests, state.skillDiscoveries, state.handoff = manifests, wire.SkillDiscoveries, handoff
+	state.toolProfile = wire.ToolProfile
+	if wire.VerificationOnly && state.toolProfile == domaintool.ProfileDefault {
+		state.toolProfile = domaintool.ProfileVerification
+	}
+	if !state.toolProfile.Valid() {
+		return interactionCheckpointState{}, errors.New("execution: invalid captured Tool profile")
+	}
 	state.contextByProcess, state.instructions, state.options = contextByProcess, instructions, wire.Options.Clone()
 	state.pendingSteers, state.pendingResumeInputs, state.toolMetadata = pendingSteers, pendingResumeInputs, metadata
 	return state, nil

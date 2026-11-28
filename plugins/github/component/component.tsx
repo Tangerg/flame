@@ -45,6 +45,8 @@ import { ja } from "./locales/ja";
 import { ko } from "./locales/ko";
 import { ProjectCheckEvidence, ReviewPatch } from "./reviewEvidence";
 
+export { GitHubIssueDeliveries } from "./issueDelivery";
+
 const catalogs = { en, zh, "zh-TW": zhTW, de, es, fr, ja, ko };
 const read = "flame.github/review-work.v1";
 const update = "flame.github/update-review-work.v1";
@@ -234,7 +236,10 @@ function Review({
       },
     );
   };
-  useSyncExternalStore(operations.subscribeCommands, operations.commandsVersion);
+  useSyncExternalStore(
+    operations.subscribeCommands,
+    operations.commandsVersion,
+  );
   const publications = context.signal.aborted
     ? []
     : operations.commands(publish);
@@ -755,3 +760,5 @@ function PublishForm({
     </form>
   );
 }
+
+export { GitHubProjectTeam } from "./projectTeam";

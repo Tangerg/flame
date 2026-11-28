@@ -38,6 +38,10 @@ type connector struct {
 	reviewWake    chan struct{}
 	checkPolicies map[string]projectCheckPolicy
 	webhook       reviewWebhook
+	issuePolicy   *issueDeliveryPolicy
+	teamPolicy    *teamPolicy
+	intakePolicy  *intakePolicy
+	teamWake      chan struct{}
 }
 
 const (
@@ -58,6 +62,7 @@ func newConnector(store *store, transport http.RoundTripper, credential credenti
 		store: store, http: client, credential: credential,
 		reviewGit:  reviewGit{root: filepath.Join(store.data, "review-worktrees"), origin: "https://github.com"},
 		reviewWake: make(chan struct{}, 1),
+		teamWake:   make(chan struct{}, 1),
 	}, nil
 }
 

@@ -5,6 +5,80 @@
   "scope": "installation",
   "methods": [
     {
+      "name": "flame.opencode/agents.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "List the approved ACP agent profiles on the Runtime machine.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.QWdlbnRzUmVxdWVzdA": {
+            "additionalProperties": false,
+            "properties": {},
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.QWdlbnQ": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "registry": {
+                "type": "string"
+              },
+              "version": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.QWdlbnRzUmVzcG9uc2U": {
+            "additionalProperties": false,
+            "properties": {
+              "agents": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.QWdlbnQ"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "agents"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "agents": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.QWdlbnQ"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "agents"
+        ],
+        "type": "object"
+      }
+    },
+    {
       "name": "flame.opencode/cancel.v1",
       "kind": "command",
       "target": "installation",
@@ -46,6 +120,30 @@
       },
       "output": {
         "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.Q2FwYWJpbGl0aWVz": {
+            "additionalProperties": false,
+            "properties": {
+              "fork": {
+                "type": "boolean"
+              },
+              "list": {
+                "type": "boolean"
+              },
+              "load": {
+                "type": "boolean"
+              },
+              "resume": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "list",
+              "load",
+              "resume",
+              "fork"
+            ],
+            "type": "object"
+          },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.RXZlbnQ": {
             "additionalProperties": false,
             "properties": {
@@ -93,8 +191,14 @@
               "agent": {
                 "type": "string"
               },
+              "agentId": {
+                "type": "string"
+              },
               "canFork": {
                 "type": "boolean"
+              },
+              "capabilities": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.Q2FwYWJpbGl0aWVz"
               },
               "connected": {
                 "type": "boolean"
@@ -211,8 +315,303 @@
           "agent": {
             "type": "string"
           },
+          "agentId": {
+            "type": "string"
+          },
           "canFork": {
             "type": "boolean"
+          },
+          "capabilities": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.Q2FwYWJpbGl0aWVz"
+          },
+          "connected": {
+            "type": "boolean"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.RXZlbnQ"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "machine": {
+            "type": "string"
+          },
+          "nativeId": {
+            "type": "string"
+          },
+          "permissions": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.UGVybWlzc2lvblJlcXVlc3Q"
+            },
+            "type": "array"
+          },
+          "turn": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.VHVybg"
+          }
+        },
+        "required": [
+          "id",
+          "nativeId",
+          "cwd",
+          "machine",
+          "agent",
+          "connected",
+          "canFork",
+          "events",
+          "permissions"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.opencode/create.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Create one native ACP session and retain its original acknowledgement.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.Q3JlYXRlUmVxdWVzdA": {
+            "additionalProperties": false,
+            "properties": {
+              "agentId": {
+                "type": "string"
+              },
+              "cwd": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "cwd"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "agentId": {
+            "type": "string"
+          },
+          "cwd": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cwd"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.Q2FwYWJpbGl0aWVz": {
+            "additionalProperties": false,
+            "properties": {
+              "fork": {
+                "type": "boolean"
+              },
+              "list": {
+                "type": "boolean"
+              },
+              "load": {
+                "type": "boolean"
+              },
+              "resume": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "list",
+              "load",
+              "resume",
+              "fork"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.RXZlbnQ": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "toolId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.T3B0aW9u": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "kind"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.U2Vzc2lvbg": {
+            "additionalProperties": false,
+            "properties": {
+              "agent": {
+                "type": "string"
+              },
+              "agentId": {
+                "type": "string"
+              },
+              "canFork": {
+                "type": "boolean"
+              },
+              "capabilities": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.Q2FwYWJpbGl0aWVz"
+              },
+              "connected": {
+                "type": "boolean"
+              },
+              "cwd": {
+                "type": "string"
+              },
+              "events": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.RXZlbnQ"
+                },
+                "type": "array"
+              },
+              "id": {
+                "type": "string"
+              },
+              "machine": {
+                "type": "string"
+              },
+              "nativeId": {
+                "type": "string"
+              },
+              "permissions": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.UGVybWlzc2lvblJlcXVlc3Q"
+                },
+                "type": "array"
+              },
+              "turn": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.VHVybg"
+              }
+            },
+            "required": [
+              "id",
+              "nativeId",
+              "cwd",
+              "machine",
+              "agent",
+              "connected",
+              "canFork",
+              "events",
+              "permissions"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.UGVybWlzc2lvblJlcXVlc3Q": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "options": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.T3B0aW9u"
+                },
+                "type": "array"
+              },
+              "preview": {
+                "type": "string"
+              },
+              "selected": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "toolId": {
+                "type": "string"
+              },
+              "turnId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "turnId",
+              "toolId",
+              "title",
+              "options",
+              "status"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.VHVybg": {
+            "additionalProperties": false,
+            "properties": {
+              "cancelRequested": {
+                "type": "boolean"
+              },
+              "id": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "stopReason": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "status",
+              "cancelRequested"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "agent": {
+            "type": "string"
+          },
+          "agentId": {
+            "type": "string"
+          },
+          "canFork": {
+            "type": "boolean"
+          },
+          "capabilities": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.Q2FwYWJpbGl0aWVz"
           },
           "connected": {
             "type": "boolean"
@@ -293,6 +692,30 @@
       },
       "output": {
         "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.Q2FwYWJpbGl0aWVz": {
+            "additionalProperties": false,
+            "properties": {
+              "fork": {
+                "type": "boolean"
+              },
+              "list": {
+                "type": "boolean"
+              },
+              "load": {
+                "type": "boolean"
+              },
+              "resume": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "list",
+              "load",
+              "resume",
+              "fork"
+            ],
+            "type": "object"
+          },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.RXZlbnQ": {
             "additionalProperties": false,
             "properties": {
@@ -340,8 +763,14 @@
               "agent": {
                 "type": "string"
               },
+              "agentId": {
+                "type": "string"
+              },
               "canFork": {
                 "type": "boolean"
+              },
+              "capabilities": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.Q2FwYWJpbGl0aWVz"
               },
               "connected": {
                 "type": "boolean"
@@ -458,8 +887,14 @@
           "agent": {
             "type": "string"
           },
+          "agentId": {
+            "type": "string"
+          },
           "canFork": {
             "type": "boolean"
+          },
+          "capabilities": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.Q2FwYWJpbGl0aWVz"
           },
           "connected": {
             "type": "boolean"
@@ -540,6 +975,30 @@
       },
       "output": {
         "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.Q2FwYWJpbGl0aWVz": {
+            "additionalProperties": false,
+            "properties": {
+              "fork": {
+                "type": "boolean"
+              },
+              "list": {
+                "type": "boolean"
+              },
+              "load": {
+                "type": "boolean"
+              },
+              "resume": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "list",
+              "load",
+              "resume",
+              "fork"
+            ],
+            "type": "object"
+          },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.RXZlbnQ": {
             "additionalProperties": false,
             "properties": {
@@ -587,8 +1046,14 @@
               "agent": {
                 "type": "string"
               },
+              "agentId": {
+                "type": "string"
+              },
               "canFork": {
                 "type": "boolean"
+              },
+              "capabilities": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.Q2FwYWJpbGl0aWVz"
               },
               "connected": {
                 "type": "boolean"
@@ -705,8 +1170,14 @@
           "agent": {
             "type": "string"
           },
+          "agentId": {
+            "type": "string"
+          },
           "canFork": {
             "type": "boolean"
+          },
+          "capabilities": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.Q2FwYWJpbGl0aWVz"
           },
           "connected": {
             "type": "boolean"
@@ -763,6 +1234,9 @@
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.TGlzdFJlcXVlc3Q": {
             "additionalProperties": false,
             "properties": {
+              "agentId": {
+                "type": "string"
+              },
               "cursor": {
                 "type": "string"
               },
@@ -779,6 +1253,9 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
+          "agentId": {
+            "type": "string"
+          },
           "cursor": {
             "type": "string"
           },
@@ -793,6 +1270,30 @@
       },
       "output": {
         "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.Q2FwYWJpbGl0aWVz": {
+            "additionalProperties": false,
+            "properties": {
+              "fork": {
+                "type": "boolean"
+              },
+              "list": {
+                "type": "boolean"
+              },
+              "load": {
+                "type": "boolean"
+              },
+              "resume": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "list",
+              "load",
+              "resume",
+              "fork"
+            ],
+            "type": "object"
+          },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.TmF0aXZlU2Vzc2lvbg": {
             "additionalProperties": false,
             "properties": {
@@ -818,6 +1319,9 @@
               "agent": {
                 "type": "string"
               },
+              "capabilities": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.Q2FwYWJpbGl0aWVz"
+              },
               "machine": {
                 "type": "string"
               },
@@ -834,6 +1338,7 @@
             "required": [
               "machine",
               "agent",
+              "capabilities",
               "rows"
             ],
             "type": "object"
@@ -844,6 +1349,9 @@
         "properties": {
           "agent": {
             "type": "string"
+          },
+          "capabilities": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.Q2FwYWJpbGl0aWVz"
           },
           "machine": {
             "type": "string"
@@ -861,6 +1369,7 @@
         "required": [
           "machine",
           "agent",
+          "capabilities",
           "rows"
         ],
         "type": "object"
@@ -870,44 +1379,86 @@
       "name": "flame.opencode/open.v1",
       "kind": "command",
       "target": "installation",
-      "description": "Load the original OpenCode session and its history.",
+      "description": "Restore the original native session through an advertised ACP operation.",
       "input": {
         "$defs": {
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.T3BlblJlcXVlc3Q": {
             "additionalProperties": false,
             "properties": {
+              "agentId": {
+                "type": "string"
+              },
               "cwd": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "mode": {
+                "enum": [
+                  "load",
+                  "resume"
+                ],
                 "type": "string"
               },
               "nativeId": {
                 "type": "string"
               }
             },
-            "required": [
-              "nativeId",
-              "cwd"
-            ],
             "type": "object"
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
+          "agentId": {
+            "type": "string"
+          },
           "cwd": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "load",
+              "resume"
+            ],
             "type": "string"
           },
           "nativeId": {
             "type": "string"
           }
         },
-        "required": [
-          "nativeId",
-          "cwd"
-        ],
         "type": "object"
       },
       "output": {
         "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.Q2FwYWJpbGl0aWVz": {
+            "additionalProperties": false,
+            "properties": {
+              "fork": {
+                "type": "boolean"
+              },
+              "list": {
+                "type": "boolean"
+              },
+              "load": {
+                "type": "boolean"
+              },
+              "resume": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "list",
+              "load",
+              "resume",
+              "fork"
+            ],
+            "type": "object"
+          },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.RXZlbnQ": {
             "additionalProperties": false,
             "properties": {
@@ -955,8 +1506,14 @@
               "agent": {
                 "type": "string"
               },
+              "agentId": {
+                "type": "string"
+              },
               "canFork": {
                 "type": "boolean"
+              },
+              "capabilities": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.Q2FwYWJpbGl0aWVz"
               },
               "connected": {
                 "type": "boolean"
@@ -1073,8 +1630,14 @@
           "agent": {
             "type": "string"
           },
+          "agentId": {
+            "type": "string"
+          },
           "canFork": {
             "type": "boolean"
+          },
+          "capabilities": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.Q2FwYWJpbGl0aWVz"
           },
           "connected": {
             "type": "boolean"
@@ -1171,6 +1734,30 @@
       },
       "output": {
         "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.Q2FwYWJpbGl0aWVz": {
+            "additionalProperties": false,
+            "properties": {
+              "fork": {
+                "type": "boolean"
+              },
+              "list": {
+                "type": "boolean"
+              },
+              "load": {
+                "type": "boolean"
+              },
+              "resume": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "list",
+              "load",
+              "resume",
+              "fork"
+            ],
+            "type": "object"
+          },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.RXZlbnQ": {
             "additionalProperties": false,
             "properties": {
@@ -1218,8 +1805,14 @@
               "agent": {
                 "type": "string"
               },
+              "agentId": {
+                "type": "string"
+              },
               "canFork": {
                 "type": "boolean"
+              },
+              "capabilities": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.Q2FwYWJpbGl0aWVz"
               },
               "connected": {
                 "type": "boolean"
@@ -1336,8 +1929,14 @@
           "agent": {
             "type": "string"
           },
+          "agentId": {
+            "type": "string"
+          },
           "canFork": {
             "type": "boolean"
+          },
+          "capabilities": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.Q2FwYWJpbGl0aWVz"
           },
           "connected": {
             "type": "boolean"
@@ -1438,6 +2037,30 @@
       },
       "output": {
         "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.Q2FwYWJpbGl0aWVz": {
+            "additionalProperties": false,
+            "properties": {
+              "fork": {
+                "type": "boolean"
+              },
+              "list": {
+                "type": "boolean"
+              },
+              "load": {
+                "type": "boolean"
+              },
+              "resume": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "list",
+              "load",
+              "resume",
+              "fork"
+            ],
+            "type": "object"
+          },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.RXZlbnQ": {
             "additionalProperties": false,
             "properties": {
@@ -1485,8 +2108,14 @@
               "agent": {
                 "type": "string"
               },
+              "agentId": {
+                "type": "string"
+              },
               "canFork": {
                 "type": "boolean"
+              },
+              "capabilities": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.Q2FwYWJpbGl0aWVz"
               },
               "connected": {
                 "type": "boolean"
@@ -1603,8 +2232,14 @@
           "agent": {
             "type": "string"
           },
+          "agentId": {
+            "type": "string"
+          },
           "canFork": {
             "type": "boolean"
+          },
+          "capabilities": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.Q2FwYWJpbGl0aWVz"
           },
           "connected": {
             "type": "boolean"

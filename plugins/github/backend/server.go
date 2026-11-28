@@ -12,6 +12,7 @@ import (
 	framecall "github.com/Tangerg/frame/call"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 
+	"github.com/Tangerg/frame"
 	"github.com/Tangerg/scope/core/tool"
 )
 
@@ -68,7 +69,21 @@ func newServer(connector *connector) (*sdk.Server, *pluginmcp.Backend, error) {
 	if err != nil {
 		return nil, nil, err
 	}
+	publishIssue, err := frame.AdmitMethod(contracts.PublishIssueDelivery.Descriptor())
+	if err != nil {
+		return nil, nil, err
+	}
 	if err := errors.Join(
+		contracts.IssueDeliveries.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[wire.IssueDeliveriesInput]) (wire.IssueDeliveryPage, error) {
+			return connector.listIssueDeliveries(ctx, command.Input, publishIssue)
+		}),
+		contracts.PublishIssueDelivery.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[wire.PublishIssueDeliveryInput]) (wire.IssueDeliveryReceipt, error) {
+			return connector.publishIssueDelivery(ctx, command, publishIssue)
+		}),
+		registerTeamQuery(backend, contracts.TeamBoard, connector.projectTeam),
+		registerTeamQuery(backend, contracts.TeamInvite, connector.teamInvite),
+		registerTeamCommand(backend, connector, contracts.TeamGrant, connector.grantTeamWork),
+		registerTeamCommand(backend, connector, contracts.TeamRevoke, connector.revokeTeamWork),
 		registerRead(backend, &tools, contracts.ReviewWork, "review_work", connector.readReviewWork),
 		contracts.UpdateReviewWork.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[wire.ReviewWorkChange]) (wire.ReviewWork, error) {
 			return connector.changeReviewWork(ctx, command, contracts.UpdateReviewWork.Name())

@@ -226,11 +226,18 @@ func copyReadMaterial(source, destination string) (err error) {
 		return err
 	}
 	defer func() { err = errors.Join(err, in.Close()) }()
+	original, err := in.Stat()
+	if err != nil {
+		return err
+	}
 	out, err := os.OpenFile(destination, os.O_CREATE|os.O_EXCL|os.O_WRONLY, filesystem.PrivateFileMode)
 	if err != nil {
 		return err
 	}
 	defer func() { err = errors.Join(err, out.Close()) }()
-	_, err = io.Copy(out, in)
-	return err
+	if _, err := io.Copy(out, in); err != nil {
+		return err
+	}
+	// Git uses the index's mtime to decide whether matching file stats need a content check.
+	return os.Chtimes(destination, original.ModTime(), original.ModTime())
 }

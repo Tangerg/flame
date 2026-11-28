@@ -16,14 +16,17 @@ import (
 	"github.com/Tangerg/go-sdk/jsonrpc"
 )
 
-type rpcHandler struct{ router *dispatch.Router }
+type rpcHandler struct {
+	router *dispatch.Router
+	store  string
+}
 
 func NewRPCHandler(endpoint *delivery.Endpoint) (http.Handler, error) {
 	router, err := dispatch.New(endpoint)
 	if err != nil {
 		return nil, err
 	}
-	return &rpcHandler{router: router}, nil
+	return &rpcHandler{router: router, store: endpoint.StoreNamespace()}, nil
 }
 
 const maxRPCBodyBytes = 4 << 20
@@ -36,10 +39,17 @@ func (s *rpcHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if len(values) == 1 && values[0] == "" &&
-			(name == headerIdempotencyKey || name == headerIdempotencyNamespace) {
+			(name == headerIdempotencyKey || name == headerIdempotencyNamespace || name == headerRuntimeStore) {
 			writeProblem(w, problemInvalidRequest, name+" header must not be empty")
 			return
 		}
+	}
+	if expected := r.Header.Get(headerRuntimeStore); expected != "" {
+		if expected != s.store {
+			writeProblem(w, problemRuntimeStoreMismatch, "the endpoint no longer identifies the registered Runtime store")
+			return
+		}
+		w.Header().Set(headerRuntimeStore, s.store)
 	}
 	lifetime, cancel := context.WithCancel(r.Context())
 	defer cancel()
@@ -145,6 +155,7 @@ var (
 	problemRequestTooLarge        = problemKind{name: "request_too_large", status: http.StatusRequestEntityTooLarge, refusal: true}
 	problemInvalidRequest         = problemKind{name: protocol.ProblemInvalidRequest, status: http.StatusBadRequest, refusal: true}
 	problemForbiddenOrigin        = problemKind{name: "forbidden_origin", status: http.StatusForbidden, refusal: true, noStore: true}
+	problemRuntimeStoreMismatch   = problemKind{name: "runtime_store_mismatch", status: http.StatusConflict, refusal: true, noStore: true}
 	problemUnauthorized           = problemKind{name: "unauthorized", status: http.StatusUnauthorized, refusal: true, noStore: true}
 	problemResponseEncodingFailed = problemKind{name: "response_encoding_failed", status: http.StatusInternalServerError}
 	problemInternalError          = problemKind{name: protocol.ProblemInternalError, status: http.StatusInternalServerError}
@@ -155,6 +166,7 @@ var (
 		problemInvalidRequest,
 		problemUnauthorized,
 		problemForbiddenOrigin,
+		problemRuntimeStoreMismatch,
 		problemResponseEncodingFailed,
 		problemInternalError,
 	}

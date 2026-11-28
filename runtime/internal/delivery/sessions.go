@@ -101,12 +101,25 @@ func registerSessions(registry *Registry) {
 		commitDeleteSession(context.Context, protocol.DeleteSessionRequest, atomicOutcome) error
 	}).commitDeleteSession))
 
+	git := requires(protocol.FeatureGit)
+	registry.query(MethodMeta{
+		Name: "sessions.fork.preview", GoName: "PreviewSessionFork", CapabilityRules: git,
+		Errors: []string{protocol.ErrSessionNotFound.Error(), protocol.ErrRunNotFound.Error(),
+			protocol.ErrWorkspaceUnavailable.Error(), protocol.ErrRevisionConflict.Error(), protocol.ErrVcsUnavailable.Error()},
+	}, func(service interface {
+		PreviewSessionFork(context.Context, protocol.PreviewSessionForkRequest) (*protocol.SessionForkPreview, error)
+	}, ctx context.Context, in protocol.PreviewSessionForkRequest) (*protocol.SessionForkPreview, error) {
+		return service.PreviewSessionFork(ctx, in)
+	})
+
 	registry.command(MethodMeta{
 		Name: sessionsFork, GoName: "ForkSession",
+		CapabilityRules: []CapabilityRule{{When: []FieldCondition{{Field: "worktree", Operator: OperatorPresent}}, Requires: []string{protocol.FeatureGit}}},
 		Errors: pluginProviderErrors(
 			protocol.ErrSessionNotFound.Error(),
 			protocol.ErrRunNotFound.Error(),
 			protocol.ErrRevisionConflict.Error(),
+			protocol.ErrSessionBusy.Error(), protocol.ErrWorkspaceUnavailable.Error(), protocol.ErrVcsUnavailable.Error(),
 		),
 	}, func(service interface {
 		ForkSession(context.Context, protocol.ForkSessionRequest) (*protocol.Session, error)

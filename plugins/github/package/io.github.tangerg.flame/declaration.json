@@ -18,6 +18,14 @@
       "required": false
     },
     {
+      "id": "issue-delivery",
+      "server": "github",
+      "target": "env",
+      "key": "GITHUB_ISSUE_DELIVERY",
+      "secret": false,
+      "required": false
+    },
+    {
       "id": "webhook-port",
       "server": "github",
       "target": "env",
@@ -30,6 +38,46 @@
       "server": "github",
       "target": "env",
       "key": "GITHUB_WEBHOOK_SECRET",
+      "secret": true,
+      "required": false
+    },
+    {
+      "id": "team-origin",
+      "server": "github",
+      "target": "env",
+      "key": "FLAME_GITHUB_TEAM_ORIGIN",
+      "secret": false,
+      "required": false
+    },
+    {
+      "id": "team-secret",
+      "server": "github",
+      "target": "env",
+      "key": "FLAME_GITHUB_TEAM_SECRET",
+      "secret": true,
+      "required": false
+    },
+    {
+      "id": "work-intake",
+      "server": "github",
+      "target": "env",
+      "key": "FLAME_GITHUB_WORK_INTAKE",
+      "secret": false,
+      "required": false
+    },
+    {
+      "id": "linear-secret",
+      "server": "github",
+      "target": "env",
+      "key": "FLAME_LINEAR_SIGNING_SECRET",
+      "secret": true,
+      "required": false
+    },
+    {
+      "id": "slack-secret",
+      "server": "github",
+      "target": "env",
+      "key": "FLAME_SLACK_SIGNING_SECRET",
       "secret": true,
       "required": false
     }
@@ -61,6 +109,39 @@
       "placement": "workspaceView",
       "entry": "io.github.tangerg.flame/components/component.js",
       "export": "GitHubReviews",
+      "contribution": "github-operations"
+    },
+    {
+      "id": "github-issue-deliveries",
+      "material": "project-issue-deliveries",
+      "title": "Issue deliveries",
+      "localizedTitles": {
+        "zh": "Issue 交付",
+        "zh-TW": "Issue 交付",
+        "de": "Issue-Auslieferungen",
+        "es": "Entregas de issues",
+        "fr": "Livraisons d’issues",
+        "ja": "Issue の成果報告",
+        "ko": "이슈 인도"
+      },
+      "scope": "client",
+      "placement": "workspaceView",
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "GitHubIssueDeliveries",
+      "contribution": "github-operations"
+    },
+    {
+      "id": "github-project-team",
+      "material": "project-team",
+      "title": "Team and work intake",
+      "localizedTitles": {
+        "zh": "团队与工作收件箱",
+        "zh-TW": "團隊與工作收件匣"
+      },
+      "scope": "client",
+      "placement": "workspaceView",
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "GitHubProjectTeam",
       "contribution": "github-operations"
     }
   ]

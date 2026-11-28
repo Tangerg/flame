@@ -47,12 +47,9 @@ func (t *taskCheckout) PreviewHandoff(ctx context.Context) (work.WorktreeHandoff
 	if len(status) > 0 {
 		return work.WorktreeHandoff{}, fmt.Errorf("%w: destination has local changes", work.ErrTaskWorktreeChanged)
 	}
-	patch, err := git.WorktreePatch(ctx, t.path, t.record.Base, maxHandoffPatchBytes)
+	patch, err := reviewableWorktreePatch(ctx, t.path, t.record.Base)
 	if err != nil {
-		return work.WorktreeHandoff{}, vcsError(err)
-	}
-	if !utf8.Valid(patch) {
-		return work.WorktreeHandoff{}, work.ErrHandoffPatchEncoding
+		return work.WorktreeHandoff{}, err
 	}
 	digest := sha256.New()
 	fmt.Fprintf(digest, "%q\n%q\n%q\n%q\n", t.record.ID, source, head.reference, head.commit)
@@ -60,6 +57,17 @@ func (t *taskCheckout) PreviewHandoff(ctx context.Context) (work.WorktreeHandoff
 	return work.WorktreeHandoff{
 		Worktree: t.view(registration), Branch: head.branch(), Head: head.commit, Digest: hex.EncodeToString(digest.Sum(nil)), Patch: string(patch),
 	}, nil
+}
+
+func reviewableWorktreePatch(ctx context.Context, checkout, base string) ([]byte, error) {
+	patch, err := git.WorktreePatch(ctx, checkout, base, maxHandoffPatchBytes)
+	if err != nil {
+		return nil, vcsError(err)
+	}
+	if !utf8.Valid(patch) {
+		return nil, work.ErrWorktreePatchEncoding
+	}
+	return patch, nil
 }
 
 type handoffHead struct {
@@ -109,16 +117,23 @@ func (t *taskCheckout) PrepareHandoff(ctx context.Context, digest string) (func(
 		return nil, work.ErrTaskWorktreeChanged
 	}
 	return func(write context.Context) (work.WorktreeHandoff, error) {
-		if preview.Patch == "" {
-			return preview, nil
-		}
-		result, err := process.ApplyIndexPatch(write, t.record.Source, preview.Patch)
-		if err != nil {
+		if err := applyWorktreePatch(write, t.record.Source, preview.Patch); err != nil {
 			return work.WorktreeHandoff{}, err
-		}
-		if result.ExitCode != 0 {
-			return work.WorktreeHandoff{}, fmt.Errorf("%w: git apply exited %d: %s", work.ErrTaskWorktreeChanged, result.ExitCode, strings.TrimSpace(result.Stderr))
 		}
 		return preview, nil
 	}, nil
+}
+
+func applyWorktreePatch(ctx context.Context, checkout, patch string) error {
+	if patch == "" {
+		return nil
+	}
+	result, err := process.ApplyIndexPatch(ctx, checkout, patch)
+	if err != nil {
+		return err
+	}
+	if result.ExitCode != 0 {
+		return fmt.Errorf("%w: git apply exited %d: %s", work.ErrTaskWorktreeChanged, result.ExitCode, strings.TrimSpace(result.Stderr))
+	}
+	return nil
 }

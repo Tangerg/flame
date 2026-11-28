@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-11-28.8` · 115 methods
+Protocol `2026-11-28.8` · 116 methods
 
 ## Methods
 
@@ -20,7 +20,8 @@ Protocol `2026-11-28.8` · 115 methods
 | `sessions.create` | command | unary | replayResponse | none | none | — | — | `plugin_unavailable`, `plugin_stale`, `workspace_unavailable`, `project_not_found` |
 | `sessions.update` | command | unary | replayResponse | none | none | — | `relocate`, `isolation` | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `revision_conflict`, `workspace_unavailable`, `project_not_found`, `session_busy`, `capability_not_negotiated` |
 | `sessions.delete` | command | unary | replayResponse | none | none | — | — | `session_not_found` |
-| `sessions.fork` | command | unary | replayResponse | none | none | — | — | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `run_not_found`, `revision_conflict` |
+| `sessions.fork.preview` | query | unary | none | none | none | — | `git` | `session_not_found`, `run_not_found`, `workspace_unavailable`, `revision_conflict`, `vcs_unavailable`, `capability_not_negotiated` |
+| `sessions.fork` | command | unary | replayResponse | none | none | — | `git` | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `run_not_found`, `revision_conflict`, `session_busy`, `workspace_unavailable`, `vcs_unavailable`, `capability_not_negotiated` |
 | `sessions.rollback` | command | unary | requiredReplayResponse | none | none | — | `checkpoints` | `session_not_found`, `run_not_found`, `session_busy`, `revision_conflict`, `checkpoint_unavailable`, `checkpoint_conflict`, `capability_not_negotiated` |
 | `sessions.export` | query | unary | none | none | none | — | `sessionExport` | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `session_busy`, `export_too_large`, `capability_not_negotiated` |
 | `sessions.import` | command | unary | replayResponse | none | none | — | `sessionExport` | `session_busy`, `export_too_large`, `workspace_unavailable`, `capability_not_negotiated` |
@@ -622,6 +623,13 @@ TypeScript validator from this single registry projection.
 | `ExportSessionRequest` | `sessionId` | `nonEmpty` |
 | `ExportSessionRequest` | `sessionId` | `identity` |
 | `ExportSessionRequest` | `sessionId` | `maxLength(256)` |
+| `PreviewSessionForkRequest` | `sessionId` | `nonEmpty` |
+| `PreviewSessionForkRequest` | `sessionId` | `identity` |
+| `PreviewSessionForkRequest` | `sessionId` | `maxLength(256)` |
+| `PreviewSessionForkRequest` | `fromRunId` | `identity` |
+| `PreviewSessionForkRequest` | `fromRunId` | `maxLength(256)` |
+| `ForkWorktreeConfirmation` | `id` | `pattern("^[0-9a-f]{32}$")` |
+| `ForkWorktreeConfirmation` | `digest` | `pattern("^[0-9a-f]{64}$")` |
 | `ForkSessionRequest` | `sessionId` | `nonEmpty` |
 | `ForkSessionRequest` | `sessionId` | `identity` |
 | `ForkSessionRequest` | `sessionId` | `maxLength(256)` |
@@ -1344,6 +1352,8 @@ available. Refusal is `capability_not_negotiated` — never a silent downgrade.
 | `sessions.snapshot` | `includeDescendants` == `true` | `childRuns` |
 | `sessions.update` | `workspace` present | `relocate` |
 | `sessions.update` | `isolated` present | `isolation` |
+| `sessions.fork.preview` | always | `git` |
+| `sessions.fork` | `worktree` present | `git` |
 | `sessions.rollback` | `restoreType` == `files` | `checkpoints` |
 | `sessions.rollback` | `restoreType` == `both` | `checkpoints` |
 | `sessions.export` | always | `sessionExport` |

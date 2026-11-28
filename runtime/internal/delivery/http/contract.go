@@ -20,6 +20,7 @@ const (
 	headerRequestID            = "Request-Id"
 	headerServer               = "X-Server"
 	headerMethod               = "X-Method"
+	headerRuntimeStore         = "X-Flame-Runtime-Store"
 )
 
 const (
@@ -40,6 +41,7 @@ func requestHeaders() []string {
 		headerIdempotencyNamespace,
 		headerLastEventID,
 		headerMethod,
+		headerRuntimeStore,
 	}
 }
 
@@ -98,6 +100,7 @@ type HeaderSpec struct {
 	RequestID            string
 	Server               string
 	Method               string
+	RuntimeStore         string
 }
 
 type ContractSpec struct {
@@ -178,7 +181,7 @@ func Contract() ContractSpec {
 			Authorization: headerAuthorization, ContentType: headerContentType,
 			IdempotencyKey: headerIdempotencyKey, IdempotencyNamespace: headerIdempotencyNamespace,
 			LastEventID: headerLastEventID, RequestID: headerRequestID,
-			Server: headerServer, Method: headerMethod,
+			Server: headerServer, Method: headerMethod, RuntimeStore: headerRuntimeStore,
 		},
 		Endpoints: make([]EndpointSpec, len(endpointRegistry.Endpoints)),
 		Enums:     make([]EnumSpec, len(endpointRegistry.Enums)),

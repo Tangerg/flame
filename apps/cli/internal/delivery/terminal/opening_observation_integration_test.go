@@ -4,11 +4,13 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/adapter/runtimebinding"
+	"github.com/Tangerg/flame/apps/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
@@ -59,7 +61,6 @@ func TestTerminalRecoversAnAcceptedRunAfterInvalidOpeningObservation(t *testing.
 		starts:        make(chan authoring.CommandID, 8),
 		cancellations: make(chan string, 8),
 		accepted:      make(chan protocol.RunAcceptance, 8),
-		finished:      make(chan conversation.Run, 1),
 	}
 	host, stop, store := runUIFromConfig(t, Config{
 		Runtime: backend, RuntimeProfile: &profile, Workspace: workspace,
@@ -76,29 +77,24 @@ func TestTerminalRecoversAnAcceptedRunAfterInvalidOpeningObservation(t *testing.
 	if !host.Type(runtimefixture.DelegateApprovalProbe) || !host.Press(input.Enter) {
 		t.Fatal("terminal refused the prompt")
 	}
-	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
-	defer cancel()
+	acceptance, cancelAcceptance := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancelAcceptance()
 	var accepted protocol.RunAcceptance
 	select {
 	case accepted = <-backend.accepted:
 	case id := <-backend.cancellations:
 		t.Fatalf("opening observation canceled the accepted Run %s", id)
-	case <-ctx.Done():
-		t.Fatal("terminal neither reconciled nor canceled the original Run: ", context.Cause(ctx))
+	case <-acceptance.Done():
+		t.Fatal("terminal did not reconcile the original Run: ", context.Cause(acceptance))
 	}
+	cancelAcceptance()
 	release()
 	host.Shows(t, "Tool approval")
-	if !host.Press(input.Enter) {
-		t.Fatal("terminal refused the approval")
-	}
-	select {
-	case finished := <-backend.finished:
-		if finished.ID != accepted.RunID || finished.Outcome.Status != protocol.OutcomeCompleted {
-			t.Fatalf("observed terminal Run = %+v, receipt = %+v", finished, accepted)
+	waitForApprovedOpeningRun(t, connection, accepted.RunID, func() {
+		if !host.Press(input.Enter) {
+			t.Fatal("terminal refused the approval")
 		}
-	case <-ctx.Done():
-		t.Fatal("accepted Run did not finish: ", context.Cause(ctx))
-	}
+	})
 	host.Shows(t, "root complete")
 	select {
 	case id := <-backend.cancellations:
@@ -122,12 +118,41 @@ func TestTerminalRecoversAnAcceptedRunAfterInvalidOpeningObservation(t *testing.
 	}
 }
 
+func waitForApprovedOpeningRun(t *testing.T, connection *runtimebinding.Connection, runID string, approve func()) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+	changes, err := connection.Subscribe(ctx, changefeed.Subscription{Topics: []protocol.RuntimeTopic{protocol.TopicRunsChanged}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	approve()
+	for event, err := range changes {
+		if err != nil {
+			t.Fatalf("observing accepted Run %s: %v", runID, err)
+		}
+		if event.Type != protocol.RuntimeResync && !slices.Contains(event.RunIDs, runID) {
+			continue
+		}
+		run, err := connection.GetRun(ctx, runID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if run.Status == protocol.RunStatusFinished {
+			if run.Outcome.Status != protocol.OutcomeCompleted {
+				t.Fatalf("accepted Run did not complete: %+v", run)
+			}
+			return
+		}
+	}
+	t.Fatalf("did not observe completion of accepted Run %s: %v", runID, context.Cause(ctx))
+}
+
 type openingObservationFault struct {
 	*runtimebinding.Connection
 	starts        chan authoring.CommandID
 	cancellations chan string
 	accepted      chan protocol.RunAcceptance
-	finished      chan conversation.Run
 }
 
 func (o *openingObservationFault) StartRun(ctx context.Context, request authoring.StartRun) (conversation.SegmentStream, error) {
@@ -145,26 +170,6 @@ func (o *openingObservationFault) GetRunAcceptance(ctx context.Context, request 
 		o.accepted <- receipt
 	}
 	return receipt, err
-}
-
-func (o *openingObservationFault) ResumeRun(ctx context.Context, request conversation.ResumeRun) (conversation.SegmentStream, error) {
-	stream, err := o.Connection.ResumeRun(ctx, request)
-	if err != nil {
-		return stream, err
-	}
-	events := stream.Events
-	stream.Events = func(yield func(conversation.RunEvent, error) bool) {
-		for event, err := range events {
-			keep := yield(event, err)
-			if end, ok := event.Event.(conversation.SegmentFinished); ok && event.RunID == request.RunID && end.Run.Status == protocol.RunStatusFinished {
-				o.finished <- end.Run
-			}
-			if !keep {
-				return
-			}
-		}
-	}
-	return stream, nil
 }
 
 func (o *openingObservationFault) CancelRun(ctx context.Context, request conversation.CancelRun) (conversation.RunCancellation, error) {

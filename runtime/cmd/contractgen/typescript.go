@@ -113,6 +113,7 @@ func (t *tsEmitter) httpHeaders() {
 	t.line("  requestId: %s,", wiregen.Literal(headers.RequestID))
 	t.line("  server: %s,", wiregen.Literal(headers.Server))
 	t.line("  method: %s,", wiregen.Literal(headers.Method))
+	t.line("  runtimeStore: %s,", wiregen.Literal(headers.RuntimeStore))
 	t.line("} as const;")
 	t.line("")
 }

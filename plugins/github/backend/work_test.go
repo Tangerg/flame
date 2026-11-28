@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/backend"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	rpc "github.com/Tangerg/flame/plugins/github/internal/contract"
 	"github.com/Tangerg/flame/plugins/github/internal/wire"
@@ -29,6 +30,21 @@ const reviewFixtureDatabase = "FLAME_TEST_GITHUB_REVIEW_DATABASE"
 const reviewFixtureGitOrigin = "FLAME_TEST_GITHUB_REVIEW_GIT_ORIGIN"
 
 func TestMain(tests *testing.M) {
+	if endpoint := os.Getenv("FLAME_TEST_GITHUB_ISSUE_ENDPOINT"); endpoint != "" {
+		backend.Main("github", func(ctx context.Context, data string) error {
+			address, err := url.Parse(endpoint)
+			if err != nil {
+				return err
+			}
+			transport := roundTrip(func(request *http.Request) (*http.Response, error) {
+				request = request.Clone(request.Context())
+				request.URL.Scheme, request.URL.Host = address.Scheme, address.Host
+				return http.DefaultTransport.RoundTrip(request)
+			})
+			return serveGitHub(ctx, data, transport, os.Getenv("FLAME_TEST_GITHUB_ISSUE_GIT_ORIGIN"))
+		})
+		os.Exit(0)
+	}
 	if endpoint := os.Getenv(reviewFixture); endpoint != "" {
 		if err := runReviewFixture(endpoint, os.Getenv(reviewFixtureDatabase)); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -72,7 +88,7 @@ func runReviewFixture(endpoint, database string) error {
 		if connector.webhook.port != 0 {
 			interval = time.Hour
 		}
-		background, err := connector.reviewBackground(ctx, interval, func(ctx context.Context) error {
+		background, err := connector.reviewBackground(ctx, interval, nil, func(ctx context.Context) error {
 			request, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint+"/review-notice", nil)
 			if err != nil {
 				return err

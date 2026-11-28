@@ -1,8 +1,4 @@
-import {
-  callPluginCommand,
-  pluginCommandRecovery,
-  type PluginCommand,
-} from "./pluginCommand";
+import { callPluginCommand, pluginCommandRecovery, type PluginCommand } from "./pluginCommand";
 import { callPluginStream, queryPluginStream } from "./pluginStream";
 import type {
   OpenPluginBrowserRealmRequest,
@@ -68,6 +64,8 @@ import type {
   FileContent,
   FileListPage,
   ForkSessionRequest,
+  PreviewSessionForkRequest,
+  SessionForkPreview,
   GetDiffRequest,
   HooksListResult,
   ImportSessionResponse,
@@ -145,7 +143,12 @@ import { streamRuntimeEvents } from "./stream";
 import { createRuntimeEventFeed } from "./runtimeEventFeed";
 import type { AutoPagingPromise } from "./pagination";
 import { RUNTIME_SUBSCRIBE_METHOD } from "./transport";
-import type { PluginCommandInput, PluginCommandBinding, PluginCommandChange, MutationJournal } from "./mutationJournal";
+import type {
+  PluginCommandInput,
+  PluginCommandBinding,
+  PluginCommandChange,
+  MutationJournal,
+} from "./mutationJournal";
 import {
   APPLY_WORKTREE_HANDOFF,
   RELEASE_TASK_WORKTREE,
@@ -215,6 +218,10 @@ export interface Methods {
     create: (params?: CreateSessionRequest, signal?: AbortSignal) => MutationPromise<Session>;
     update: (params: UpdateSessionRequest) => MutationPromise<Session>;
     delete: (sessionId: SessionId) => MutationPromise<void>;
+    previewFork: (
+      params: PreviewSessionForkRequest,
+      signal?: AbortSignal,
+    ) => Promise<SessionForkPreview>;
     fork: (params: ForkSessionRequest) => MutationPromise<Session>;
     rollback: (params: RollbackSessionRequest) => MutationPromise<RollbackSessionResponse>;
     export: (
@@ -534,6 +541,7 @@ export function createMethods(
       create: (params, signal) => call("sessions.create", params ?? {}, { signal }),
       update: (params) => call("sessions.update", params),
       delete: (sessionId) => call("sessions.delete", { sessionId }),
+      previewFork: (params, signal) => call("sessions.fork.preview", params, { signal }),
       fork: (params) => call("sessions.fork", params),
       rollback: (params) => call("sessions.rollback", params),
       export: (sessionId, format, signal) =>

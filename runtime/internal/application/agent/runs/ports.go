@@ -188,6 +188,7 @@ type RootExecutionStart struct {
 	WorkspaceCWD             string
 	Project                  identity.ProjectID
 	Isolated                 bool
+	ToolProfile              tool.Profile
 	ModelSelection           flamemodel.Selection
 	Options                  *corechat.Options
 	WorkingContext           []corechat.Message

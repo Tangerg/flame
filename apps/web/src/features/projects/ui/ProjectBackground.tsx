@@ -17,7 +17,7 @@ import { useWorkspace } from "@/features/workspace/public/workspace";
 import { useWorkspaceViews } from "@/features/workspace/public/views";
 import { useProjectsAccess } from "@/features/projects/application/projectsContext";
 import { type ProjectSummary } from "@/features/projects/application/projectQueries";
-import { useT } from "@/lib/i18n/index";
+import { labelText, useT } from "@/lib/i18n/index";
 import { rpcErrorText } from "@/lib/rpcErrors";
 import { SystemMessage } from "@/ui/atoms/system-message";
 
@@ -31,7 +31,11 @@ export function ProjectBackground({
   const t = useT();
   const access = useProjectsAccess();
   const workspace = useWorkspace();
-  const review = useWorkspaceViews().find((view) => view.material === "project-pr-reviews");
+  const views = useWorkspaceViews();
+  const review = views.find((view) => view.material === "project-pr-reviews");
+  const deliveries = views.find((view) => view.material === "project-issue-deliveries");
+  const team = views.find((view) => view.material === "project-team");
+  const methods = views.find((view) => view.material === "project-methods");
   const activity = useQuery({
     queryKey: ["project-background", project.id],
     queryFn: ({ signal }) => access.background.get(project.id, signal),
@@ -67,6 +71,36 @@ export function ProjectBackground({
         </SystemMessage>
       )}
       {error && <SystemMessage variant="error">{error}</SystemMessage>}
+      {deliveries && (
+        <Button
+          size="sm"
+          onClick={(event) =>
+            workspace.navigation.openViewInDock(deliveries.id, event.currentTarget, project.id)
+          }
+        >
+          {labelText(deliveries.title)}
+        </Button>
+      )}
+      {team && (
+        <Button
+          size="sm"
+          onClick={(event) =>
+            workspace.navigation.openViewInDock(team.id, event.currentTarget, project.id)
+          }
+        >
+          {labelText(team.title)}
+        </Button>
+      )}
+      {methods && (
+        <Button
+          size="sm"
+          onClick={(event) =>
+            workspace.navigation.openViewInDock(methods.id, event.currentTarget, project.id)
+          }
+        >
+          {labelText(methods.title)}
+        </Button>
+      )}
       {data && (
         <>
           <Metadata>

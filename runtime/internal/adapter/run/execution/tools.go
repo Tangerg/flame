@@ -20,7 +20,7 @@ import (
 // transfers manifest resource ownership to this execution, even if assembly later
 // fails.
 type interactionToolResolver interface {
-	Manifest(ctx context.Context, group tool.Group, retained *toolset.Retained) (toolset.Manifest, error)
+	Manifest(ctx context.Context, group tool.Group, retained *toolset.Retained, profile tool.Profile) (toolset.Manifest, error)
 }
 
 type interactionToolInterpreter interface {

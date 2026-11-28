@@ -98,6 +98,10 @@ func (e *Endpoint) InvokeWire(ctx context.Context, name Name, encoded []byte, op
 	})
 }
 
+func (e *Endpoint) StoreNamespace() string {
+	return e.idempotencyNamespace.String()
+}
+
 func (e *Endpoint) invoke(ctx context.Context, name Name, options protocol.CallMetadata, admit func(MethodMeta) (admittedParameters, *protocol.Failure)) protocol.OperationResult {
 	if err := e.validateStorage(); err != nil {
 		return failed(projectError(err))

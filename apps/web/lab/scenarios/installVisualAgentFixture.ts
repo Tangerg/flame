@@ -135,6 +135,9 @@ function visualAgentRuntimeGateway(
         ...(project ? { projectId: project.type === "set" ? project.projectId : undefined } : {}),
       });
     },
+    previewSessionFork: async () => {
+      throw new Error("The visual fixture has no repository checkout");
+    },
     forkSession: async ({ sessionId }) => {
       const session = sessions.get(sessionId);
       if (!session) throw new Error("Visual Session is unavailable");

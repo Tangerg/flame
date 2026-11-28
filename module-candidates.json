@@ -440,6 +440,14 @@
     "v0.1.102-dev.20261128.tf3e684d7aad0": {
       "tree": "f3e684d7aad0fc1acdfabef8883c6591d9750481",
       "time": "2026-11-28T06:36:58Z"
+    },
+    "v0.1.93-dev.20261128.t657705d92eab": {
+      "tree": "657705d92eab1cf338794d05c7476d09694086f3",
+      "time": "2026-11-28T02:31:43Z"
+    },
+    "v0.1.103-dev.20261128.te2a94f77b7d8": {
+      "tree": "e2a94f77b7d8f95e28f58b6d9801b09994aefdfa",
+      "time": "2026-11-28T06:44:39Z"
     }
   },
   "github.com/Tangerg/flame/plugins": {
@@ -1330,6 +1338,42 @@
     "v0.1.230-dev.20261128.tbeffe7b04ac5": {
       "tree": "beffe7b04ac5dc56b6035f40e42e8f197b690253",
       "time": "2026-11-28T07:00:50Z"
+    },
+    "v0.1.187-dev.20261127.t2323da7397c8": {
+      "tree": "2323da7397c8caeec9d2a2c7c205a50c01844e8e",
+      "time": "2026-11-27T23:10:52Z"
+    },
+    "v0.1.188-dev.20261127.t344c5910975f": {
+      "tree": "344c5910975fb061b8bf956be50eb7b995c570d8",
+      "time": "2026-11-27T23:50:07Z"
+    },
+    "v0.1.194-dev.20261128.t6ae75e0d8c9f": {
+      "tree": "6ae75e0d8c9ff28401f638bf2a8f19e6cdf9b0e4",
+      "time": "2026-11-28T01:41:09Z"
+    },
+    "v0.1.195-dev.20261128.t786cf5e40792": {
+      "tree": "786cf5e4079263dbaa62c2f73f747118cc684e50",
+      "time": "2026-11-28T01:58:01Z"
+    },
+    "v0.1.196-dev.20261128.t3dd02a4bc0ba": {
+      "tree": "3dd02a4bc0ba3d183fc8543dc4c7a27194f34c36",
+      "time": "2026-11-28T02:19:26Z"
+    },
+    "v0.1.197-dev.20261128.t2b3faed967d4": {
+      "tree": "2b3faed967d455d212f07b3a90b6104efc7c4410",
+      "time": "2026-11-28T02:31:44Z"
+    },
+    "v0.1.198-dev.20261128.t1ca403bb5f8b": {
+      "tree": "1ca403bb5f8b1492dfa8a1eaa7361e7e0c92df83",
+      "time": "2026-11-28T02:38:19Z"
+    },
+    "v0.1.199-dev.20261128.t83d8efbe259a": {
+      "tree": "83d8efbe259a04117bc7bdec72160f30d869e347",
+      "time": "2026-11-28T02:43:24Z"
+    },
+    "v0.1.231-dev.20261128.t803c2b6c7cab": {
+      "tree": "803c2b6c7cabe79fdd76c6a9c624085a929d3b8a",
+      "time": "2026-11-28T07:21:53Z"
     }
   },
   "github.com/Tangerg/flame/apps/cli": {

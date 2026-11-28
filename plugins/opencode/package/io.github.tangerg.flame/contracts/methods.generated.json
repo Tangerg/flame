@@ -1,11 +1,27 @@
 [
   {
+    "name": "flame.opencode/agents.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "List the approved ACP agent profiles on the Runtime machine.",
+    "input": "schema.json#/$defs/AgentsV1Input",
+    "output": "schema.json#/$defs/AgentsV1Output"
+  },
+  {
     "name": "flame.opencode/cancel.v1",
     "kind": "command",
     "target": "installation",
     "description": "Request cancellation of the original prompt and await its stop reason.",
     "input": "schema.json#/$defs/CancelV1Input",
     "output": "schema.json#/$defs/CancelV1Output"
+  },
+  {
+    "name": "flame.opencode/create.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Create one native ACP session and retain its original acknowledgement.",
+    "input": "schema.json#/$defs/CreateV1Input",
+    "output": "schema.json#/$defs/CreateV1Output"
   },
   {
     "name": "flame.opencode/fork.v1",
@@ -35,7 +51,7 @@
     "name": "flame.opencode/open.v1",
     "kind": "command",
     "target": "installation",
-    "description": "Load the original OpenCode session and its history.",
+    "description": "Restore the original native session through an advertised ACP operation.",
     "input": "schema.json#/$defs/OpenV1Input",
     "output": "schema.json#/$defs/OpenV1Output"
   },

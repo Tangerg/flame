@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
 	"github.com/Tangerg/flame/plugins/github/internal/wire"
 )
 
@@ -42,23 +43,29 @@ func (c *connector) configureReview() error {
 		return nil
 	}
 	value, err := strconv.Atoi(port)
-	if err != nil || value < 1 || value > 65535 || strings.TrimSpace(secret) == "" || len(secret) > maxTokenBytes {
+	shared := os.Getenv(teamOriginEnv) != "" || os.Getenv(intakeEnv) != ""
+	if err != nil || value < 1 || value > 65535 || (strings.TrimSpace(secret) == "" && !shared) || len(secret) > maxTokenBytes {
 		return errors.New("github: webhook requires a loopback port and a nonempty signing secret")
 	}
 	c.webhook = reviewWebhook{port: value, secret: secret}
 	return nil
 }
 
-func (c *connector) startReviewWebhook(ctx context.Context) (func() error, error) {
+func (c *connector) startReviewWebhook(ctx context.Context, host *runtimeclient.Client) (func() error, error) {
 	if c.webhook.port == 0 {
 		return nil, nil
+	}
+	mux := http.NewServeMux()
+	if c.webhook.secret != "" {
+		mux.HandleFunc("POST "+reviewWebhookPath, c.receiveReviewWebhook)
+	}
+	if err := c.registerTeamHTTP(mux, host); err != nil {
+		return nil, err
 	}
 	listener, err := new(net.ListenConfig).Listen(ctx, "tcp4", net.JoinHostPort("127.0.0.1", strconv.Itoa(c.webhook.port)))
 	if err != nil {
 		return nil, err
 	}
-	mux := http.NewServeMux()
-	mux.HandleFunc("POST "+reviewWebhookPath, c.receiveReviewWebhook)
 	server := &http.Server{
 		Handler:           mux,
 		BaseContext:       func(net.Listener) context.Context { return ctx },
@@ -124,7 +131,12 @@ func (c *connector) receiveReviewWebhook(w http.ResponseWriter, r *http.Request)
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	if r.Header.Get("X-GitHub-Event") != "pull_request" {
+	eventKind := r.Header.Get("X-GitHub-Event")
+	if eventKind == "issues" {
+		c.receiveIssueDelivery(w, r, raw)
+		return
+	}
+	if eventKind != "pull_request" {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}

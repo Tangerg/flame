@@ -186,9 +186,13 @@ func (s *SessionStores) ApplyFork(ctx context.Context, fork sessions.ForkPlan) e
 		if err != nil {
 			return err
 		}
-		// The committed parent must still protect the inherited checkout from release.
-		if parent.Workspace() != child.Workspace() {
+		if !fork.ParentMatches(parent) {
 			return session.ErrRevisionConflict
+		}
+		if existing, err := s.sessions.Get(ctx, child.ID()); err == nil && !existing.ID().IsZero() {
+			return session.ErrRevisionConflict
+		} else if err != nil && !errors.Is(err, session.ErrNotFound) {
+			return err
 		}
 		if err := s.sessions.Insert(ctx, child); err != nil {
 			return err

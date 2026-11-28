@@ -69,6 +69,7 @@ func (i *interactionSession) captureCheckpointPayload(
 		instructions = []corechat.Message{}
 	}
 	wire := interactionCheckpointPayloadWire{
+		ToolProfile:      i.start.ToolProfile,
 		ToolProposals:    new(contributionBindingsWire(i.toolProposals)),
 		ModelObservers:   new(contributionBindingsWire(i.modelObservers)),
 		ModelContexts:    new(contributionBindingsWire(i.modelContexts)),

@@ -10,7 +10,11 @@ import (
 )
 
 func run(ctx context.Context, data string) (err error) {
-	connector, err := openConnector(ctx, data, os.Getenv("OPENCODE_EXECUTABLE"))
+	profiles, err := readAgents(os.Getenv("OPENCODE_EXECUTABLE"), os.Getenv("FLAME_ACP_AGENTS"))
+	if err != nil {
+		return err
+	}
+	connector, err := openConnector(ctx, data, profiles)
 	if err != nil {
 		return err
 	}

@@ -102,6 +102,7 @@ export type WireTypeName =
   | "FileStatus"
   | "ForgetApprovalRuleRequest"
   | "ForkSessionRequest"
+  | "ForkWorktreeConfirmation"
   | "GenerationParams"
   | "GetDiffRequest"
   | "GetGoalRequest"
@@ -307,6 +308,7 @@ export type WireTypeName =
   | "PluginThemeScheme"
   | "PluginValueChange"
   | "PluginValueChangeType"
+  | "PreviewSessionForkRequest"
   | "ProblemData"
   | "Project"
   | "ProjectBackgroundActivity"
@@ -387,6 +389,7 @@ export type WireTypeName =
   | "Session"
   | "SessionAnnotation"
   | "SessionArtifact"
+  | "SessionForkPreview"
   | "SessionProjectChange"
   | "SessionProjectChangeType"
   | "SessionSnapshot"
@@ -1316,7 +1319,12 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     fromRunId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     title: text(),
+    worktree: ref(() => CHECKS.ForkWorktreeConfirmation),
   }, ["sessionId"]),
+  ForkWorktreeConfirmation: object({
+    digest: allOf([text(), pattern("^[0-9a-f]{64}$")]),
+    id: allOf([text(), pattern("^[0-9a-f]{32}$")]),
+  }, ["digest", "id"]),
   GenerationParams: object({
     maxTokens: allOf([integer(), minimum("1")]),
     stop: allOf([array(text()), minItems(1), uniqueItems()]),
@@ -3237,6 +3245,10 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ]),
   ]),
   PluginValueChangeType: enumOf(["set", "clear"]),
+  PreviewSessionForkRequest: object({
+    fromRunId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+  }, ["sessionId"]),
   ProblemData: allOf([
     object({
       activeRun: ref(() => CHECKS.ActiveRunRef),
@@ -4428,6 +4440,16 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     toolResults: array(ref(() => CHECKS.ArtifactToolResult)),
     version: allOf([integer(), minimum("32"), maximum("32")]),
   }, ["items", "messages", "runs", "session", "toolResults", "version"]),
+  SessionForkPreview: object({
+    destination: ref(() => CHECKS.WorkspaceRef),
+    fromRunId: text(),
+    head: text(),
+    messages: integer(),
+    patch: text(),
+    runs: integer(),
+    source: ref(() => CHECKS.WorkspaceRef),
+    worktree: ref(() => CHECKS.ForkWorktreeConfirmation),
+  }, ["destination", "head", "messages", "patch", "runs", "source", "worktree"]),
   SessionProjectChange: allOf([
     object({
       projectId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
@@ -5128,6 +5150,7 @@ const METHOD_PARAMS: Record<WireMethodName, WireCheck> = {
   "sessions.create": ref(() => CHECKS.CreateSessionRequest),
   "sessions.update": ref(() => CHECKS.UpdateSessionRequest),
   "sessions.delete": ref(() => CHECKS.DeleteSessionRequest),
+  "sessions.fork.preview": ref(() => CHECKS.PreviewSessionForkRequest),
   "sessions.fork": ref(() => CHECKS.ForkSessionRequest),
   "sessions.rollback": ref(() => CHECKS.RollbackSessionRequest),
   "sessions.export": ref(() => CHECKS.ExportSessionRequest),
@@ -5253,6 +5276,7 @@ const METHOD_RESULTS: Record<WireMethodName, WireCheck> = {
   "sessions.create": ref(() => CHECKS.Session),
   "sessions.update": ref(() => CHECKS.Session),
   "sessions.delete": object({}, []),
+  "sessions.fork.preview": ref(() => CHECKS.SessionForkPreview),
   "sessions.fork": ref(() => CHECKS.Session),
   "sessions.rollback": ref(() => CHECKS.RollbackSessionResponse),
   "sessions.export": ref(() => CHECKS.ExportSessionResponse),

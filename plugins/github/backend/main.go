@@ -14,6 +14,12 @@ import (
 )
 
 func run(ctx context.Context, data string) (err error) {
+	transport := newGitHubTransport()
+	defer transport.CloseIdleConnections()
+	return serveGitHub(ctx, data, transport, "")
+}
+
+func serveGitHub(ctx context.Context, data string, transport http.RoundTripper, gitOrigin string) (err error) {
 	var configured *string
 	if value, present := os.LookupEnv("GITHUB_TOKEN"); present {
 		configured = &value
@@ -27,14 +33,24 @@ func run(ctx context.Context, data string) (err error) {
 		return err
 	}
 	defer func() { err = errors.Join(err, store.db.Close()) }()
-	transport := newGitHubTransport()
-	defer transport.CloseIdleConnections()
 	connector, err := newConnector(store, transport, credential)
 	if err != nil {
 		return err
 	}
+	if gitOrigin != "" {
+		connector.reviewGit.origin = gitOrigin
+	}
 	if err := connector.configureReview(); err != nil {
 		return err
+	}
+	if err := connector.configureIssueDelivery(); err != nil {
+		return err
+	}
+	if err := connector.configureTeam(); err != nil {
+		return err
+	}
+	if connector.webhook.port == 0 && (connector.teamPolicy != nil || connector.intakePolicy != nil) {
+		return errors.New("github: team and intake routes require a loopback webhook port")
 	}
 	server, operations, err := newServer(connector)
 	if err != nil {

@@ -1,0 +1,840 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "ApproveInput": {
+      "additionalProperties": false,
+      "properties": {
+        "decision": {
+          "type": "string"
+        },
+        "digest": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "projectId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "projectId",
+        "id",
+        "digest"
+      ],
+      "type": "object"
+    },
+    "ApproveV1Input": {
+      "$ref": "#/$defs/ApproveInput"
+    },
+    "ApproveV1Output": {
+      "$ref": "#/$defs/ApproveV1OutputWireExecution"
+    },
+    "ApproveV1OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "ApproveV1OutputWireDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "$ref": "#/$defs/ApproveV1OutputInstantTimestamp"
+        },
+        "digest": {
+          "type": "string"
+        },
+        "disposition": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "digest",
+        "at"
+      ],
+      "type": "object"
+    },
+    "ApproveV1OutputWireExecution": {
+      "additionalProperties": false,
+      "properties": {
+        "base": {
+          "type": "string"
+        },
+        "change": {
+          "$ref": "#/$defs/ApproveV1OutputWireRun"
+        },
+        "checks": {
+          "items": {
+            "$ref": "#/$defs/ApproveV1OutputWireReview"
+          },
+          "type": "array"
+        },
+        "decision": {
+          "$ref": "#/$defs/ApproveV1OutputWireDecision"
+        },
+        "digest": {
+          "type": "string"
+        },
+        "handoff": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "patch": {
+          "type": "string"
+        },
+        "projectId": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "review": {
+          "$ref": "#/$defs/ApproveV1OutputWireRun"
+        },
+        "state": {
+          "type": "string"
+        },
+        "version": {
+          "$ref": "#/$defs/ApproveV1OutputWireVersion"
+        },
+        "workspace": {
+          "type": "string"
+        },
+        "worktreeId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "projectId",
+        "version",
+        "workspace",
+        "worktreeId",
+        "base",
+        "state",
+        "checks"
+      ],
+      "type": "object"
+    },
+    "ApproveV1OutputWireReview": {
+      "additionalProperties": false,
+      "properties": {
+        "result": {
+          "type": "string"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "slot",
+        "runId",
+        "status"
+      ],
+      "type": "object"
+    },
+    "ApproveV1OutputWireRun": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "sessionId"
+      ],
+      "type": "object"
+    },
+    "ApproveV1OutputWireVersion": {
+      "additionalProperties": false,
+      "properties": {
+        "change": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "reviewA": {
+          "type": "string"
+        },
+        "reviewB": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "change",
+        "reviewA",
+        "reviewB",
+        "provider",
+        "model",
+        "id"
+      ],
+      "type": "object"
+    },
+    "Board": {
+      "additionalProperties": false,
+      "properties": {
+        "executions": {
+          "items": {
+            "$ref": "#/$defs/BoardV1OutputWireExecution"
+          },
+          "type": "array"
+        },
+        "latest": {
+          "$ref": "#/$defs/BoardV1OutputWireVersion"
+        }
+      },
+      "required": [
+        "executions"
+      ],
+      "type": "object"
+    },
+    "BoardV1Input": {
+      "$ref": "#/$defs/ProjectInput"
+    },
+    "BoardV1Output": {
+      "$ref": "#/$defs/Board"
+    },
+    "BoardV1OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "BoardV1OutputWireDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "$ref": "#/$defs/BoardV1OutputInstantTimestamp"
+        },
+        "digest": {
+          "type": "string"
+        },
+        "disposition": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "digest",
+        "at"
+      ],
+      "type": "object"
+    },
+    "BoardV1OutputWireExecution": {
+      "additionalProperties": false,
+      "properties": {
+        "base": {
+          "type": "string"
+        },
+        "change": {
+          "$ref": "#/$defs/BoardV1OutputWireRun"
+        },
+        "checks": {
+          "items": {
+            "$ref": "#/$defs/BoardV1OutputWireReview"
+          },
+          "type": "array"
+        },
+        "decision": {
+          "$ref": "#/$defs/BoardV1OutputWireDecision"
+        },
+        "digest": {
+          "type": "string"
+        },
+        "handoff": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "patch": {
+          "type": "string"
+        },
+        "projectId": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "review": {
+          "$ref": "#/$defs/BoardV1OutputWireRun"
+        },
+        "state": {
+          "type": "string"
+        },
+        "version": {
+          "$ref": "#/$defs/BoardV1OutputWireVersion"
+        },
+        "workspace": {
+          "type": "string"
+        },
+        "worktreeId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "projectId",
+        "version",
+        "workspace",
+        "worktreeId",
+        "base",
+        "state",
+        "checks"
+      ],
+      "type": "object"
+    },
+    "BoardV1OutputWireReview": {
+      "additionalProperties": false,
+      "properties": {
+        "result": {
+          "type": "string"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "slot",
+        "runId",
+        "status"
+      ],
+      "type": "object"
+    },
+    "BoardV1OutputWireRun": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "sessionId"
+      ],
+      "type": "object"
+    },
+    "BoardV1OutputWireVersion": {
+      "additionalProperties": false,
+      "properties": {
+        "change": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "reviewA": {
+          "type": "string"
+        },
+        "reviewB": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "change",
+        "reviewA",
+        "reviewB",
+        "provider",
+        "model",
+        "id"
+      ],
+      "type": "object"
+    },
+    "ExecutionInput": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "projectId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "projectId",
+        "id"
+      ],
+      "type": "object"
+    },
+    "ExecutionV1Input": {
+      "$ref": "#/$defs/ExecutionInput"
+    },
+    "ExecutionV1Output": {
+      "$ref": "#/$defs/ExecutionV1OutputWireExecution"
+    },
+    "ExecutionV1OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "ExecutionV1OutputWireDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "$ref": "#/$defs/ExecutionV1OutputInstantTimestamp"
+        },
+        "digest": {
+          "type": "string"
+        },
+        "disposition": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "digest",
+        "at"
+      ],
+      "type": "object"
+    },
+    "ExecutionV1OutputWireExecution": {
+      "additionalProperties": false,
+      "properties": {
+        "base": {
+          "type": "string"
+        },
+        "change": {
+          "$ref": "#/$defs/ExecutionV1OutputWireRun"
+        },
+        "checks": {
+          "items": {
+            "$ref": "#/$defs/ExecutionV1OutputWireReview"
+          },
+          "type": "array"
+        },
+        "decision": {
+          "$ref": "#/$defs/ExecutionV1OutputWireDecision"
+        },
+        "digest": {
+          "type": "string"
+        },
+        "handoff": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "patch": {
+          "type": "string"
+        },
+        "projectId": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "review": {
+          "$ref": "#/$defs/ExecutionV1OutputWireRun"
+        },
+        "state": {
+          "type": "string"
+        },
+        "version": {
+          "$ref": "#/$defs/ExecutionV1OutputWireVersion"
+        },
+        "workspace": {
+          "type": "string"
+        },
+        "worktreeId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "projectId",
+        "version",
+        "workspace",
+        "worktreeId",
+        "base",
+        "state",
+        "checks"
+      ],
+      "type": "object"
+    },
+    "ExecutionV1OutputWireReview": {
+      "additionalProperties": false,
+      "properties": {
+        "result": {
+          "type": "string"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "slot",
+        "runId",
+        "status"
+      ],
+      "type": "object"
+    },
+    "ExecutionV1OutputWireRun": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "sessionId"
+      ],
+      "type": "object"
+    },
+    "ExecutionV1OutputWireVersion": {
+      "additionalProperties": false,
+      "properties": {
+        "change": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "reviewA": {
+          "type": "string"
+        },
+        "reviewB": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "change",
+        "reviewA",
+        "reviewB",
+        "provider",
+        "model",
+        "id"
+      ],
+      "type": "object"
+    },
+    "ProjectInput": {
+      "additionalProperties": false,
+      "properties": {
+        "projectId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "projectId"
+      ],
+      "type": "object"
+    },
+    "SaveInput": {
+      "additionalProperties": false,
+      "properties": {
+        "change": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "projectId": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "reviewA": {
+          "type": "string"
+        },
+        "reviewB": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "projectId",
+        "title",
+        "change",
+        "reviewA",
+        "reviewB",
+        "provider",
+        "model"
+      ],
+      "type": "object"
+    },
+    "SaveV1Input": {
+      "$ref": "#/$defs/SaveInput"
+    },
+    "SaveV1Output": {
+      "$ref": "#/$defs/SaveV1OutputWireVersion"
+    },
+    "SaveV1OutputWireVersion": {
+      "additionalProperties": false,
+      "properties": {
+        "change": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "reviewA": {
+          "type": "string"
+        },
+        "reviewB": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "change",
+        "reviewA",
+        "reviewB",
+        "provider",
+        "model",
+        "id"
+      ],
+      "type": "object"
+    },
+    "StartInput": {
+      "additionalProperties": false,
+      "properties": {
+        "projectId": {
+          "type": "string"
+        },
+        "versionId": {
+          "type": "string"
+        },
+        "worktreeId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "projectId",
+        "versionId",
+        "worktreeId"
+      ],
+      "type": "object"
+    },
+    "StartV1Input": {
+      "$ref": "#/$defs/StartInput"
+    },
+    "StartV1Output": {
+      "$ref": "#/$defs/StartV1OutputWireExecution"
+    },
+    "StartV1OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "StartV1OutputWireDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "$ref": "#/$defs/StartV1OutputInstantTimestamp"
+        },
+        "digest": {
+          "type": "string"
+        },
+        "disposition": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "digest",
+        "at"
+      ],
+      "type": "object"
+    },
+    "StartV1OutputWireExecution": {
+      "additionalProperties": false,
+      "properties": {
+        "base": {
+          "type": "string"
+        },
+        "change": {
+          "$ref": "#/$defs/StartV1OutputWireRun"
+        },
+        "checks": {
+          "items": {
+            "$ref": "#/$defs/StartV1OutputWireReview"
+          },
+          "type": "array"
+        },
+        "decision": {
+          "$ref": "#/$defs/StartV1OutputWireDecision"
+        },
+        "digest": {
+          "type": "string"
+        },
+        "handoff": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "patch": {
+          "type": "string"
+        },
+        "projectId": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "review": {
+          "$ref": "#/$defs/StartV1OutputWireRun"
+        },
+        "state": {
+          "type": "string"
+        },
+        "version": {
+          "$ref": "#/$defs/StartV1OutputWireVersion"
+        },
+        "workspace": {
+          "type": "string"
+        },
+        "worktreeId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "projectId",
+        "version",
+        "workspace",
+        "worktreeId",
+        "base",
+        "state",
+        "checks"
+      ],
+      "type": "object"
+    },
+    "StartV1OutputWireReview": {
+      "additionalProperties": false,
+      "properties": {
+        "result": {
+          "type": "string"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "slot",
+        "runId",
+        "status"
+      ],
+      "type": "object"
+    },
+    "StartV1OutputWireRun": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "sessionId"
+      ],
+      "type": "object"
+    },
+    "StartV1OutputWireVersion": {
+      "additionalProperties": false,
+      "properties": {
+        "change": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "reviewA": {
+          "type": "string"
+        },
+        "reviewB": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "change",
+        "reviewA",
+        "reviewB",
+        "provider",
+        "model",
+        "id"
+      ],
+      "type": "object"
+    }
+  }
+}

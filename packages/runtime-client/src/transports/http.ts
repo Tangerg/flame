@@ -87,6 +87,7 @@ function readRPCDocument(
 
 export interface HttpTransportConfig {
   baseUrl: string;
+  expectedRuntimeStore?: string;
   localToken?: string;
   fetch?: typeof fetch;
   maximumResponseBytes?: number;
@@ -103,7 +104,7 @@ function requireExactHeaderValues(headers: Record<string, string>): void {
 }
 
 export function createHttpTransport(config: HttpTransportConfig): Transport {
-  const { localToken, maximumEventStreamFrameBytes } = config;
+  const { localToken, expectedRuntimeStore, maximumEventStreamFrameBytes } = config;
   const documentLimit = responseDocumentLimit(config.maximumResponseBytes);
   const baseUrl = requireRuntimeEndpoint(config.baseUrl);
   if (localToken && !endpointAcceptsBearer(baseUrl))
@@ -281,6 +282,22 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
     };
     if (metadata.requestId) span.setAttribute("flame.request_id", metadata.requestId);
 
+    if (
+      res.ok &&
+      expectedRuntimeStore &&
+      res.headers.get(HTTP_HEADERS.runtimeStore) !== expectedRuntimeStore
+    ) {
+      return refuseResponse(
+        res,
+        span,
+        new RpcProtocolError(
+          "RPC response",
+          [{ path: "$", detail: "Runtime did not confirm the registered store" }],
+          metadata.requestId,
+        ),
+      );
+    }
+
     if (res.ok && res.status !== RPC_HTTP.callStatus) {
       const err = new RpcProtocolError(
         "RPC response",
@@ -324,6 +341,7 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
     if (options.idempotencyNamespace !== undefined) {
       headers[HTTP_HEADERS.idempotencyNamespace] = options.idempotencyNamespace;
     }
+    if (expectedRuntimeStore) headers[HTTP_HEADERS.runtimeStore] = expectedRuntimeStore;
     if (options.lastEventId) headers[HTTP_HEADERS.lastEventId] = options.lastEventId;
     requireExactHeaderValues(headers);
     return headers;

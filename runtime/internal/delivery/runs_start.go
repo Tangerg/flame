@@ -69,9 +69,26 @@ func (s *Handler) StartRun(ctx context.Context, in protocol.StartRunRequest) (*p
 	// preparation and its service calls must use their own authority.
 	opening, actor := operation.DetachActor(ctx)
 	if source := in.Background; source != nil {
-		if actor == nil || command.Acceptance == nil || actor.Server().String() != source.Kind ||
-			(source.Kind != "schedules" && source.Kind != "filewatch") {
+		server := source.Kind
+		switch source.Kind {
+		case "method-change", "method-review":
+			server = "methods"
+		case "schedules", "filewatch", "github":
+		default:
+			server = ""
+		}
+		if server == "" || actor == nil || command.Acceptance == nil || actor.Server().String() != server {
 			return nil, nil, protocol.NewFailure(protocol.ErrInvalidParams, "background events require an authenticated trigger and a command identity", nil)
+		}
+		if source.Kind == "github" || server == "methods" {
+			if in.NewSession == nil || in.NewSession.Workspace == nil {
+				return nil, nil, protocol.NewFailure(protocol.ErrInvalidParams, "this background work requires a dedicated session and workspace", nil)
+			}
+			if source.Kind != "method-review" {
+				command.Capabilities.ChildRuns = false
+			} else if !command.Capabilities.ChildRuns {
+				return nil, nil, protocol.NewFailure(protocol.ErrInvalidParams, "method review requires direct child Runs", nil)
+			}
 		}
 		projectID, err := wireIdentity("background.projectId", source.ProjectID, identity.ParseProject)
 		if err != nil {

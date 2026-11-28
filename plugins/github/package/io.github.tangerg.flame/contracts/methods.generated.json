@@ -64,6 +64,14 @@
     "output": "schema.json#/$defs/GetPullRequestV1Output"
   },
   {
+    "name": "flame.github/issue-deliveries.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "List source-authorized Issue deliveries for the configured Project, including exact SHA evidence and original publication outcomes.",
+    "input": "schema.json#/$defs/IssueDeliveriesV1Input",
+    "output": "schema.json#/$defs/IssueDeliveriesV1Output"
+  },
+  {
     "name": "flame.github/list-check-annotations.v1",
     "kind": "query",
     "target": "installation",
@@ -144,6 +152,14 @@
     "output": "schema.json#/$defs/MergePullRequestV1Output"
   },
   {
+    "name": "flame.github/publish-issue-delivery.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Approve the exact Issue report and publish its captured body as a comment after checking current source authority, evidence and branch head. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
+    "input": "schema.json#/$defs/PublishIssueDeliveryV1Input",
+    "output": "schema.json#/$defs/PublishIssueDeliveryV1Output"
+  },
+  {
     "name": "flame.github/read-file.v1",
     "kind": "query",
     "target": "installation",
@@ -174,6 +190,38 @@
     "description": "Create and submit an APPROVE, REQUEST_CHANGES or COMMENT review against the explicit inspected commit, optionally with inline comments. Body is required for COMMENT and REQUEST_CHANGES. Does not leave a pending review. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
     "input": "schema.json#/$defs/SubmitPullRequestReviewV1Input",
     "output": "schema.json#/$defs/SubmitPullRequestReviewV1Output"
+  },
+  {
+    "name": "flame.github/team-board.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read the original Project's team grants, audit and work source links.",
+    "input": "schema.json#/$defs/TeamBoardV1Input",
+    "output": "schema.json#/$defs/TeamBoardV1Output"
+  },
+  {
+    "name": "flame.github/team-grant.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Grant one member scoped Project, machine and role access to an original Issue delivery. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
+    "input": "schema.json#/$defs/TeamGrantV1Input",
+    "output": "schema.json#/$defs/TeamGrantV1Output"
+  },
+  {
+    "name": "flame.github/team-invite.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read the active private invitation for a single team grant.",
+    "input": "schema.json#/$defs/TeamInviteV1Input",
+    "output": "schema.json#/$defs/TeamInviteV1Output"
+  },
+  {
+    "name": "flame.github/team-revoke.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Revoke one grant and retain its audit event. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
+    "input": "schema.json#/$defs/TeamRevokeV1Input",
+    "output": "schema.json#/$defs/TeamRevokeV1Output"
   },
   {
     "name": "flame.github/update-issue-comment.v1",

@@ -28,7 +28,7 @@ func corsMiddleware(origins []string) func(http.Handler) http.Handler {
 		// Browser tracing injects traceparent unconditionally, so omitting the trace
 		// headers would fail preflight for every method.
 		AllowedHeaders:   append(requestHeaders(), "Accept", "traceparent", "tracestate", "baggage"),
-		ExposedHeaders:   []string{headerRequestID, headerServer, headerMethod},
+		ExposedHeaders:   []string{headerRequestID, headerServer, headerMethod, headerRuntimeStore},
 		AllowCredentials: true,
 		MaxAge:           int(corsPreflightCacheLifetime / time.Second),
 	}

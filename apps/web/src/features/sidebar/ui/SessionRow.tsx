@@ -2,6 +2,8 @@ import { type CapturedSession } from "@flame/component-sdk";
 import { useExtensionPoint } from "@/extensions/selectors/extensions";
 import { SESSION_ACTION } from "@/features/navigation/public/sessionActions";
 import { type SessionActionSpec } from "@/features/navigation/public/sessionActions";
+import { SessionWorktreeForkDialog } from "@/features/sidebar/ui/SessionWorktreeForkDialog";
+import { useRuntimeCapability } from "@/features/connection/public/capabilities";
 import { SessionActionDialog } from "@/features/sidebar/ui/SessionActionDialog";
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
@@ -65,6 +67,7 @@ function sessionMenu(
   actions: Pick<Props, "onToggleFavorite" | "onFork" | "onDelete"> & {
     contributed: SessionMenuItem[];
     move: (() => void) | undefined;
+    forkWithWorktree: (() => void) | undefined;
     confirmDelete: () => void;
   },
 ): SessionMenuItem[] {
@@ -83,6 +86,13 @@ function sessionMenu(
       icon: "fork",
       label: t("session.action.fork"),
       run: () => onFork(session.id),
+    });
+  if (actions.forkWithWorktree)
+    items.push({
+      id: "fork-worktree",
+      icon: "fork",
+      label: t("session.forkWorktree.title"),
+      run: actions.forkWithWorktree,
     });
   if (actions.move)
     items.push({
@@ -153,11 +163,14 @@ export function SessionRow({
   const [action, setAction] = useState<{ entry: SessionActionSpec; session: CapturedSession }>();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [moving, setMoving] = useState(false);
+  const [forking, setForking] = useState(false);
+  const canForkWorktree = useRuntimeCapability("git") && onFork !== undefined;
   const visible = useContentVisible();
-  if (!visible && (action || confirmingDelete || moving)) {
+  if (!visible && (action || confirmingDelete || moving || forking)) {
     setAction(undefined);
     setConfirmingDelete(false);
     setMoving(false);
+    setForking(false);
   }
   const t = useT();
   const locale = useLocale();
@@ -170,6 +183,7 @@ export function SessionRow({
     onToggleFavorite,
     onFork,
     onDelete,
+    forkWithWorktree: canForkWorktree ? () => setForking(true) : undefined,
     contributed: contributedActions.map((entry) => ({
       id: entry.id,
       icon: "plug" as const,
@@ -267,6 +281,13 @@ export function SessionRow({
           session={action.session}
           finalFocus={rowRef}
           close={() => setAction(undefined)}
+        />
+      )}
+      {visible && forking && (
+        <SessionWorktreeForkDialog
+          sessionId={session.id}
+          finalFocus={rowRef}
+          close={() => setForking(false)}
         />
       )}
       {moving && (

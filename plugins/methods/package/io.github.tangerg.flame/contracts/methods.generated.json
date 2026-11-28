@@ -1,0 +1,42 @@
+[
+  {
+    "name": "flame.methods/approve.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Approve or reject the original method report and retain the human decision.",
+    "input": "schema.json#/$defs/ApproveV1Input",
+    "output": "schema.json#/$defs/ApproveV1Output"
+  },
+  {
+    "name": "flame.methods/board.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read the current project method and recent executions.",
+    "input": "schema.json#/$defs/BoardV1Input",
+    "output": "schema.json#/$defs/BoardV1Output"
+  },
+  {
+    "name": "flame.methods/execution.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read the original method execution and captured evidence.",
+    "input": "schema.json#/$defs/ExecutionV1Input",
+    "output": "schema.json#/$defs/ExecutionV1Output"
+  },
+  {
+    "name": "flame.methods/save.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Save an immutable project method version.",
+    "input": "schema.json#/$defs/SaveV1Input",
+    "output": "schema.json#/$defs/SaveV1Output"
+  },
+  {
+    "name": "flame.methods/start.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Admit one execution of a captured method on a managed worktree.",
+    "input": "schema.json#/$defs/StartV1Input",
+    "output": "schema.json#/$defs/StartV1Output"
+  }
+]

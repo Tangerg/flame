@@ -3,15 +3,16 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+	"unicode"
 
 	"github.com/Tangerg/acp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
@@ -20,24 +21,30 @@ import (
 )
 
 type connector struct {
-	ctx     context.Context
-	stop    context.CancelFunc
-	db      framesqlite.Database
-	machine string
-	exe     string
-	actions sync.Mutex
-	mu      sync.Mutex
-	client  *acp.Client
-	link    *agentLink
-	joined  sync.WaitGroup
+	ctx      context.Context
+	stop     context.CancelFunc
+	db       framesqlite.Database
+	machine  string
+	profiles map[string]agentProfile
+	actions  sync.Mutex
+	mu       sync.Mutex
+	client   *acp.Client
+	links    map[agentTarget]*agentLink
+	joined   sync.WaitGroup
+}
+
+type agentTarget struct {
+	agent string
+	cwd   string
 }
 
 type agentLink struct {
-	conn   *acp.ClientConn
-	fork   bool
-	name   string
-	closed atomic.Bool
-	bound  map[acp.SessionID]*attachedSession
+	conn         *acp.ClientConn
+	program      agentProgram
+	capabilities wire.Capabilities
+	name         string
+	closed       atomic.Bool
+	bound        map[acp.SessionID]*attachedSession
 }
 
 type attachedSession struct {
@@ -48,17 +55,23 @@ type attachedSession struct {
 	permissions map[string]chan acp.RequestPermissionOutcome
 }
 
-func openConnector(ctx context.Context, data, exe string) (*connector, error) {
+type nativeCreation struct {
+	session wire.Session
+	link    *agentLink
+	handle  *acp.ClientSession
+}
+
+func openConnector(ctx context.Context, data string, profiles map[string]agentProfile) (*connector, error) {
 	machine, err := os.Hostname()
 	if err != nil || machine == "" {
-		return nil, errors.New("OpenCode connector could not identify its machine")
+		return nil, errors.New("acp: could not identify the execution machine")
 	}
 	db, err := framesqlite.OpenSchema(ctx, filepath.Join(data, "opencode.db"), []string{pluginstorage.CommandsSchema, sessionSchema})
 	if err != nil {
 		return nil, err
 	}
 	life, stop := context.WithCancel(ctx)
-	c := &connector{ctx: life, stop: stop, db: db, machine: machine, exe: exe}
+	c := &connector{ctx: life, stop: stop, db: db, machine: machine, profiles: profiles, links: make(map[agentTarget]*agentLink)}
 	c.client, err = acp.NewClient(&acp.ClientConfig{
 		Info:          &acp.Implementation{Name: "Flame", Version: "1"},
 		SessionUpdate: c.onUpdate, RequestPermission: c.onPermission,
@@ -73,45 +86,32 @@ func openConnector(ctx context.Context, data, exe string) (*connector, error) {
 func (c *connector) close() error {
 	c.stop()
 	c.mu.Lock()
-	link := c.link
+	links := make([]*agentLink, 0, len(c.links))
+	for _, link := range c.links {
+		links = append(links, link)
+	}
 	c.mu.Unlock()
 	var err error
-	if link != nil {
-		err = link.conn.Close()
+	for _, link := range links {
+		err = errors.Join(err, link.conn.Close())
 	}
 	c.joined.Wait()
 	return errors.Join(err, c.db.Close())
 }
 
-func (c *connector) connect(ctx context.Context, cwd string) (*agentLink, error) {
+func (c *connector) connect(ctx context.Context, target agentTarget, program agentProgram) (*agentLink, error) {
 	c.mu.Lock()
-	link := c.link
+	previous := c.links[target]
 	c.mu.Unlock()
-	if link != nil && !link.closed.Load() {
-		return link, nil
+	if previous != nil && !previous.closed.Load() {
+		return previous, nil
 	}
-	exe := c.exe
-	if exe == "" {
-		var err error
-		exe, err = exec.LookPath("opencode")
-		if err != nil {
-			return nil, refuse("configure the absolute path to the OpenCode executable")
-		}
-	}
-	if !filepath.IsAbs(exe) {
-		return nil, refuse("the OpenCode executable must be an absolute path")
-	}
-	file, err := os.Stat(exe)
-	self, selfErr := os.Executable()
-	me, statErr := os.Stat(self)
-	if err != nil || !file.Mode().IsRegular() || selfErr != nil || statErr != nil || os.SameFile(file, me) {
-		return nil, refuse("the configured OpenCode executable is unavailable")
-	}
-	cmd := exec.Command(exe, "acp")
-	cmd.Dir = cwd
+	cmd := exec.Command(program.path, program.Args...)
+	cmd.Dir = target.cwd
 	cmd.Stderr = os.Stderr
 	ready, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
+	link := &agentLink{program: program, bound: make(map[acp.SessionID]*attachedSession)}
 	transport := &openCodeTransport{
 		Transport: acp.NewCommandTransport(&acp.CommandConfig{Command: cmd}),
 		promptSent: func(native acp.SessionID) {
@@ -126,26 +126,37 @@ func (c *connector) connect(ctx context.Context, cwd string) (*agentLink, error)
 	if err != nil {
 		return nil, observedFailure(err)
 	}
-	info, _ := connection.Negotiated().AgentInfo.Get()
-	if !strings.EqualFold(info.Name, "opencode") {
-		return nil, errors.Join(refuse("the configured ACP program did not identify itself as OpenCode"), connection.Close())
+	negotiated := connection.Negotiated()
+	info, _ := negotiated.AgentInfo.Get()
+	if program.NativeName != "" && !strings.EqualFold(info.Name, program.NativeName) {
+		return nil, errors.Join(refuse("the ACP executable reported a different agent identity"), connection.Close())
 	}
-	link = &agentLink{conn: connection, fork: transport.fork.Load(), name: fmt.Sprintf("%s %s", info.Name, info.Version), bound: map[acp.SessionID]*attachedSession{}}
+	if program.Version != "" && info.Version != program.Version {
+		return nil, errors.Join(refuse("the ACP executable reported a different pinned version"), connection.Close())
+	}
+	_, list := negotiated.AgentCapabilities.SessionCapabilities.List.Get()
+	_, resume := negotiated.AgentCapabilities.SessionCapabilities.Resume.Get()
+	link.conn, link.name = connection, strings.TrimSpace(info.Name+" "+info.Version)
+	if link.name == "" {
+		link.name = program.Name
+	}
+	link.capabilities = wire.Capabilities{
+		List: list, Load: negotiated.AgentCapabilities.LoadSession, Resume: resume,
+		Fork: strings.EqualFold(info.Name, defaultAgent) && transport.fork.Load(),
+	}
 	c.mu.Lock()
-	c.link = link
+	c.links[target] = link
 	c.mu.Unlock()
 	c.goLive(func() {
 		if err := connection.Wait(); err != nil && c.ctx.Err() == nil {
-			slog.WarnContext(c.ctx, "OpenCode connection ended", "error", err)
+			slog.WarnContext(c.ctx, "ACP connection ended", "agent", program.ID, "error", err)
 		}
 		link.closed.Store(true)
 	})
 	return link, nil
 }
 
-func (c *connector) goLive(action func()) {
-	c.joined.Go(action)
-}
+func (c *connector) goLive(action func()) { c.joined.Go(action) }
 
 func physicalWorkspace(path string) (string, error) {
 	if !filepath.IsAbs(path) || len(path) > 4096 {
@@ -162,6 +173,10 @@ func physicalWorkspace(path string) (string, error) {
 	return physical, nil
 }
 
+func validNativeID(value string) bool {
+	return value != "" && len(value) <= 256 && !strings.ContainsFunc(value, unicode.IsControl)
+}
+
 func (c *connector) list(ctx context.Context, in wire.ListRequest) (wire.Sessions, error) {
 	path, err := physicalWorkspace(in.CWD)
 	if err != nil {
@@ -169,23 +184,35 @@ func (c *connector) list(ctx context.Context, in wire.ListRequest) (wire.Session
 	}
 	c.actions.Lock()
 	defer c.actions.Unlock()
-	link, err := c.connect(ctx, path)
+	target := agentTarget{agentID(in.AgentID), path}
+	program, err := c.program(target)
 	if err != nil {
 		return wire.Sessions{}, err
 	}
-	params := &acp.ListSessionsRequest{Cwd: acp.OptValue(path)}
-	if in.Cursor != "" {
-		params.Cursor = acp.OptValue(in.Cursor)
+	link, err := c.connect(ctx, target, program)
+	if err != nil {
+		return wire.Sessions{}, err
+	}
+	return c.listConnected(ctx, link, path, in.Cursor)
+}
+
+func (c *connector) listConnected(ctx context.Context, link *agentLink, cwd, cursor string) (wire.Sessions, error) {
+	out := wire.Sessions{Machine: c.machine, Agent: link.name, Capabilities: link.capabilities, Rows: []wire.NativeSession{}}
+	if !link.capabilities.List {
+		return out, nil
+	}
+	params := &acp.ListSessionsRequest{Cwd: acp.OptValue(cwd)}
+	if cursor != "" {
+		params.Cursor = acp.OptValue(cursor)
 	}
 	list, err := link.conn.ListSessions(ctx, params)
 	if err != nil {
 		return wire.Sessions{}, observedFailure(err)
 	}
-	next, _ := list.NextCursor.Get()
-	out := wire.Sessions{Machine: c.machine, Agent: link.name, Rows: []wire.NativeSession{}, NextCursor: next}
+	out.NextCursor, _ = list.NextCursor.Get()
 	for _, row := range list.Sessions {
-		cwd, err := physicalWorkspace(row.Cwd)
-		if err != nil || cwd != path {
+		physical, err := physicalWorkspace(row.Cwd)
+		if err != nil || physical != cwd || !validNativeID(string(row.SessionID)) {
 			continue
 		}
 		title, _ := row.Title.Get()
@@ -194,23 +221,96 @@ func (c *connector) list(ctx context.Context, in wire.ListRequest) (wire.Session
 	return out, nil
 }
 
-func (c *connector) open(ctx context.Context, in wire.OpenRequest) (wire.Session, error) {
-	path, err := physicalWorkspace(in.CWD)
-	if err != nil {
-		return wire.Session{}, err
+func (c *connector) checkNativeOrigin(ctx context.Context, link *agentLink, cwd, native string) error {
+	ctx, stop := context.WithTimeout(ctx, 15*time.Second)
+	defer stop()
+	cursor := ""
+	seen := map[string]bool{}
+	for {
+		page, err := c.listConnected(ctx, link, cwd, cursor)
+		if err != nil {
+			return err
+		}
+		for _, item := range page.Rows {
+			if item.ID == native {
+				return nil
+			}
+		}
+		if page.NextCursor == "" {
+			return refuse("the agent did not list this native session in the chosen workspace")
+		}
+		if seen[page.NextCursor] {
+			return refuse("the agent returned a repeated native session cursor")
+		}
+		seen[page.NextCursor], cursor = true, page.NextCursor
 	}
-	if in.NativeID == "" || len(in.NativeID) > 256 || strings.ContainsRune(in.NativeID, '\x00') {
-		return wire.Session{}, refuse("select an existing OpenCode session")
-	}
-	link, err := c.connect(ctx, path)
-	if err != nil {
-		return wire.Session{}, err
-	}
-	return c.load(ctx, link, in.NativeID, path)
 }
 
-func (c *connector) load(ctx context.Context, link *agentLink, native, cwd string) (wire.Session, error) {
-	initial := emptySession(c.machine, link.name, native, cwd)
+func (c *connector) open(ctx context.Context, in wire.OpenRequest) (wire.Session, error) {
+	var original wire.Session
+	var err error
+	target := agentTarget{agentID(in.AgentID), in.CWD}
+	native := in.NativeID
+	if in.ID != "" {
+		if in.CWD != "" || in.NativeID != "" || in.AgentID != "" {
+			return wire.Session{}, refuse("reopen a stored session by its original ID")
+		}
+		original, err = c.stored(ctx, in.ID)
+		if err != nil {
+			return wire.Session{}, err
+		}
+		target = agentTarget{agentID(original.AgentID), original.CWD}
+		native = original.NativeID
+	}
+	if !validNativeID(native) {
+		return wire.Session{}, refuse("select an existing native session")
+	}
+	target.cwd, err = physicalWorkspace(target.cwd)
+	if err != nil {
+		return wire.Session{}, err
+	}
+	if original.ID == "" {
+		original, err = c.original(ctx, target.agent, native)
+		if err != nil {
+			return wire.Session{}, err
+		}
+	}
+	program, err := c.program(target)
+	if err != nil {
+		return wire.Session{}, err
+	}
+	if original.ID != "" && (original.Machine != c.machine || original.CWD != target.cwd ||
+		original.Authority != "" && original.Authority != program.authority) {
+		return wire.Session{}, refuse("the original native session belongs to a different workspace or program")
+	}
+	link, err := c.connect(ctx, target, program)
+	if err != nil {
+		return wire.Session{}, err
+	}
+	if original.ID == "" && link.capabilities.List {
+		if err := c.checkNativeOrigin(ctx, link, target.cwd, native); err != nil {
+			return wire.Session{}, err
+		}
+	}
+	return c.restore(ctx, link, native, target.cwd, in.Mode, original)
+}
+
+func (c *connector) restore(ctx context.Context, link *agentLink, native, cwd, mode string, original wire.Session) (wire.Session, error) {
+	if mode == "" {
+		if link.capabilities.Load {
+			mode = "load"
+		} else {
+			mode = "resume"
+		}
+	}
+	if !(mode == "load" && link.capabilities.Load || mode == "resume" && link.capabilities.Resume) {
+		return wire.Session{}, refuse("the ACP agent did not advertise this restore operation")
+	}
+	initial := emptySession(c.machine, native, cwd, link)
+	initial.Turn, initial.Permissions = original.Turn, original.Permissions
+	if initial.Permissions == nil {
+		initial.Permissions = []wire.PermissionRequest{}
+	}
 	key := acp.SessionID(native)
 	c.mu.Lock()
 	existing := link.bound[key]
@@ -221,40 +321,39 @@ func (c *connector) load(ctx context.Context, link *agentLink, native, cwd strin
 		}
 		return c.get(ctx, wire.SessionRequest{ID: existing.id})
 	}
-	bound := &attachedSession{id: initial.ID, replay: []wire.Event{}, permissions: map[string]chan acp.RequestPermissionOutcome{}}
+	bound := &attachedSession{id: initial.ID, replay: []wire.Event{}, permissions: make(map[string]chan acp.RequestPermissionOutcome)}
 	link.bound[key] = bound
 	c.mu.Unlock()
 
-	handle, _, err := link.conn.LoadSession(ctx, &acp.LoadSessionRequest{SessionID: key, Cwd: cwd, McpServers: []acp.McpServer{}})
+	var handle *acp.ClientSession
+	var err error
+	if mode == "load" {
+		handle, _, err = link.conn.LoadSession(ctx, &acp.LoadSessionRequest{SessionID: key, Cwd: cwd, McpServers: []acp.McpServer{}})
+	} else {
+		handle, _, err = link.conn.ResumeSession(ctx, &acp.ResumeSessionRequest{SessionID: key, Cwd: cwd, McpServers: []acp.McpServer{}})
+	}
 	c.mu.Lock()
+	defer c.mu.Unlock()
 	if err != nil {
 		delete(link.bound, key)
-		c.mu.Unlock()
 		return wire.Session{}, observedFailure(err)
 	}
-	replay := bound.replay
-	bound.replay, bound.handle = nil, handle
-	c.mu.Unlock()
-
-	err = c.db.RunInTx(ctx, func(tx context.Context) error {
-		old, err := c.stored(tx, initial.ID)
-		if err != nil {
-			if _, missing := errors.AsType[refusal](err); !missing {
-				return err
-			}
-		} else {
-			initial.Turn, initial.Permissions = old.Turn, old.Permissions
+	initial.Events = bound.replay
+	if mode == "resume" {
+		initial.Events = slices.Clone(original.Events)
+		for _, event := range bound.replay {
+			initial.Events = appendEvent(initial.Events, event)
 		}
-		initial.Events = replay
-		return c.save(tx, initial)
-	})
-	if err != nil {
-		c.mu.Lock()
+		if initial.Events == nil {
+			initial.Events = []wire.Event{}
+		}
+	}
+	if err := c.db.RunInTx(ctx, func(tx context.Context) error { return c.save(tx, initial) }); err != nil {
 		delete(link.bound, key)
-		c.mu.Unlock()
 		return wire.Session{}, err
 	}
-	return c.get(ctx, wire.SessionRequest{ID: initial.ID})
+	bound.replay, bound.handle = nil, handle
+	return presentSession(initial, link, bound), nil
 }
 
 func (c *connector) get(ctx context.Context, req wire.SessionRequest) (wire.Session, error) {
@@ -265,24 +364,33 @@ func (c *connector) get(ctx context.Context, req wire.SessionRequest) (wire.Sess
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	link, bound := c.live(value)
+	return presentSession(value, link, bound), nil
+}
+
+func presentSession(value wire.Session, link *agentLink, bound *attachedSession) wire.Session {
 	value.Connected = bound != nil
-	value.CanFork = bound != nil && link.fork
+	if link != nil {
+		value.Capabilities = new(link.capabilities)
+		value.CanFork = bound != nil && link.capabilities.Fork
+	}
 	if value.Turn != nil && value.Turn.Status == "running" && (bound == nil || bound.turn == nil || bound.turn.id != value.Turn.ID) {
 		value.Turn.Status = "unconfirmed"
 	}
 	for i := range value.Permissions {
 		permission := &value.Permissions[i]
-		if permission.Status == "requested" && (bound == nil || bound.permissions[permission.ID] == nil) {
+		if (permission.Status == "requested" || permission.Status == "submitted") &&
+			(bound == nil || bound.turn == nil || permission.TurnID != bound.turn.id ||
+				permission.Status == "requested" && bound.permissions[permission.ID] == nil) {
 			permission.Status = "unconfirmed"
 		}
 	}
-	return value, nil
+	return value
 }
 
 // live is only read with mu held. The ACP handle is a lease on one connection.
 func (c *connector) live(value wire.Session) (*agentLink, *attachedSession) {
-	link := c.link
-	if link == nil || link.closed.Load() || value.Machine != c.machine {
+	link := c.links[agentTarget{agentID(value.AgentID), value.CWD}]
+	if link == nil || link.closed.Load() || value.Machine != c.machine || value.Authority != link.program.authority {
 		return nil, nil
 	}
 	bound := link.bound[acp.SessionID(value.NativeID)]
@@ -292,16 +400,46 @@ func (c *connector) live(value wire.Session) (*agentLink, *attachedSession) {
 	return link, bound
 }
 
-func (c *connector) fork(ctx context.Context, input wire.SessionRequest) (wire.Session, error) {
+func (c *connector) nativeBinding(connection *acp.ClientConn, native acp.SessionID) *attachedSession {
+	for _, link := range c.links {
+		if link.conn == connection && !link.closed.Load() {
+			return link.bound[native]
+		}
+	}
+	return nil
+}
+
+func (c *connector) create(ctx context.Context, in wire.CreateRequest) (nativeCreation, error) {
+	cwd, err := physicalWorkspace(in.CWD)
+	if err != nil {
+		return nativeCreation{}, err
+	}
+	target := agentTarget{agentID(in.AgentID), cwd}
+	program, err := c.program(target)
+	if err != nil {
+		return nativeCreation{}, err
+	}
+	link, err := c.connect(ctx, target, program)
+	if err != nil {
+		return nativeCreation{}, err
+	}
+	handle, _, err := link.conn.NewSession(ctx, &acp.NewSessionRequest{Cwd: cwd, McpServers: []acp.McpServer{}})
+	if err != nil {
+		return nativeCreation{}, nativeCreateFailure(err)
+	}
+	return c.acceptCreation(ctx, link, handle, string(handle.ID()), cwd)
+}
+
+func (c *connector) fork(ctx context.Context, input wire.SessionRequest) (nativeCreation, error) {
 	parent, err := c.get(ctx, input)
 	if err != nil {
-		return wire.Session{}, err
+		return nativeCreation{}, err
 	}
 	c.mu.Lock()
 	link, bound := c.live(parent)
 	c.mu.Unlock()
-	if bound == nil || !link.fork || parent.Turn != nil && parent.Turn.Status == "running" {
-		return wire.Session{}, refuse("the current connection cannot fork this session")
+	if bound == nil || !link.capabilities.Fork || parent.Turn != nil && parent.Turn.Status == "running" {
+		return nativeCreation{}, refuse("the current connection cannot fork this session")
 	}
 	var result struct {
 		SessionID string `json:"sessionId"`
@@ -312,10 +450,33 @@ func (c *connector) fork(ctx context.Context, input wire.SessionRequest) (wire.S
 		MCP       []string `json:"mcpServers"`
 	}{parent.NativeID, parent.CWD, []string{}}
 	if err := link.conn.Call(ctx, forkExtension, request, &result); err != nil {
-		return wire.Session{}, observedFailure(err)
+		return nativeCreation{}, nativeCreateFailure(err)
 	}
-	if result.SessionID == "" || result.SessionID == parent.NativeID {
-		return wire.Session{}, errors.New("OpenCode fork did not return a separate native session ID")
+	return c.acceptCreation(ctx, link, nil, result.SessionID, parent.CWD)
+}
+
+func nativeCreateFailure(err error) error {
+	if errors.Is(err, acp.ErrAuthRequired) {
+		return refuse("authenticate the ACP agent on the execution machine")
 	}
-	return c.load(ctx, link, result.SessionID, parent.CWD)
+	return observedFailure(err)
+}
+
+func (c *connector) acceptCreation(ctx context.Context, link *agentLink, handle *acp.ClientSession, native, cwd string) (nativeCreation, error) {
+	if !validNativeID(native) {
+		return nativeCreation{}, errors.New("acp: creation acknowledgement omitted a native session ID")
+	}
+	settle, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer cancel()
+	original, err := c.original(settle, link.program.ID, native)
+	if err != nil {
+		return nativeCreation{}, err
+	}
+	if original.ID != "" {
+		return nativeCreation{}, errors.New("acp: creation acknowledgement reused a known native session ID")
+	}
+	value := emptySession(c.machine, native, cwd, link)
+	value.Capabilities = new(link.capabilities)
+	value.Connected, value.CanFork = handle != nil, handle != nil && link.capabilities.Fork
+	return nativeCreation{session: value, link: link, handle: handle}, nil
 }

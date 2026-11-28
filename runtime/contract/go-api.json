@@ -998,6 +998,10 @@
               "signature": "func(ctx context.Context, request protocol.OpenPluginBrowserRealmRequest, options protocol.CommandOptions) (*protocol.PluginBrowserSession, error)"
             },
             {
+              "name": "PreviewSessionFork",
+              "signature": "func(ctx context.Context, request protocol.PreviewSessionForkRequest, options protocol.CallOptions) (*protocol.SessionForkPreview, error)"
+            },
+            {
               "name": "PreviewWorktreeHandoff",
               "signature": "func(ctx context.Context, request protocol.TaskWorktreeRequest, options protocol.CallOptions) (*protocol.WorktreeHandoff, error)"
             },
@@ -12711,6 +12715,27 @@
               "name": "Title",
               "type": "string",
               "tag": "json:\"title,omitempty\""
+            },
+            {
+              "name": "Worktree",
+              "type": "*ForkWorktreeConfirmation",
+              "tag": "json:\"worktree,omitzero\""
+            }
+          ]
+        },
+        {
+          "name": "ForkWorktreeConfirmation",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Digest",
+              "type": "string",
+              "tag": "json:\"digest\""
             }
           ]
         },
@@ -16352,6 +16377,22 @@
           "underlying": "string"
         },
         {
+          "name": "PreviewSessionForkRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "SessionID",
+              "type": "string",
+              "tag": "json:\"sessionId\""
+            },
+            {
+              "name": "FromRunID",
+              "type": "string",
+              "tag": "json:\"fromRunId,omitempty\""
+            }
+          ]
+        },
+        {
           "name": "ProblemData",
           "kind": "struct",
           "fields": [
@@ -17849,6 +17890,52 @@
               "name": "PlanSource",
               "type": "*extension.ContributionSource",
               "tag": "json:\"planSource,omitzero\""
+            }
+          ]
+        },
+        {
+          "name": "SessionForkPreview",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Worktree",
+              "type": "ForkWorktreeConfirmation",
+              "tag": "json:\"worktree\""
+            },
+            {
+              "name": "FromRunID",
+              "type": "string",
+              "tag": "json:\"fromRunId,omitempty\""
+            },
+            {
+              "name": "Messages",
+              "type": "int",
+              "tag": "json:\"messages\""
+            },
+            {
+              "name": "Runs",
+              "type": "int",
+              "tag": "json:\"runs\""
+            },
+            {
+              "name": "Source",
+              "type": "WorkspaceRef",
+              "tag": "json:\"source\""
+            },
+            {
+              "name": "Destination",
+              "type": "WorkspaceRef",
+              "tag": "json:\"destination\""
+            },
+            {
+              "name": "Head",
+              "type": "string",
+              "tag": "json:\"head\""
+            },
+            {
+              "name": "Patch",
+              "type": "string",
+              "tag": "json:\"patch\""
             }
           ]
         },
@@ -20921,6 +21008,10 @@
             {
               "name": "OpenPluginBrowserRealm",
               "signature": "func(ctx context.Context, request protocol.OpenPluginBrowserRealmRequest, options protocol.CommandOptions) (*protocol.PluginBrowserSession, error)"
+            },
+            {
+              "name": "PreviewSessionFork",
+              "signature": "func(ctx context.Context, request protocol.PreviewSessionForkRequest, options protocol.CallOptions) (*protocol.SessionForkPreview, error)"
             },
             {
               "name": "PreviewWorktreeHandoff",

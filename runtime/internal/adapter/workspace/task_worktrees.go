@@ -17,6 +17,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
 	work "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/flame/runtime/internal/infra/git"
 	"github.com/Tangerg/flame/runtime/internal/infra/git/process"
 	toolshell "github.com/Tangerg/scope/tools/shell"
 )
@@ -50,6 +51,7 @@ type taskRecord struct {
 	CommonDir string                  `json:"common"`
 	Base      string                  `json:"base"`
 	Setup     *work.TaskWorktreeSetup `json:"setup,omitzero"`
+	Fork      *forkRegistration       `json:"fork,omitzero"`
 }
 
 type taskCheckout struct {
@@ -68,19 +70,32 @@ func (b *TaskWorktrees) CheckoutPath(id string) (string, error) {
 	return b.checkoutPath(id), nil
 }
 
-func (b *TaskWorktrees) PrepareCreate(ctx context.Context, path, base, setup string) (func(context.Context) (work.TaskWorktree, error), error) {
+func (b *TaskWorktrees) resolveTaskSource(ctx context.Context, path string) (string, string, error) {
 	source, err := taskGitValue(ctx, path, "rev-parse", "--show-toplevel")
 	if err != nil {
-		return nil, errors.Join(work.ErrVCSUnavailable, err)
+		return "", "", errors.Join(work.ErrVCSUnavailable, err)
 	}
 	source, err = (filesystem.DirectoryResolver{}).ResolveExistingDir(source)
 	if err != nil {
-		return nil, err
+		return "", "", err
 	}
 	if _, inside := relativeInTree(source, b.root); inside {
-		return nil, fmt.Errorf("%w: task storage must be outside the source checkout", work.ErrTaskWorktreeInput)
+		return "", "", fmt.Errorf("%w: task storage must be outside the source checkout", work.ErrTaskWorktreeInput)
 	}
 	common, err := taskCommonDir(ctx, source)
+	return source, common, err
+}
+
+func newTaskID() (string, error) {
+	var key [taskIDBytes]byte
+	if _, err := rand.Read(key[:]); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(key[:]), nil
+}
+
+func (b *TaskWorktrees) PrepareCreate(ctx context.Context, path, base, setup string) (func(context.Context) (work.TaskWorktree, error), error) {
+	source, common, err := b.resolveTaskSource(ctx, path)
 	if err != nil {
 		return nil, err
 	}
@@ -88,21 +103,21 @@ func (b *TaskWorktrees) PrepareCreate(ctx context.Context, path, base, setup str
 	if err != nil {
 		return nil, errors.Join(work.ErrTaskWorktreeInput, err)
 	}
-	var key [taskIDBytes]byte
-	if _, err := rand.Read(key[:]); err != nil {
+	id, err := newTaskID()
+	if err != nil {
 		return nil, err
 	}
-	record := taskRecord{ID: hex.EncodeToString(key[:]), Source: source, CommonDir: common, Base: commit}
+	record := taskRecord{ID: id, Source: source, CommonDir: common, Base: commit}
 	if setup != "" {
 		record.Setup = &work.TaskWorktreeSetup{Command: setup}
 	}
 	return func(registration context.Context) (work.TaskWorktree, error) {
 		// Setup remains cancellable after the caller has authorized registration.
-		return b.registerTask(registration, ctx, record)
+		return b.registerTask(registration, ctx, record, "")
 	}, nil
 }
 
-func (b *TaskWorktrees) registerTask(ctx, setupCtx context.Context, record taskRecord) (work.TaskWorktree, error) {
+func (b *TaskWorktrees) registerTask(ctx, setupCtx context.Context, record taskRecord, patch string) (work.TaskWorktree, error) {
 	if err := os.MkdirAll(b.root, filesystem.PrivateDirectoryMode); err != nil {
 		return work.TaskWorktree{}, err
 	}
@@ -125,6 +140,17 @@ func (b *TaskWorktrees) registerTask(ctx, setupCtx context.Context, record taskR
 	// The source checkout can be released after its base has been captured.
 	if _, err := taskGitValue(ctx, record.CommonDir, "worktree", "add", "--detach", "--quiet", "--", checkout, record.Base); err != nil {
 		return work.TaskWorktree{}, errors.Join(work.ErrVCSUnavailable, err)
+	}
+	if record.Fork != nil {
+		if err := applyWorktreePatch(ctx, checkout, patch); err != nil {
+			cleanupErr := git.RemoveWorktree(context.WithoutCancel(ctx), record.CommonDir, checkout)
+			return work.TaskWorktree{}, errors.Join(err, cleanupErr)
+		}
+		digest, err := forkCheckoutDigest(ctx, checkout, record.Base)
+		if err != nil {
+			return work.TaskWorktree{}, err
+		}
+		record.Fork.Checkout = digest
 	}
 	if err := writeTaskRecord(root, record); err != nil {
 		return work.TaskWorktree{}, err
@@ -182,7 +208,7 @@ func (b *TaskWorktrees) List(ctx context.Context) ([]work.TaskWorktree, error) {
 		if entry.IsDir() || !record {
 			continue
 		}
-		checkout, err := b.OpenCheckout(id)
+		checkout, err := b.openCheckout(id)
 		if errors.Is(err, work.ErrTaskWorktreeNotFound) {
 			continue
 		}
@@ -199,6 +225,14 @@ func (b *TaskWorktrees) List(ctx context.Context) ([]work.TaskWorktree, error) {
 }
 
 func (b *TaskWorktrees) OpenCheckout(id string) (work.TaskCheckout, error) {
+	checkout, err := b.openCheckout(id)
+	if err != nil {
+		return nil, err
+	}
+	return checkout, nil
+}
+
+func (b *TaskWorktrees) openCheckout(id string) (*taskCheckout, error) {
 	path, err := b.CheckoutPath(id)
 	if err != nil {
 		return nil, err

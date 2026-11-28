@@ -109,7 +109,7 @@ func taskWorktreeError(err error) error {
 		return protocol.NewFailure(protocol.ErrSessionBusy, err.Error(), err)
 	case errors.Is(err, workspace.ErrTaskWorktreeChanged):
 		return protocol.NewFailure(protocol.ErrRevisionConflict, err.Error(), err)
-	case errors.Is(err, workspace.ErrTaskWorktreeInput), errors.Is(err, workspace.ErrHandoffPatchEncoding):
+	case errors.Is(err, workspace.ErrTaskWorktreeInput), errors.Is(err, workspace.ErrWorktreePatchEncoding):
 		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 	default:
 		return wireWorkspaceError(err)

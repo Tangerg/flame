@@ -1,3 +1,4 @@
+import type { ForkWorktreeConfirmation } from "@flame/runtime-client/wire";
 import { useAgentDependencies } from "@/features/agent/application/agentContext";
 import { type AgentDependencies } from "@/features/agent/application/agentDependencies";
 import { useCallback } from "react";
@@ -30,4 +31,29 @@ export function useForkSession(): (id: string) => Promise<void> {
   const agentAccess = useAgentDependencies();
 
   return useCallback((id) => forkSessionAt(agentAccess, id), [agentAccess]);
+}
+
+export function useSessionWorktreeFork() {
+  const agent = useAgentDependencies();
+  return {
+    preview: useCallback(
+      (id: string, signal?: AbortSignal) => {
+        const owner = agent.commands.current();
+        return owner.settle(agent.runtime.previewSessionFork(id, signal));
+      },
+      [agent],
+    ),
+    confirm: useCallback(
+      (id: string, worktree: ForkWorktreeConfirmation) => {
+        const owner = agent.commands.current();
+        return owner.runSessionFork(worktree.id, async () => {
+          const fork = await agent.runtime.forkSession({ sessionId: id, worktree });
+          owner.assertCurrent();
+          agent.state.selectSession(fork);
+          invalidateAgentSessions([fork]);
+        });
+      },
+      [agent],
+    ),
+  };
 }

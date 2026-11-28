@@ -13,6 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/completion"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/keylock"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -242,9 +243,12 @@ func (c *Openings) startRoot(ctx context.Context, cmd StartCommand) (result Star
 	if draft.Options != nil {
 		request.Options = draft.Options.Clone()
 	}
-	selected, err := c.modelSelector.SelectModel(ctx, models.SelectionInput{Context: flamemodel.SelectionContext{Use: flamemodel.Interaction}, Proposed: draft.ModelSelection, Request: request.Clone()})
-	if err != nil {
-		return StartResult{}, fmt.Errorf("runs: select opening model: %w", err)
+	selected := draft.ModelSelection
+	if !draft.ToolProfile.Method() {
+		selected, err = c.modelSelector.SelectModel(ctx, models.SelectionInput{Context: flamemodel.SelectionContext{Use: flamemodel.Interaction}, Proposed: draft.ModelSelection, Request: request.Clone()})
+		if err != nil {
+			return StartResult{}, fmt.Errorf("runs: select opening model: %w", err)
+		}
 	}
 	if err := selected.ValidateExact(); err != nil {
 		return StartResult{}, err
@@ -376,6 +380,17 @@ func (c *Openings) prepareRootStart(
 		InterruptTypes:           cmd.Capabilities.InterruptTypes,
 		ChildRunAdmissionEnabled: cmd.Capabilities.ChildRuns,
 		GoalIncarnationID:        cmd.GoalIncarnationID,
+	}
+	if cmd.Actor != nil {
+		source, _ := cmd.Actor.Background()
+		switch source.Kind {
+		case "github":
+			draft.ToolProfile = domaintool.ProfileVerification
+		case "method-change":
+			draft.ToolProfile = domaintool.ProfileMethodChange
+		case "method-review":
+			draft.ToolProfile = domaintool.ProfileMethodReview
+		}
 	}
 	draft.WorkingContext = []corechat.Message{currentMessage}
 	if err := draft.Validate(); err != nil {

@@ -304,11 +304,19 @@ func (s *Handler) forkSession(ctx context.Context, in protocol.ForkSessionReques
 	if err != nil {
 		return err
 	}
-	err = s.sessions.Fork(ctx, sessions.ForkSpec{ParentID: sessionID, FromRunID: fromRunID, Title: in.Title}, complete)
+	spec := sessions.ForkSpec{ParentID: sessionID, FromRunID: fromRunID, Title: in.Title}
+	if in.Worktree != nil {
+		spec.ChildID, err = identity.NewSession(in.Worktree.ID)
+		if err != nil {
+			return protocol.NewFailure(protocol.ErrInvalidParams, "invalid fork worktree identity", err)
+		}
+		spec.PrepareWorkspace = s.prepareForkWorkspace(in)
+	}
+	err = s.sessions.Fork(ctx, spec, complete)
 	if !fromRunID.IsZero() {
 		err = wireBoundaryErr(err)
 	}
-	return wireSessionErr(err)
+	return wireSessionMutationErr(err, sessionID)
 }
 
 func presentSession(view sessions.View) protocol.Session {
