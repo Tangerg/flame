@@ -192,6 +192,38 @@
     "output": "schema.json#/$defs/SubmitPullRequestReviewV1Output"
   },
   {
+    "name": "flame.github/team-board.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read the original Project's team grants, audit and work source links.",
+    "input": "schema.json#/$defs/TeamBoardV1Input",
+    "output": "schema.json#/$defs/TeamBoardV1Output"
+  },
+  {
+    "name": "flame.github/team-grant.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Grant one member scoped Project, machine and role access to an original Issue delivery. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
+    "input": "schema.json#/$defs/TeamGrantV1Input",
+    "output": "schema.json#/$defs/TeamGrantV1Output"
+  },
+  {
+    "name": "flame.github/team-invite.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read the active private invitation for a single team grant.",
+    "input": "schema.json#/$defs/TeamInviteV1Input",
+    "output": "schema.json#/$defs/TeamInviteV1Output"
+  },
+  {
+    "name": "flame.github/team-revoke.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Revoke one grant and retain its audit event. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
+    "input": "schema.json#/$defs/TeamRevokeV1Input",
+    "output": "schema.json#/$defs/TeamRevokeV1Output"
+  },
+  {
     "name": "flame.github/update-issue-comment.v1",
     "kind": "command",
     "target": "installation",

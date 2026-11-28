@@ -80,6 +80,10 @@ func newServer(connector *connector) (*sdk.Server, *pluginmcp.Backend, error) {
 		contracts.PublishIssueDelivery.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[wire.PublishIssueDeliveryInput]) (wire.IssueDeliveryReceipt, error) {
 			return connector.publishIssueDelivery(ctx, command, publishIssue)
 		}),
+		registerTeamQuery(backend, contracts.TeamBoard, connector.projectTeam),
+		registerTeamQuery(backend, contracts.TeamInvite, connector.teamInvite),
+		registerTeamCommand(backend, connector, contracts.TeamGrant, connector.grantTeamWork),
+		registerTeamCommand(backend, connector, contracts.TeamRevoke, connector.revokeTeamWork),
 		registerRead(backend, &tools, contracts.ReviewWork, "review_work", connector.readReviewWork),
 		contracts.UpdateReviewWork.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[wire.ReviewWorkChange]) (wire.ReviewWork, error) {
 			return connector.changeReviewWork(ctx, command, contracts.UpdateReviewWork.Name())

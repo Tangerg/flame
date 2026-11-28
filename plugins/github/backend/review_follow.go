@@ -53,7 +53,7 @@ func (c *connector) reviewBackground(lifetime context.Context, interval time.Dur
 	return pluginmcp.NewBackground(lifetime, pluginmcp.BackgroundConfig{
 		Prepare: func(ctx context.Context) error {
 			var err error
-			closeWebhook, err = c.startReviewWebhook(ctx)
+			closeWebhook, err = c.startReviewWebhook(ctx, client)
 			return err
 		},
 		Run: func(ctx context.Context) {
@@ -93,6 +93,9 @@ func (c *connector) reviewBackground(lifetime context.Context, interval time.Dur
 					return
 				case <-ticker.C:
 				case <-c.reviewWake:
+				case <-c.teamWake:
+					announce()
+					scan = false
 				case <-progress:
 					scan = false
 				}

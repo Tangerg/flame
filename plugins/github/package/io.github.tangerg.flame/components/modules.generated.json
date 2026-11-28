@@ -15,6 +15,7 @@
       "dynamicImports": [],
       "exports": [
         "GitHubIssueDeliveries",
+        "GitHubProjectTeam",
         "GitHubReviews"
       ]
     }

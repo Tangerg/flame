@@ -338,3 +338,35 @@ package and client projections. Handwritten DTOs and schema hooks in
 exported author implementation bind the published contract with `pluginmcp.Implement`;
 an author's local `go generate` refreshes projections without redefining identity
 from relocated Go types.
+
+## Team access and work intake
+
+Open **Team and work intake** from a Project's Background panel. A grant covers a
+specific original Issue delivery in the configured Project. The member name is
+retained in the access audit. The owner can grant task access, add verification
+access on the original Runtime, and select Viewer, Reviewer, or Publisher.
+Reviewers with machine access can read the publication draft. A Publisher with
+both access grants can approve and publish the exact report from a mobile
+browser. The publication uses the original evidence gates and stores the original
+receipt on the Issue delivery.
+
+Set `team-origin` to the HTTPS origin that routes `/flame/team` to the GitHub
+plugin's existing loopback `webhook-port`. Set `team-secret` to a private signing
+secret of at least 32 characters. The plugin accepts a loopback HTTP origin for
+local testing. The Team panel shows a private invitation after granting access.
+Invitations expire after seven days. Revocation invalidates the invitation for
+the task, verification evidence and approval. Signer and revocation events remain
+in the Project audit. Invite credentials travel in the URL fragment and the
+browser holds them while the page is open.
+
+For work intake, configure `work-intake` with a `projectId` and one or both
+source scopes. Provide `linearOrganization` and `linearTeam` with
+`linear-secret` for Linear Issue creation. Provide `slackTeam`, `slackChannel`
+and the workspace's HTTPS `slackOrigin` with `slack-secret` for Slack
+`app_mention` events. Route `/flame/intake/linear` and `/flame/intake/slack`
+through HTTPS to the same loopback listener. Each signed event is retained once
+for its Project. Open its link in the Team panel to return to the original
+issue or message.
+
+Signing follows the [Linear webhook protocol](https://linear.app/developers/webhooks)
+and [Slack request verification](https://docs.slack.dev/authentication/verifying-requests-from-slack/).

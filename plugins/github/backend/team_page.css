@@ -1,0 +1,30 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, sans-serif;
+  text-size-adjust: 100%;
+}
+body {
+  margin: 0;
+}
+main {
+  width: min(44rem, calc(100% - 2rem));
+  margin: 2rem auto;
+}
+section {
+  margin: 1.25rem 0;
+}
+pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: 0.75rem;
+  background: color-mix(in srgb, CanvasText 7%, Canvas);
+}
+button {
+  min-height: 44px;
+  padding: 0.5rem 0.9rem;
+  font: inherit;
+}
+#head {
+  font-family: ui-monospace, monospace;
+  overflow-wrap: anywhere;
+}

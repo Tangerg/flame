@@ -3986,6 +3986,313 @@
       ],
       "type": "object"
     },
+    "TeamAuditEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "at": {
+          "$ref": "#/$defs/TeamBoardV1OutputInstantTimestamp"
+        },
+        "grantId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "grantId",
+        "action",
+        "at"
+      ],
+      "type": "object"
+    },
+    "TeamBoard": {
+      "additionalProperties": false,
+      "properties": {
+        "audit": {
+          "items": {
+            "$ref": "#/$defs/TeamAuditEvent"
+          },
+          "type": "array"
+        },
+        "grants": {
+          "items": {
+            "$ref": "#/$defs/TeamBoardV1OutputWireTeamGrant"
+          },
+          "type": "array"
+        },
+        "sharing": {
+          "type": "boolean"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/WorkSource"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "sharing",
+        "grants",
+        "audit",
+        "sources"
+      ],
+      "type": "object"
+    },
+    "TeamBoardV1Input": {
+      "$ref": "#/$defs/TeamProject"
+    },
+    "TeamBoardV1Output": {
+      "$ref": "#/$defs/TeamBoard"
+    },
+    "TeamBoardV1OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "TeamBoardV1OutputWireTeamGrant": {
+      "additionalProperties": false,
+      "properties": {
+        "deliveryId": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "expiresAt": {
+          "$ref": "#/$defs/TeamBoardV1OutputInstantTimestamp"
+        },
+        "id": {
+          "type": "string"
+        },
+        "machineAccess": {
+          "type": "boolean"
+        },
+        "member": {
+          "type": "string"
+        },
+        "projectAccess": {
+          "type": "boolean"
+        },
+        "projectId": {
+          "type": "string"
+        },
+        "revokedAt": {
+          "$ref": "#/$defs/TeamBoardV1OutputInstantTimestamp"
+        },
+        "role": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "projectId",
+        "deliveryId",
+        "member",
+        "role",
+        "projectAccess",
+        "machineAccess",
+        "expiresAt"
+      ],
+      "type": "object"
+    },
+    "TeamGrantInput": {
+      "additionalProperties": false,
+      "properties": {
+        "deliveryId": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "machineAccess": {
+          "type": "boolean"
+        },
+        "member": {
+          "type": "string"
+        },
+        "projectAccess": {
+          "type": "boolean"
+        },
+        "projectId": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "projectId",
+        "deliveryId",
+        "member",
+        "role",
+        "projectAccess",
+        "machineAccess"
+      ],
+      "type": "object"
+    },
+    "TeamGrantV1Input": {
+      "$ref": "#/$defs/TeamGrantInput"
+    },
+    "TeamGrantV1Output": {
+      "$ref": "#/$defs/TeamGrantV1OutputWireTeamGrant"
+    },
+    "TeamGrantV1OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "TeamGrantV1OutputWireTeamGrant": {
+      "additionalProperties": false,
+      "properties": {
+        "deliveryId": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "expiresAt": {
+          "$ref": "#/$defs/TeamGrantV1OutputInstantTimestamp"
+        },
+        "id": {
+          "type": "string"
+        },
+        "machineAccess": {
+          "type": "boolean"
+        },
+        "member": {
+          "type": "string"
+        },
+        "projectAccess": {
+          "type": "boolean"
+        },
+        "projectId": {
+          "type": "string"
+        },
+        "revokedAt": {
+          "$ref": "#/$defs/TeamGrantV1OutputInstantTimestamp"
+        },
+        "role": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "projectId",
+        "deliveryId",
+        "member",
+        "role",
+        "projectAccess",
+        "machineAccess",
+        "expiresAt"
+      ],
+      "type": "object"
+    },
+    "TeamInvite": {
+      "additionalProperties": false,
+      "properties": {
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "type": "object"
+    },
+    "TeamInviteV1Input": {
+      "$ref": "#/$defs/TeamInviteV1InputWireTeamGrantRef"
+    },
+    "TeamInviteV1InputWireTeamGrantRef": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "projectId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "projectId",
+        "id"
+      ],
+      "type": "object"
+    },
+    "TeamInviteV1Output": {
+      "$ref": "#/$defs/TeamInvite"
+    },
+    "TeamProject": {
+      "additionalProperties": false,
+      "properties": {
+        "projectId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "projectId"
+      ],
+      "type": "object"
+    },
+    "TeamRevokeV1Input": {
+      "$ref": "#/$defs/TeamRevokeV1InputWireTeamGrantRef"
+    },
+    "TeamRevokeV1InputWireTeamGrantRef": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "projectId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "projectId",
+        "id"
+      ],
+      "type": "object"
+    },
+    "TeamRevokeV1Output": {
+      "$ref": "#/$defs/TeamRevokeV1OutputWireTeamGrant"
+    },
+    "TeamRevokeV1OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "TeamRevokeV1OutputWireTeamGrant": {
+      "additionalProperties": false,
+      "properties": {
+        "deliveryId": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "expiresAt": {
+          "$ref": "#/$defs/TeamRevokeV1OutputInstantTimestamp"
+        },
+        "id": {
+          "type": "string"
+        },
+        "machineAccess": {
+          "type": "boolean"
+        },
+        "member": {
+          "type": "string"
+        },
+        "projectAccess": {
+          "type": "boolean"
+        },
+        "projectId": {
+          "type": "string"
+        },
+        "revokedAt": {
+          "$ref": "#/$defs/TeamRevokeV1OutputInstantTimestamp"
+        },
+        "role": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "projectId",
+        "deliveryId",
+        "member",
+        "role",
+        "projectAccess",
+        "machineAccess",
+        "expiresAt"
+      ],
+      "type": "object"
+    },
     "UpdateIssueCommentV1Input": {
       "$ref": "#/$defs/UpdateIssueCommentV1InputWireUpdateCommentInput"
     },
@@ -4891,6 +5198,34 @@
         "findings",
         "needsRecheck",
         "discussion"
+      ],
+      "type": "object"
+    },
+    "WorkSource": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "receivedAt": {
+          "$ref": "#/$defs/TeamBoardV1OutputInstantTimestamp"
+        },
+        "title": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "id",
+        "title",
+        "url",
+        "receivedAt"
       ],
       "type": "object"
     }

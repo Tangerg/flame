@@ -6130,6 +6130,575 @@
       }
     },
     {
+      "name": "flame.github/team-board.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "Read the original Project's team grants, audit and work source links.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.VGVhbVByb2plY3Q": {
+            "additionalProperties": false,
+            "properties": {
+              "projectId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "projectId"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "projectId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "projectId"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w": {
+            "type": "string"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.V29ya1NvdXJjZQ": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "receivedAt": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+              },
+              "title": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "id",
+              "title",
+              "url",
+              "receivedAt"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.VGVhbUF1ZGl0RXZlbnQ": {
+            "additionalProperties": false,
+            "properties": {
+              "action": {
+                "type": "string"
+              },
+              "at": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+              },
+              "grantId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "grantId",
+              "action",
+              "at"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.VGVhbUJvYXJk": {
+            "additionalProperties": false,
+            "properties": {
+              "audit": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.VGVhbUF1ZGl0RXZlbnQ"
+                },
+                "type": "array"
+              },
+              "grants": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.VGVhbUdyYW50"
+                },
+                "type": "array"
+              },
+              "sharing": {
+                "type": "boolean"
+              },
+              "sources": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.V29ya1NvdXJjZQ"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "sharing",
+              "grants",
+              "audit",
+              "sources"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.VGVhbUdyYW50": {
+            "additionalProperties": false,
+            "properties": {
+              "deliveryId": {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "expiresAt": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+              },
+              "id": {
+                "type": "string"
+              },
+              "machineAccess": {
+                "type": "boolean"
+              },
+              "member": {
+                "type": "string"
+              },
+              "projectAccess": {
+                "type": "boolean"
+              },
+              "projectId": {
+                "type": "string"
+              },
+              "revokedAt": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+              },
+              "role": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "projectId",
+              "deliveryId",
+              "member",
+              "role",
+              "projectAccess",
+              "machineAccess",
+              "expiresAt"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "audit": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.VGVhbUF1ZGl0RXZlbnQ"
+            },
+            "type": "array"
+          },
+          "grants": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.VGVhbUdyYW50"
+            },
+            "type": "array"
+          },
+          "sharing": {
+            "type": "boolean"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.V29ya1NvdXJjZQ"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "sharing",
+          "grants",
+          "audit",
+          "sources"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.github/team-grant.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Grant one member scoped Project, machine and role access to an original Issue delivery. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.VGVhbUdyYW50SW5wdXQ": {
+            "additionalProperties": false,
+            "properties": {
+              "deliveryId": {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "machineAccess": {
+                "type": "boolean"
+              },
+              "member": {
+                "type": "string"
+              },
+              "projectAccess": {
+                "type": "boolean"
+              },
+              "projectId": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "projectId",
+              "deliveryId",
+              "member",
+              "role",
+              "projectAccess",
+              "machineAccess"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "deliveryId": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "machineAccess": {
+            "type": "boolean"
+          },
+          "member": {
+            "type": "string"
+          },
+          "projectAccess": {
+            "type": "boolean"
+          },
+          "projectId": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "projectId",
+          "deliveryId",
+          "member",
+          "role",
+          "projectAccess",
+          "machineAccess"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w": {
+            "type": "string"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.VGVhbUdyYW50": {
+            "additionalProperties": false,
+            "properties": {
+              "deliveryId": {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "expiresAt": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+              },
+              "id": {
+                "type": "string"
+              },
+              "machineAccess": {
+                "type": "boolean"
+              },
+              "member": {
+                "type": "string"
+              },
+              "projectAccess": {
+                "type": "boolean"
+              },
+              "projectId": {
+                "type": "string"
+              },
+              "revokedAt": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+              },
+              "role": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "projectId",
+              "deliveryId",
+              "member",
+              "role",
+              "projectAccess",
+              "machineAccess",
+              "expiresAt"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "deliveryId": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "expiresAt": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+          },
+          "id": {
+            "type": "string"
+          },
+          "machineAccess": {
+            "type": "boolean"
+          },
+          "member": {
+            "type": "string"
+          },
+          "projectAccess": {
+            "type": "boolean"
+          },
+          "projectId": {
+            "type": "string"
+          },
+          "revokedAt": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+          },
+          "role": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "deliveryId",
+          "member",
+          "role",
+          "projectAccess",
+          "machineAccess",
+          "expiresAt"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.github/team-invite.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "Read the active private invitation for a single team grant.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.VGVhbUdyYW50UmVm": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "projectId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "projectId",
+              "id"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "projectId",
+          "id"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.VGVhbUludml0ZQ": {
+            "additionalProperties": false,
+            "properties": {
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "url"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.github/team-revoke.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Revoke one grant and retain its audit event. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.VGVhbUdyYW50UmVm": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "projectId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "projectId",
+              "id"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "projectId",
+          "id"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w": {
+            "type": "string"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.VGVhbUdyYW50": {
+            "additionalProperties": false,
+            "properties": {
+              "deliveryId": {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "expiresAt": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+              },
+              "id": {
+                "type": "string"
+              },
+              "machineAccess": {
+                "type": "boolean"
+              },
+              "member": {
+                "type": "string"
+              },
+              "projectAccess": {
+                "type": "boolean"
+              },
+              "projectId": {
+                "type": "string"
+              },
+              "revokedAt": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+              },
+              "role": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "projectId",
+              "deliveryId",
+              "member",
+              "role",
+              "projectAccess",
+              "machineAccess",
+              "expiresAt"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "deliveryId": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "expiresAt": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+          },
+          "id": {
+            "type": "string"
+          },
+          "machineAccess": {
+            "type": "boolean"
+          },
+          "member": {
+            "type": "string"
+          },
+          "projectAccess": {
+            "type": "boolean"
+          },
+          "projectId": {
+            "type": "string"
+          },
+          "revokedAt": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+          },
+          "role": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "deliveryId",
+          "member",
+          "role",
+          "projectAccess",
+          "machineAccess",
+          "expiresAt"
+        ],
+        "type": "object"
+      }
+    },
+    {
       "name": "flame.github/update-issue-comment.v1",
       "kind": "command",
       "target": "installation",

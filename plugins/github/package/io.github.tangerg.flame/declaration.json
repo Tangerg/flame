@@ -40,6 +40,46 @@
       "key": "GITHUB_WEBHOOK_SECRET",
       "secret": true,
       "required": false
+    },
+    {
+      "id": "team-origin",
+      "server": "github",
+      "target": "env",
+      "key": "FLAME_GITHUB_TEAM_ORIGIN",
+      "secret": false,
+      "required": false
+    },
+    {
+      "id": "team-secret",
+      "server": "github",
+      "target": "env",
+      "key": "FLAME_GITHUB_TEAM_SECRET",
+      "secret": true,
+      "required": false
+    },
+    {
+      "id": "work-intake",
+      "server": "github",
+      "target": "env",
+      "key": "FLAME_GITHUB_WORK_INTAKE",
+      "secret": false,
+      "required": false
+    },
+    {
+      "id": "linear-secret",
+      "server": "github",
+      "target": "env",
+      "key": "FLAME_LINEAR_SIGNING_SECRET",
+      "secret": true,
+      "required": false
+    },
+    {
+      "id": "slack-secret",
+      "server": "github",
+      "target": "env",
+      "key": "FLAME_SLACK_SIGNING_SECRET",
+      "secret": true,
+      "required": false
     }
   ],
   "contributions": [
@@ -88,6 +128,20 @@
       "placement": "workspaceView",
       "entry": "io.github.tangerg.flame/components/component.js",
       "export": "GitHubIssueDeliveries",
+      "contribution": "github-operations"
+    },
+    {
+      "id": "github-project-team",
+      "material": "project-team",
+      "title": "Team and work intake",
+      "localizedTitles": {
+        "zh": "团队与工作收件箱",
+        "zh-TW": "團隊與工作收件匣"
+      },
+      "scope": "client",
+      "placement": "workspaceView",
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "GitHubProjectTeam",
       "contribution": "github-operations"
     }
   ]

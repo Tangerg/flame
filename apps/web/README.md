@@ -696,6 +696,19 @@ disabled state and refuse activation through the shared Button contract. Discard
 token change keeps its explicit return to the password field. Endpoint validation
 and accepted credentials remain with the Runtime endpoint owner.
 
+To share an existing Runtime across devices, use **Trust and connect** in
+Connection settings. Enter the HTTPS Runtime URL, a name, and its access token.
+Use the registered Runtime ID from the first device when connecting another.
+The saved name, URL and ID survive an app restart. Enter the token again after
+restarting or after switching away. The HTTP connection verifies that each
+request is handled by the registered store. The same Session, workspace and
+pending decisions are available from both clients.
+
+In a Git-backed conversation, **Fork into a worktree** previews its retained
+history, current Git HEAD, carried changes and proposed directory. Confirm to
+create the independent Session and worktree. A changed history or patch requires
+a new preview. This action starts from a Session at the Git checkout root.
+
 Hooks and Plugins also begin with their actual settings and named sections,
 without an introductory paragraph repeating those tasks. Specific trust effects,
 source paths, installation consequences and empty-state guidance remain beside

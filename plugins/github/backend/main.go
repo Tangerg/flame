@@ -46,6 +46,12 @@ func serveGitHub(ctx context.Context, data string, transport http.RoundTripper, 
 	if err := connector.configureIssueDelivery(); err != nil {
 		return err
 	}
+	if err := connector.configureTeam(); err != nil {
+		return err
+	}
+	if connector.webhook.port == 0 && (connector.teamPolicy != nil || connector.intakePolicy != nil) {
+		return errors.New("github: team and intake routes require a loopback webhook port")
+	}
 	server, operations, err := newServer(connector)
 	if err != nil {
 		return err

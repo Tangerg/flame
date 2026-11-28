@@ -236,7 +236,10 @@ function Review({
       },
     );
   };
-  useSyncExternalStore(operations.subscribeCommands, operations.commandsVersion);
+  useSyncExternalStore(
+    operations.subscribeCommands,
+    operations.commandsVersion,
+  );
   const publications = context.signal.aborted
     ? []
     : operations.commands(publish);
@@ -757,3 +760,5 @@ function PublishForm({
     </form>
   );
 }
+
+export { GitHubProjectTeam } from "./projectTeam";

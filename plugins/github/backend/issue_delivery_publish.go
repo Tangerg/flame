@@ -13,6 +13,7 @@ import (
 
 	"github.com/Tangerg/frame"
 	framecall "github.com/Tangerg/frame/call"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 const issuePublishing = "publishing"
@@ -94,10 +95,25 @@ func (c *connector) publishIssueDelivery(ctx context.Context, command pluginmcp.
 	if invocation.Origin != extension.Human {
 		return zero, refused(refusalNotAllowed, "a person must approve publication")
 	}
+	admitted, err := command.RequestInput()
+	if err != nil {
+		return zero, err
+	}
+	return c.publishAuthorizedIssue(ctx, command.Input, string(command.ID), admitted, method, nil)
+}
+
+type issuePublishAuthorization func(context.Context, bool) error
+
+func (c *connector) publishAuthorizedIssue(ctx context.Context, input wire.PublishIssueDeliveryInput, key string, admitted framevalue.JSON, method *frame.Method, authorize issuePublishAuthorization) (wire.IssueDeliveryReceipt, error) {
+	var zero wire.IssueDeliveryReceipt
 	if c.issuePolicy == nil {
 		return zero, refused(refusalNotFound, "issue delivery is not configured")
 	}
-	input := command.Input
+	if authorize != nil {
+		if err := authorize(ctx, false); err != nil {
+			return zero, err
+		}
+	}
 	scope := c.issueScope()
 	work, err := c.store.readIssueDelivery(ctx, scope, input.ID)
 	if err != nil {
@@ -111,7 +127,6 @@ func (c *connector) publishIssueDelivery(ctx context.Context, command pluginmcp.
 	if err != nil {
 		return zero, err
 	}
-	key := string(command.ID)
 	if work.Publication != nil {
 		if work.Publication.Key != key || work.Publication.Digest != input.Digest {
 			return zero, refused(refusalConflict, "the report already has an original publication command")
@@ -124,11 +139,12 @@ func (c *connector) publishIssueDelivery(ctx context.Context, command pluginmcp.
 	if err := c.checkIssueApproval(ctx, work, issue); err != nil {
 		return zero, err
 	}
-	admitted, err := command.RequestInput()
-	if err != nil {
-		return zero, err
-	}
 	prepared, replay, err := pluginstorage.AdmitCommand(ctx, c.store.db, method.Name(), key, admitted, func(ctx context.Context) error {
+		if authorize != nil {
+			if err := authorize(ctx, true); err != nil {
+				return err
+			}
+		}
 		work.Publication = &issueApproval{Key: key, Digest: input.Digest, Approved: time.Now().UTC()}
 		work.Status = issuePublishing
 		return c.store.saveIssueDelivery(ctx, scope, work)
@@ -142,7 +158,7 @@ func (c *connector) publishIssueDelivery(ctx context.Context, command pluginmcp.
 	if !prepared.NewlyAdmitted() {
 		return zero, pluginstorage.ErrCommandUnconfirmed
 	}
-	result, outcomeErr := c.sendApprovedIssueDelivery(ctx, work)
+	result, outcomeErr := c.sendApprovedIssueDelivery(ctx, work, authorize)
 	reply, err := pluginmcp.EncodeReply(result, outcomeErr, classify)
 	if err != nil {
 		return zero, err
@@ -193,7 +209,7 @@ func (c *connector) checkIssueHead(ctx context.Context, work issueDeliveryRecord
 	return nil
 }
 
-func (c *connector) sendApprovedIssueDelivery(ctx context.Context, work issueDeliveryRecord) (wire.IssueDeliveryReceipt, error) {
+func (c *connector) sendApprovedIssueDelivery(ctx context.Context, work issueDeliveryRecord, authorize issuePublishAuthorization) (wire.IssueDeliveryReceipt, error) {
 	var zero wire.IssueDeliveryReceipt
 	repoID, err := c.issueRepositoryID(ctx)
 	if err != nil {
@@ -205,6 +221,11 @@ func (c *connector) sendApprovedIssueDelivery(ctx context.Context, work issueDel
 	}
 	if err := c.checkIssueApproval(ctx, work, issue); err != nil {
 		return zero, err
+	}
+	if authorize != nil {
+		if err := authorize(ctx, false); err != nil {
+			return zero, err
+		}
 	}
 	comment, err := c.createComment(ctx, wire.CreateCommentInput{IssueInput: work.IssueInput, Body: work.Draft})
 	if err != nil {

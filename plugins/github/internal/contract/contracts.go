@@ -11,6 +11,10 @@ import (
 
 type Contracts struct {
 	Capability           *plugincontract.Capability
+	TeamBoard            *pluginmcp.Method[wire.TeamProject, wire.TeamBoard]
+	TeamGrant            *pluginmcp.Method[wire.TeamGrantInput, wire.TeamGrant]
+	TeamRevoke           *pluginmcp.Method[wire.TeamGrantRef, wire.TeamGrant]
+	TeamInvite           *pluginmcp.Method[wire.TeamGrantRef, wire.TeamInvite]
 	IssueDeliveries      *pluginmcp.Method[wire.IssueDeliveriesInput, wire.IssueDeliveryPage]
 	PublishIssueDelivery *pluginmcp.Method[wire.PublishIssueDeliveryInput, wire.IssueDeliveryReceipt]
 	ReviewWork           *pluginmcp.Method[wire.ReviewWorkInput, wire.ReviewWork]
@@ -49,6 +53,10 @@ func NewContracts() (Contracts, error) {
 	methods := pluginmcp.NewMethodSet(capability)
 	c := Contracts{
 		Capability:           capability,
+		TeamBoard:            pluginmcp.Implement[wire.TeamProject, wire.TeamBoard](methods, published.TeamBoardV1Method),
+		TeamGrant:            pluginmcp.Implement[wire.TeamGrantInput, wire.TeamGrant](methods, published.TeamGrantV1Method),
+		TeamRevoke:           pluginmcp.Implement[wire.TeamGrantRef, wire.TeamGrant](methods, published.TeamRevokeV1Method),
+		TeamInvite:           pluginmcp.Implement[wire.TeamGrantRef, wire.TeamInvite](methods, published.TeamInviteV1Method),
 		IssueDeliveries:      pluginmcp.Implement[wire.IssueDeliveriesInput, wire.IssueDeliveryPage](methods, published.IssueDeliveriesV1Method),
 		PublishIssueDelivery: pluginmcp.Implement[wire.PublishIssueDeliveryInput, wire.IssueDeliveryReceipt](methods, published.PublishIssueDeliveryV1Method),
 		ReviewWork:           pluginmcp.Implement[wire.ReviewWorkInput, wire.ReviewWork](methods, published.ReviewWorkV1Method),
