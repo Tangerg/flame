@@ -3,6 +3,9 @@ package process
 import (
 	"bytes"
 	"context"
+	"crypto/sha1"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -16,9 +19,10 @@ import (
 )
 
 const (
-	indexFile        = "index"
-	infoDirectory    = "info"
-	objectsDirectory = "objects"
+	indexFile         = "index"
+	sharedIndexPrefix = "sharedindex."
+	infoDirectory     = "info"
+	objectsDirectory  = "objects"
 )
 
 const unbornHead = "ref: refs/heads/unborn\n"
@@ -76,7 +80,7 @@ func ObserveWorktree(ctx context.Context, dir string, inspect func(WorktreeQuery
 	if err := q.installReadHead(view); err != nil {
 		return Result{}, err
 	}
-	if err := q.installReadIndex(view, common); err != nil {
+	if err := q.installWorktreeMetadata(view, common); err != nil {
 		return Result{}, err
 	}
 	objects := strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(filepath.Join(common, objectsDirectory))
@@ -88,7 +92,7 @@ func readViewEnvironment(env []string, view string) []string {
 	return append(slices.Clone(env), "GIT_DIR="+view, "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL="+os.DevNull, "GIT_ATTR_NOSYSTEM=1")
 }
 
-func (q repositoryQuery) installReadIndex(view, common string) error {
+func (q repositoryQuery) installWorktreeMetadata(view, common string) error {
 	gitDir, err := q.path("--git-dir")
 	if err != nil {
 		return err
@@ -96,12 +100,18 @@ func (q repositoryQuery) installReadIndex(view, common string) error {
 	if err := copyReadMaterial(filepath.Join(gitDir, indexFile), filepath.Join(view, indexFile)); err != nil {
 		return err
 	}
-	shared, err := q.path("--shared-index-path")
+	// Git refreshes a shared index's mtime even when only identifying it.
+	// It must choose the companion after the entire index family is private.
+	entries, err := os.ReadDir(gitDir)
 	if err != nil {
 		return err
 	}
-	if shared != "" {
-		if err := copyReadMaterial(shared, filepath.Join(view, filepath.Base(shared))); err != nil {
+	for _, entry := range entries {
+		name := entry.Name()
+		if !sharedIndexName(name) {
+			continue
+		}
+		if err := copyReadMaterial(filepath.Join(gitDir, name), filepath.Join(view, name)); err != nil {
 			return err
 		}
 	}
@@ -111,6 +121,15 @@ func (q repositoryQuery) installReadIndex(view, common string) error {
 		}
 	}
 	return nil
+}
+
+func sharedIndexName(name string) bool {
+	digest, ok := strings.CutPrefix(name, sharedIndexPrefix)
+	if !ok || len(digest) != hex.EncodedLen(sha1.Size) && len(digest) != hex.EncodedLen(sha256.Size) {
+		return false
+	}
+	_, err := hex.DecodeString(digest)
+	return err == nil
 }
 
 func newReadDirectory(tree string) (string, error) {
@@ -192,8 +211,6 @@ func (q repositoryQuery) installReadConfig(view string, env []string) ([]string,
 }
 
 func copyReadMaterial(source, destination string) (err error) {
-	// Git replaces an index through a lock and rename. A link therefore keeps
-	// split-index identity and avoids copying large indexes on the same volume.
 	info, err := os.Stat(source)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
@@ -203,9 +220,6 @@ func copyReadMaterial(source, destination string) (err error) {
 	}
 	if !info.Mode().IsRegular() {
 		return fmt.Errorf("git: expected regular metadata at %q", source)
-	}
-	if err := os.Link(source, destination); err == nil {
-		return nil
 	}
 	in, err := os.Open(source)
 	if err != nil {

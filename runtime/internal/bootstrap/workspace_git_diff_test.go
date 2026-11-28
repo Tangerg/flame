@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
@@ -53,6 +54,52 @@ func TestWorkspaceChangesUseTheSameGitComparisonAsDiff(t *testing.T) {
 				t.Fatalf("change list = %+v; want Git comparison %+v", listed.Data, visual.Manifest)
 			}
 		})
+	}
+}
+
+func TestWorkspaceGitComparisonKeepsLinkedSplitIndexUntouched(t *testing.T) {
+	source, git := taskWorktreeTestRepository(t)
+	const tracked, draft = "tracked.txt", "draft.txt"
+	write := func(dir, name, contents string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(contents), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write(source, tracked, "original\n")
+	git("add", "--", tracked)
+	git("commit", "--quiet", "-m", "original material")
+	checkout := filepath.Join(t.TempDir(), "checkout")
+	git("worktree", "add", "--quiet", "--detach", checkout, "HEAD")
+	git("-C", checkout, "update-index", "--split-index")
+	write(checkout, tracked, "updated material\n")
+	git("-C", checkout, "add", "--", tracked)
+	write(checkout, draft, "new draft\n")
+
+	index := git("-C", checkout, "rev-parse", "--path-format=absolute", "--shared-index-path")
+	if index == "" {
+		t.Fatal("Git did not create a shared index for the linked checkout")
+	}
+	previous := time.Unix(1_700_000_000, 0)
+	if err := os.Chtimes(index, previous, previous); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := poMCPConfig(t)
+	cfg.defaultWorkspacePath = checkout
+	r := poMCPOpen(t, cfg)
+	visual := r.must(delivery.WorkspaceDiffGet, protocol.GetDiffRequest{
+		Workspace: protocol.WorkspaceRef{Path: checkout}, Format: protocol.DiffFormatVisual,
+	}, "").(*protocol.Diff).Visual
+	if visual == nil || len(visual.Manifest) != 2 || visual.Manifest[0].Path != draft || visual.Manifest[1].Path != tracked {
+		t.Errorf("worktree comparison = %+v; want the draft and the staged edit", visual)
+	}
+	info, err := os.Stat(index)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !info.ModTime().Equal(previous) {
+		t.Errorf("source shared index modification time = %s; want %s", info.ModTime(), previous)
 	}
 }
 

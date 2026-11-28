@@ -72,6 +72,8 @@ that omit the member use the current Runtime protocol.
 Run accounting retains unreported model identities until the first reported usage. Missing cache partitions yield an unknown price when the catalog could charge different amounts. Existing data directories must be retained separately; the private Run accounting representation requires a fresh directory. A connecting MCP source fences its original crash-uncertain Run while other Sessions remain available.
 
 Read-only Git status, diff and file listing compare the workspace against an isolated metadata view. It retains the original HEAD, index (including linked worktrees and split indexes), object store, path attributes and ignore rules. Repository hooks, external clean filters, lazy remote fetches and recursive submodule worktree scans cannot run as part of a query. Changed submodule commits remain visible. Set the process temporary directory outside the worktree so inspection cannot enumerate its own metadata.
+Git opens split-index companions only in the private view because opening one
+also refreshes its expiration timestamp.
 
 Workspace filename suggestions use the optional `nameQuery` of `workspace.files.list`. The Runtime ranks the complete admitted file set before paging. Exact paths precede basename and path subsequences. The glob matcher compiles each bounded pattern once per listing.
 Listing a selected directory uses that directory's Git repository and presents
@@ -1952,7 +1954,7 @@ absent alternate file permits an empty seed.
 The source Git repository selects tracked and non-ignored untracked paths under
 the exact workspace, including parent/global ignores and `info/exclude`. Build
 backstops exclude only untracked paths. Git interprets its own ordinary, linked
-worktree and split indexes; Runtime never copies their bytes or flags. Each
+worktree and split indexes. The checkpoint index records the paths Git selected. Each
 snapshot replaces the shadow index's admitted path set, bounded to 20,000 paths
 and 512 MiB of file material, with the per-file limit below. Object borrowing is
 storage reuse only. The `flame-source-workspace` metadata binds this ownership
