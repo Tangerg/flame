@@ -56,7 +56,7 @@ func (b *TaskWorktrees) PrepareCreate(ctx context.Context, path, base, setup str
 	if err != nil {
 		return nil, errors.Join(work.ErrVCSUnavailable, err)
 	}
-	source, err = filepath.EvalSymlinks(source)
+	source, err = (filesystem.DirectoryResolver{}).ResolveExistingDir(source)
 	if err != nil {
 		return nil, err
 	}
@@ -225,7 +225,7 @@ func (b *TaskWorktrees) load(id string) (taskRecord, error) {
 }
 
 func (b *TaskWorktrees) inspect(ctx context.Context, record taskRecord) (work.TaskWorktree, error) {
-	directory, err := filepath.EvalSymlinks(filepath.Join(b.root, record.ID))
+	directory, err := (filesystem.DirectoryResolver{}).ResolveExistingDir(filepath.Join(b.root, record.ID))
 	if err != nil {
 		return work.TaskWorktree{}, err
 	}
@@ -251,7 +251,7 @@ func taskCommonDir(ctx context.Context, path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.EvalSymlinks(common)
+	return (filesystem.DirectoryResolver{}).ResolveExistingDir(common)
 }
 
 func checkoutGitDirectory(ctx context.Context, checkout string) (string, error) {

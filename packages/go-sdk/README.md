@@ -31,6 +31,10 @@ including in tests and development commands.
 | `timezone`                                                                             | The host's IANA time zone for values recorded on a person's behalf                   |
 | `capture`, `exactint`, `httpresponse`, `httporigin`, `instant`, `procgroup`, `sandbox` | Focused technical guarantees used across owners                                      |
 
+`filesystem.ResolvePath` uses the filesystem's spelling for the existing
+directory prefix on macOS. It preserves any unresolved suffix for paths used to
+prepare new files or directories.
+
 A macOS sandbox workspace with `RestrictReads` confines repository commands to
 their scratch copy, system tools, and explicitly named read-only toolchain paths.
 It uses a fixed system PATH, denies network access and writes outside scratch, and

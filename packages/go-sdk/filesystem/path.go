@@ -40,11 +40,23 @@ func ResolvePath(root, path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	resolved, err := resolve(abs, 0)
+	resolved, directory, err := resolve(abs, 0)
 	if err != nil {
 		return "", &os.PathError{Op: resolveOperation, Path: abs, Err: err}
 	}
-	return resolved, nil
+	// Resolve the directory spelling without choosing another name for a hard-linked file.
+	spelling, err := directorySpelling(directory)
+	if err != nil {
+		return "", &os.PathError{Op: resolveOperation, Path: abs, Err: err}
+	}
+	if spelling == directory {
+		return resolved, nil
+	}
+	suffix, err := filepath.Rel(directory, resolved)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(spelling, suffix), nil
 }
 
 // Trust boundaries must pass resolved paths so symlink aliases cannot bypass confinement.
@@ -70,28 +82,33 @@ func PathsOverlap(first, second string) (bool, error) {
 	return ContainsPath(second, first)
 }
 
-func resolve(abs string, depth int) (string, error) {
+func resolve(abs string, depth int) (resolved, directory string, err error) {
 	if depth > MaxSymlinks {
-		return "", syscall.ELOOP
+		return "", "", syscall.ELOOP
 	}
 	abs = filepath.FromSlash(abs)
 	volume := filepath.VolumeName(abs)
 	separator := string(filepath.Separator)
 	current := volume + separator
+	directory = current
 	info, err := os.Stat(current)
 	if err != nil {
-		return "", fmt.Errorf("inspect filesystem root %q: %w", current, err)
+		return "", "", fmt.Errorf("inspect filesystem root %q: %w", current, err)
 	}
 	parts := strings.Split(abs[len(volume):], separator)
 	for index, name := range parts {
 		if info != nil && !info.IsDir() {
-			return "", &os.PathError{Op: resolveOperation, Path: abs, Err: syscall.ENOTDIR}
+			return "", "", &os.PathError{Op: resolveOperation, Path: abs, Err: syscall.ENOTDIR}
 		}
 		switch name {
 		case "", ".":
 			continue
 		case "..":
-			current = filepath.Dir(current)
+			parent := filepath.Dir(current)
+			if current == directory {
+				directory = parent
+			}
+			current = parent
 			info = nil
 			continue
 		}
@@ -103,15 +120,18 @@ func resolve(abs string, depth int) (string, error) {
 			continue
 		}
 		if err != nil {
-			return "", fmt.Errorf("inspect filesystem path %q: %w", candidate, err)
+			return "", "", fmt.Errorf("inspect filesystem path %q: %w", candidate, err)
 		}
 		if info.Mode()&os.ModeSymlink == 0 {
 			current = candidate
+			if info.IsDir() {
+				directory = candidate
+			}
 			continue
 		}
 		target, err := symlinkTarget(candidate, current, volume)
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
 		// A missing component can be canceled by .. and expose an existing
 		// symlink later. Every remaining component still needs physical resolution.
@@ -120,7 +140,7 @@ func resolve(abs string, depth int) (string, error) {
 		}
 		return resolve(target, depth+1)
 	}
-	return current, nil
+	return current, directory, nil
 }
 
 func symlinkTarget(link, directory, volume string) (string, error) {

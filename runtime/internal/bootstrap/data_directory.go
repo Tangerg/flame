@@ -35,11 +35,10 @@ func openDataDirectory(ctx context.Context, directory string) (*dataDirectory, e
 	if err := os.MkdirAll(cleaned, filesystem.PrivateDirectoryMode); err != nil {
 		return nil, fmt.Errorf("runtime ownership: create data directory %q: %w", cleaned, err)
 	}
-	canonical, err := filepath.EvalSymlinks(cleaned)
+	canonical, err := (filesystem.DirectoryResolver{}).ResolveExistingDir(cleaned)
 	if err != nil {
 		return nil, fmt.Errorf("runtime ownership: resolve data directory %q: %w", cleaned, err)
 	}
-	canonical = filepath.Clean(canonical)
 	identity, err := os.Stat(canonical)
 	if err != nil {
 		return nil, err

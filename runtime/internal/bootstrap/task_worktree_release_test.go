@@ -96,6 +96,44 @@ func TestTaskWorktreeReleaseRemovesRegistrationWithoutCheckout(t *testing.T) {
 	}
 }
 
+func TestTaskWorktreeReleaseProtectsSessionBoundThroughCaseAlias(t *testing.T) {
+	source, git := taskWorktreeTestRepository(t)
+	git("commit", "--quiet", "--allow-empty", "-m", "initial checkout")
+	cfg := poMCPConfig(t)
+	cfg.defaultWorkspacePath = source
+	r := poMCPOpen(t, cfg)
+	task := r.must(delivery.TaskWorktreesCreate, protocol.CreateTaskWorktreeRequest{
+		Source: protocol.WorkspaceRef{Path: source}, Base: "HEAD",
+	}, "create-worktree-with-case-alias").(*protocol.TaskWorktree)
+	alias := filepath.Join(filepath.Dir(task.Workspace.Path), strings.ToUpper(filepath.Base(task.Workspace.Path)))
+	original, err := os.Stat(task.Workspace.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	aliased, err := os.Stat(alias)
+	if errors.Is(err, os.ErrNotExist) {
+		t.Skip("the working volume is case-sensitive")
+	}
+	if err != nil || !os.SameFile(original, aliased) {
+		t.Fatalf("case variant does not identify the checkout: %v", err)
+	}
+
+	bound := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{
+		Workspace: &protocol.WorkspaceRef{Path: alias},
+	}, "bind-session-through-case-alias").(*protocol.Session)
+	if bound.Workspace.Ref != task.Workspace {
+		t.Errorf("workspace binding = %q; want Git checkout %q", bound.Workspace.Ref.Path, task.Workspace.Path)
+	}
+	refused := r.endpoint.Invoke(protocolLifecycleContext(t.Context()), delivery.TaskWorktreesRelease,
+		protocol.TaskWorktreeRequest{ID: task.ID}, protocol.CallMetadata{IdempotencyKey: "release-worktree-with-case-alias"})
+	if refused.Failure == nil || !errors.Is(refused.Failure, protocol.ErrSessionBusy) {
+		t.Errorf("release with a case-aliased Session = %+v, %v; want workspace busy", refused.Value, refused.Failure)
+	}
+	if registrations := git("worktree", "list", "--porcelain"); !strings.Contains(registrations, "worktree "+task.Workspace.Path+"\n") {
+		t.Fatalf("Git removed the Session's checkout: %s", registrations)
+	}
+}
+
 func TestTaskWorktreeReleaseFencesNewSessionBinding(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("the Git timing fixture uses a POSIX shell")

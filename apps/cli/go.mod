@@ -4,9 +4,9 @@ go 1.27.4
 
 require (
 	github.com/Tangerg/acp v0.4.0
-	github.com/Tangerg/flame/packages/go-sdk v0.1.94-dev.20261128.tf317a24c5794
+	github.com/Tangerg/flame/packages/go-sdk v0.1.95-dev.20261128.t44ed49dc116b
 	github.com/Tangerg/flame/packages/local-runtime v0.1.14-dev.20261123.tca9fa5e1c260
-	github.com/Tangerg/flame/runtime v0.1.207-dev.20261128.t4dceef128b05
+	github.com/Tangerg/flame/runtime v0.1.208-dev.20261128.t420f9bf22333
 	github.com/Tangerg/frame v0.5.0
 	github.com/Tangerg/oolong/extensions/highlight v0.27.2
 	github.com/Tangerg/oolong/extensions/latex v0.30.0

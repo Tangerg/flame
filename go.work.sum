@@ -148,6 +148,7 @@ github.com/Tangerg/flame/runtime v0.1.52-dev.20261116.tfe868215d6f6/go.mod h1:Y8
 github.com/Tangerg/flame/runtime v0.1.177-dev.20261127.t6eb93d377631/go.mod h1:FzeiQg0uqZ9myR+D6qVge9973b6T0y+XWND91V+YnHU=
 github.com/Tangerg/flame/runtime v0.1.194-dev.20261128.tfd6f798074ef/go.mod h1:+qiJfLkezAcdHIT6Of1TMoEav/jY/oPfkuWbmAq0ew8=
 github.com/Tangerg/flame/runtime v0.1.198-dev.20261128.t4cefe23a79c8/go.mod h1:1U7pOpY7wR0/0r9N/assLJ8koRmqQlm7lXStZMoBTg0=
+github.com/Tangerg/flame/runtime v0.1.208-dev.20261128.t420f9bf22333/go.mod h1:re+hHzmrqDEWBTopLEo60glOErAcs7LCzp2MV743F+k=
 github.com/Tangerg/oolong/ui v0.30.0 h1:IsYOdNn6c4DfWzGEDynw7KdEuWLESIOn1apAkRQtVOk=
 github.com/Tangerg/oolong/ui v0.30.0/go.mod h1:FJu71l8ji9ykCrdMqVrsYGZXvN+0VffoN7W2K/+BdVY=
 github.com/a2aproject/a2a-go v0.3.15 h1:h5YpCiPq3jxQ5rIns7oDjPag3ivP8u817AzdA4F+NiI=
