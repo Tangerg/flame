@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	work "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
 )
@@ -107,30 +106,30 @@ func (r taskRecord) registrationForRelease(ctx context.Context, checkout string)
 	return registration, err
 }
 
-func (b *TaskWorktrees) Release(ctx context.Context, task work.TaskWorktree, complete operation.Reply[struct{}]) error {
+func (b *TaskWorktrees) PrepareRelease(ctx context.Context, task work.TaskWorktree) (func(context.Context) error, error) {
 	record, err := b.load(task.ID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	registration, err := record.registrationForRelease(ctx, task.Path)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if registration != nil {
 		if registration.checkout != task.Path {
-			return fmt.Errorf("%w: Git moved the task worktree to %q", work.ErrTaskWorktreeChanged, registration.checkout)
+			return nil, fmt.Errorf("%w: Git moved the task worktree to %q", work.ErrTaskWorktreeChanged, registration.checkout)
 		}
 		head, err := taskGitValue(ctx, registration.directory, "rev-parse", "--verify", "HEAD")
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if head != record.Base {
-			return fmt.Errorf("%w: the task worktree contains committed changes", work.ErrTaskWorktreeChanged)
+			return nil, fmt.Errorf("%w: the task worktree contains committed changes", work.ErrTaskWorktreeChanged)
 		}
 	}
-	return complete(ctx, func(work context.Context) (struct{}, error) {
-		return struct{}{}, b.removeTask(work, record.ID, registration)
-	})
+	return func(work context.Context) error {
+		return b.removeTask(work, record.ID, registration)
+	}, nil
 }
 
 func (b *TaskWorktrees) removeTask(ctx context.Context, id string, registration *taskRegistration) error {

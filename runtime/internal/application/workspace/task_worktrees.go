@@ -47,12 +47,12 @@ type WorktreeHandoff struct {
 }
 
 type taskWorktreeBackend interface {
-	Create(context.Context, string, string, string, operation.Reply[TaskWorktree]) error
+	PrepareCreate(context.Context, string, string, string) (func(context.Context) (TaskWorktree, error), error)
 	List(context.Context) ([]TaskWorktree, error)
 	Get(context.Context, string) (TaskWorktree, error)
 	Preview(context.Context, TaskWorktree) (WorktreeHandoff, error)
 	Apply(context.Context, WorktreeHandoff) error
-	Release(context.Context, TaskWorktree, operation.Reply[struct{}]) error
+	PrepareRelease(context.Context, TaskWorktree) (func(context.Context) error, error)
 }
 
 type worktreeMutationGate interface {
@@ -84,7 +84,11 @@ func (w *TaskWorktrees) Create(ctx context.Context, source, base, setup string, 
 	if err != nil {
 		return err
 	}
-	return w.publishCatalogChange(w.backend.Create(ctx, path, base, setup, complete))
+	create, err := w.backend.PrepareCreate(ctx, path, base, setup)
+	if err != nil {
+		return err
+	}
+	return commitTaskCatalogChange(ctx, complete, create, w.invalidations)
 }
 
 func (w *TaskWorktrees) List(ctx context.Context) ([]TaskWorktree, error) {
@@ -148,14 +152,24 @@ func (w *TaskWorktrees) Release(ctx context.Context, id string, complete operati
 			return ErrTaskWorktreeBusy
 		}
 	}
-	return w.publishCatalogChange(w.backend.Release(ctx, task, complete))
+	remove, err := w.backend.PrepareRelease(ctx, task)
+	if err != nil {
+		return err
+	}
+	return commitTaskCatalogChange(ctx, complete, func(work context.Context) (struct{}, error) {
+		return struct{}{}, remove(work)
+	}, w.invalidations)
 }
 
-func (w *TaskWorktrees) publishCatalogChange(err error) error {
-	if err == nil {
-		w.invalidations.Notify(invalidation.Notice{Resource: invalidation.TaskWorktrees})
-	}
-	return err
+func commitTaskCatalogChange[T any](ctx context.Context, complete operation.Reply[T], write func(context.Context) (T, error), publish invalidation.Publish) error {
+	return complete(ctx, func(work context.Context) (T, error) {
+		value, err := write(work)
+		// A receipt can persist a refusal, so observers follow the catalog write.
+		if err == nil {
+			publish.Notify(invalidation.Notice{Resource: invalidation.TaskWorktrees})
+		}
+		return value, err
+	})
 }
 
 func (w *TaskWorktrees) availableTask(ctx context.Context, id string) (TaskWorktree, error) {

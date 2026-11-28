@@ -17,7 +17,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/capture"
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
-	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	work "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
 	"github.com/Tangerg/flame/runtime/internal/infra/git/process"
@@ -52,38 +51,38 @@ type taskRecord struct {
 	Setup  *work.TaskWorktreeSetup `json:"setup,omitzero"`
 }
 
-func (b *TaskWorktrees) Create(ctx context.Context, path, base, setup string, complete operation.Reply[work.TaskWorktree]) error {
+func (b *TaskWorktrees) PrepareCreate(ctx context.Context, path, base, setup string) (func(context.Context) (work.TaskWorktree, error), error) {
 	source, err := taskGitValue(ctx, path, "rev-parse", "--show-toplevel")
 	if err != nil {
-		return errors.Join(work.ErrVCSUnavailable, err)
+		return nil, errors.Join(work.ErrVCSUnavailable, err)
 	}
 	source, err = filepath.EvalSymlinks(source)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if relative, err := filepath.Rel(source, b.root); err == nil && filepath.IsLocal(relative) {
-		return fmt.Errorf("%w: task storage must be outside the source checkout", work.ErrTaskWorktreeInput)
+		return nil, fmt.Errorf("%w: task storage must be outside the source checkout", work.ErrTaskWorktreeInput)
 	}
 	common, err := taskCommonDir(ctx, source)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	commit, err := taskGitValue(ctx, source, "rev-parse", "--verify", "--end-of-options", base+"^{commit}")
 	if err != nil {
-		return errors.Join(work.ErrTaskWorktreeInput, err)
+		return nil, errors.Join(work.ErrTaskWorktreeInput, err)
 	}
 	var key [taskIDBytes]byte
 	if _, err := rand.Read(key[:]); err != nil {
-		return err
+		return nil, err
 	}
 	record := taskRecord{ID: hex.EncodeToString(key[:]), Source: source, Common: common, Base: commit}
 	if setup != "" {
 		record.Setup = &work.TaskWorktreeSetup{Command: setup}
 	}
-	return complete(ctx, func(registration context.Context) (work.TaskWorktree, error) {
+	return func(registration context.Context) (work.TaskWorktree, error) {
 		// Setup remains cancellable after the caller has authorized registration.
 		return b.registerTask(registration, ctx, record)
-	})
+	}, nil
 }
 
 func (b *TaskWorktrees) registerTask(ctx, setupCtx context.Context, record taskRecord) (work.TaskWorktree, error) {
