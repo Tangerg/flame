@@ -22,19 +22,20 @@ import (
 type taskGitBoundary string
 
 const (
-	beforeCheckoutCreation taskGitBoundary = "before-create"
-	afterCheckoutCreation  taskGitBoundary = "after-create"
-	beforeHandoffPreview   taskGitBoundary = "before-preview"
-	afterHandoffApply      taskGitBoundary = "after-apply"
-	beforeCheckoutRemoval  taskGitBoundary = "before-removal"
-	afterCheckoutRemoval   taskGitBoundary = "after-removal"
+	beforeBaseResolution       taskGitBoundary = "before-resolve-base"
+	beforeCheckoutRegistration taskGitBoundary = "before-register"
+	afterCheckoutRegistration  taskGitBoundary = "after-register"
+	beforeHandoffPreview       taskGitBoundary = "before-preview"
+	afterHandoffApply          taskGitBoundary = "after-apply"
+	beforeCheckoutReleaseCheck taskGitBoundary = "before-check-release"
+	afterCheckoutRemoval       taskGitBoundary = "after-remove"
 )
 
 func TestTaskWorktreeReceiptsSurviveRequestCancellation(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("the Git timing fixture uses a POSIX shell")
 	}
-	for _, boundary := range []taskGitBoundary{beforeHandoffPreview, afterHandoffApply, beforeCheckoutRemoval, afterCheckoutRemoval} {
+	for _, boundary := range []taskGitBoundary{beforeHandoffPreview, afterHandoffApply, beforeCheckoutReleaseCheck, afterCheckoutRemoval} {
 		t.Run(string(boundary), func(t *testing.T) {
 			source, git := taskWorktreeTestRepository(t)
 			const name = "material.txt"
@@ -62,7 +63,7 @@ func TestTaskWorktreeReceiptsSurviveRequestCancellation(t *testing.T) {
 			var method delivery.Name
 			var request any
 			var preview *protocol.WorktreeHandoff
-			releasing := boundary == beforeCheckoutRemoval || boundary == afterCheckoutRemoval
+			releasing := boundary == beforeCheckoutReleaseCheck || boundary == afterCheckoutRemoval
 			if releasing {
 				method, request = delivery.TaskWorktreesRelease, protocol.TaskWorktreeRequest{ID: task.ID}
 			} else {
@@ -103,12 +104,12 @@ func TestTaskWorktreeReceiptsSurviveRequestCancellation(t *testing.T) {
 			switch boundary {
 			case beforeHandoffPreview:
 				requireStaged(original)
-			case beforeCheckoutRemoval:
+			case beforeCheckoutReleaseCheck:
 				if _, err := os.Stat(task.Workspace.Path); err != nil {
 					t.Fatalf("release changed the checkout during cancelled preflight: %v", err)
 				}
 			}
-			if boundary == beforeHandoffPreview || boundary == beforeCheckoutRemoval {
+			if boundary == beforeHandoffPreview || boundary == beforeCheckoutReleaseCheck {
 				if initial.Failure == nil {
 					t.Fatalf("cancelled preflight returned a success: %+v", initial.Value)
 				}
@@ -150,7 +151,7 @@ func TestTaskWorktreeCreationSettlesAcrossRequestCancellation(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("the Git timing fixture uses a POSIX shell")
 	}
-	for _, boundary := range []taskGitBoundary{beforeCheckoutCreation, afterCheckoutCreation} {
+	for _, boundary := range []taskGitBoundary{beforeBaseResolution, afterCheckoutRegistration} {
 		t.Run(string(boundary), func(t *testing.T) {
 			source, git := taskWorktreeTestRepository(t)
 			git("commit", "--quiet", "--allow-empty", "-m", "initial checkout")
@@ -183,7 +184,7 @@ func TestTaskWorktreeCreationSettlesAcrossRequestCancellation(t *testing.T) {
 			awaitTaskGitBoundary(t, ctx, entered, first)
 			paths := registered()
 			expectedRegistrations := 1
-			if boundary == afterCheckoutCreation {
+			if boundary == afterCheckoutRegistration {
 				expectedRegistrations = 2
 			}
 			if len(paths) != expectedRegistrations {
@@ -195,7 +196,7 @@ func TestTaskWorktreeCreationSettlesAcrossRequestCancellation(t *testing.T) {
 			}
 			caller.Wait()
 			initial := <-first
-			if boundary == beforeCheckoutCreation {
+			if boundary == beforeBaseResolution {
 				if paths := registered(); initial.Failure == nil || len(paths) != 1 {
 					t.Fatalf("cancelled preflight = %+v, %v; Git registrations = %q", initial.Value, initial.Failure, paths)
 				}
@@ -216,10 +217,69 @@ func TestTaskWorktreeCreationSettlesAcrossRequestCancellation(t *testing.T) {
 				len(published.Data) != 1 || !reflect.DeepEqual(published.Data[0], *task) {
 				t.Fatalf("creation receipt = %+v; registrations = %q; catalog = %+v", task, paths, published.Data)
 			}
-			if boundary == afterCheckoutCreation && (paths[1] != task.Workspace.Path || !reflect.DeepEqual(initial.Value, result.Value)) {
+			if boundary == afterCheckoutRegistration && (paths[1] != task.Workspace.Path || !reflect.DeepEqual(initial.Value, result.Value)) {
 				t.Fatalf("restart changed the registered checkout: before = %+v (%q), after = %+v", initial.Value, paths[1], task)
 			}
 		})
+	}
+}
+
+func TestTaskWorktreeCreationSurvivesSourceRelease(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the Git timing fixture uses a POSIX shell")
+	}
+	source, git := taskWorktreeTestRepository(t)
+	git("commit", "--quiet", "--allow-empty", "-m", "task source base")
+	cfg := poMCPConfig(t)
+	cfg.defaultWorkspacePath = source
+	r := poMCPOpen(t, cfg)
+	parent := r.must(delivery.TaskWorktreesCreate, protocol.CreateTaskWorktreeRequest{
+		Source: protocol.WorkspaceRef{Path: source}, Base: "HEAD",
+	}, "create-parent-before-release").(*protocol.TaskWorktree)
+	git("commit", "--quiet", "--allow-empty", "-m", "advance the primary checkout")
+
+	entered, proceed := holdTaskGitBoundary(t, beforeCheckoutRegistration)
+	ctx, cancel := context.WithTimeout(protocolLifecycleContext(t.Context()), lifecycleWaitBudget(t))
+	var caller sync.WaitGroup
+	defer func() {
+		cancel()
+		if err := os.WriteFile(proceed, nil, 0o600); err != nil {
+			t.Error(err)
+		}
+		caller.Wait()
+	}()
+	request := protocol.CreateTaskWorktreeRequest{Source: parent.Workspace, Base: "HEAD"}
+	options := protocol.CallMetadata{IdempotencyKey: "create-child-from-captured-head"}
+	first := make(chan protocol.OperationResult, 1)
+	caller.Go(func() { first <- r.endpoint.Invoke(ctx, delivery.TaskWorktreesCreate, request, options) })
+	awaitTaskGitBoundary(t, ctx, entered, first)
+
+	r.must(delivery.TaskWorktreesRelease, protocol.TaskWorktreeRequest{ID: parent.ID}, "release-parent-during-creation")
+	if _, err := os.Stat(parent.Workspace.Path); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("source checkout survived its release: %v", err)
+	}
+	if err := os.WriteFile(proceed, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	caller.Wait()
+	initial := <-first
+	if initial.Failure != nil {
+		t.Fatalf("accepted child registration failed after releasing its source: %v", initial.Failure)
+	}
+	child := initial.Value.(*protocol.TaskWorktree)
+	if !child.Available || child.Source != parent.Workspace ||
+		child.Base != parent.Base || git("-C", child.Workspace.Path, "rev-parse", "HEAD") != parent.Base {
+		t.Fatalf("child registration lost its captured source and commit: %+v; parent = %+v", child, parent)
+	}
+
+	r = restartTaskWorktreeRuntime(t, r, cfg)
+	replayed := r.endpoint.Invoke(protocolLifecycleContext(t.Context()), delivery.TaskWorktreesCreate, request, options)
+	if replayed.Failure != nil || !reflect.DeepEqual(replayed.Value, initial.Value) {
+		t.Fatalf("replay after source release = %+v, %v; want %+v", replayed.Value, replayed.Failure, initial.Value)
+	}
+	if registrations := git("worktree", "list", "--porcelain"); strings.Count(registrations, "worktree ") != 2 ||
+		!strings.Contains(registrations, "worktree "+child.Workspace.Path+"\n") {
+		t.Fatalf("the original command did not leave exactly one child registration: %s", registrations)
 	}
 }
 
@@ -253,26 +313,26 @@ operation=
 previous=
 for argument do
   case "$argument" in
-    list) if [ "$previous" = worktree ]; then operation=before-preview; fi ;;
-    apply) operation=after-apply ;;
-    *'^{commit}') operation=before-create ;;
-    add) if [ "$previous" = worktree ]; then operation=after-create; fi ;;
-    HEAD) if [ "$previous" = --verify ]; then operation=before-removal; fi ;;
-    remove) if [ "$previous" = worktree ]; then operation=after-removal; fi ;;
+    list) if [ "$previous" = worktree ]; then operation=preview; fi ;;
+    apply) operation=apply ;;
+    *'^{commit}') operation=resolve-base ;;
+    add) if [ "$previous" = worktree ]; then operation=register; fi ;;
+    HEAD) if [ "$previous" = --verify ]; then operation=check-release; fi ;;
+    remove) if [ "$previous" = worktree ]; then operation=remove; fi ;;
   esac
   previous=$argument
 done
-if [ "$operation" != "$FLAME_TEST_GIT_BOUNDARY" ]; then
+if [ "$operation" != "${FLAME_TEST_GIT_BOUNDARY#*-}" ]; then
   exec "$FLAME_TEST_REAL_GIT" "$@"
 fi
-case "$operation" in
+case "$FLAME_TEST_GIT_BOUNDARY" in
 after-*)
   "$FLAME_TEST_REAL_GIT" "$@" || exit
   ;;
 esac
 : > "$FLAME_TEST_GIT_ENTERED" || exit
 while [ ! -f "$FLAME_TEST_GIT_PROCEED" ]; do sleep 0.02 || exit; done
-case "$operation" in
+case "$FLAME_TEST_GIT_BOUNDARY" in
 before-*)
   exec "$FLAME_TEST_REAL_GIT" "$@"
   ;;

@@ -44,11 +44,11 @@ func NewTaskWorktrees(root string, toolDirs []string) *TaskWorktrees {
 }
 
 type taskRecord struct {
-	ID     string                  `json:"id"`
-	Source string                  `json:"source"`
-	Common string                  `json:"common"`
-	Base   string                  `json:"base"`
-	Setup  *work.TaskWorktreeSetup `json:"setup,omitzero"`
+	ID        string                  `json:"id"`
+	Source    string                  `json:"source"`
+	CommonDir string                  `json:"common"`
+	Base      string                  `json:"base"`
+	Setup     *work.TaskWorktreeSetup `json:"setup,omitzero"`
 }
 
 func (b *TaskWorktrees) PrepareCreate(ctx context.Context, path, base, setup string) (func(context.Context) (work.TaskWorktree, error), error) {
@@ -75,7 +75,7 @@ func (b *TaskWorktrees) PrepareCreate(ctx context.Context, path, base, setup str
 	if _, err := rand.Read(key[:]); err != nil {
 		return nil, err
 	}
-	record := taskRecord{ID: hex.EncodeToString(key[:]), Source: source, Common: common, Base: commit}
+	record := taskRecord{ID: hex.EncodeToString(key[:]), Source: source, CommonDir: common, Base: commit}
 	if setup != "" {
 		record.Setup = &work.TaskWorktreeSetup{Command: setup}
 	}
@@ -111,7 +111,8 @@ func (b *TaskWorktrees) registerTask(ctx, setupCtx context.Context, record taskR
 		return work.TaskWorktree{}, err
 	}
 	checkout := filepath.Join(b.root, record.ID, taskCheckout)
-	if _, err := taskGitValue(ctx, record.Source, "worktree", "add", "--detach", "--quiet", "--", checkout, record.Base); err != nil {
+	// The source checkout can be released after its base has been captured.
+	if _, err := taskGitValue(ctx, record.CommonDir, "worktree", "add", "--detach", "--quiet", "--", checkout, record.Base); err != nil {
 		return work.TaskWorktree{}, err
 	}
 	gitDir, err := taskGitValue(ctx, checkout, "rev-parse", "--absolute-git-dir")
@@ -217,7 +218,7 @@ func (b *TaskWorktrees) load(id string) (taskRecord, error) {
 	}
 	var record taskRecord
 	if len(raw) > maxTaskRecord || json.Unmarshal(raw, &record, json.RejectUnknownMembers(true)) != nil ||
-		record.ID != id || !filepath.IsAbs(record.Source) || !filepath.IsAbs(record.Common) || !validTaskSHA(record.Base) {
+		record.ID != id || !filepath.IsAbs(record.Source) || !filepath.IsAbs(record.CommonDir) || !validTaskSHA(record.Base) {
 		return taskRecord{}, errors.New("workspace: invalid task worktree record")
 	}
 	return record, nil

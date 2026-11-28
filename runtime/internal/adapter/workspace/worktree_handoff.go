@@ -33,7 +33,7 @@ func (b *TaskWorktrees) Preview(ctx context.Context, task work.TaskWorktree) (wo
 	if err != nil {
 		return work.WorktreeHandoff{}, err
 	}
-	if current != record.Common {
+	if current != record.CommonDir {
 		return work.WorktreeHandoff{}, work.ErrTaskWorktreeChanged
 	}
 	status, err := taskGitBytes(ctx, task.Source, 0, "status", "--porcelain=v1", "-z", "--untracked-files=all")

@@ -120,7 +120,7 @@ func TestTaskWorktreeReleaseFencesNewSessionBinding(t *testing.T) {
 		t.Fatal(err)
 	}
 	archive.Artifact.Session.Workspace = task.Workspace
-	entered, proceed := holdTaskGitBoundary(t, beforeCheckoutRemoval)
+	entered, proceed := holdTaskGitBoundary(t, beforeCheckoutReleaseCheck)
 
 	ctx, cancel := context.WithTimeout(protocolLifecycleContext(t.Context()), lifecycleWaitBudget(t))
 	release := make(chan protocol.OperationResult, 1)

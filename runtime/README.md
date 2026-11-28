@@ -82,7 +82,9 @@ retains its exit status and bounded output. A registered checkout keeps its
 creation receipt when the request ends during setup. The catalog keeps serving
 registered tasks while a new checkout runs its setup, and the same source
 repository can prepare another task at the same time. The main checkout is
-independent of task setup and edits. Handoff previews bind tracked and untracked
+independent of task setup and edits. Once the base commit is captured,
+registration uses the shared Git repository. The selected checkout remains the
+handoff destination. Handoff previews bind tracked and untracked
 changes to the original checkout's branch and HEAD. Accepting a current preview
 stages its changes in that clean destination. Release uses Git's non-forced
 removal for an owned registration at its original base with no attached Session,

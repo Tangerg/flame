@@ -24,7 +24,7 @@ type taskRegistration struct {
 }
 
 func (r taskRecord) registration() (*taskRegistration, error) {
-	common, err := os.OpenRoot(r.Common)
+	common, err := os.OpenRoot(r.CommonDir)
 	if err != nil {
 		return nil, fmt.Errorf("%w: open task Git registry: %w", work.ErrTaskWorktreeChanged, err)
 	}
@@ -41,7 +41,7 @@ func (r taskRecord) registration() (*taskRegistration, error) {
 	if err != nil {
 		return nil, err
 	}
-	registryPath := filepath.Join(r.Common, gitWorktreeRegistrations)
+	registryPath := filepath.Join(r.CommonDir, gitWorktreeRegistrations)
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
