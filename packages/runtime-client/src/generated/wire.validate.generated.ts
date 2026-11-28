@@ -522,12 +522,11 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     release: text(),
   }, ["contractRef", "contribution", "installationId", "release"]),
   AppliedChange: object({
-    added: integer(),
     from: text(),
+    hunks: integer(),
     path: text(),
-    removed: integer(),
     status: ref(() => CHECKS.ChangeStatus),
-  }, ["added", "path", "removed", "status"]),
+  }, ["hunks", "path", "status"]),
   ApplyWorktreeHandoffRequest: object({
     digest: text(),
     id: text(),

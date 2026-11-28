@@ -8,8 +8,8 @@ import (
 
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/infra/git"
 	"github.com/Tangerg/scope/tools/content"
+	scopefs "github.com/Tangerg/scope/tools/fs"
 )
 
 type Presenter struct{}
@@ -36,7 +36,7 @@ func PresentationContracts() []PresentationContract {
 	return contracts
 }
 
-func (Presenter) Present(ref tool.Ref, arguments tool.Arguments, result tool.Result) (tool.Result, string) {
+func (Presenter) Present(ref tool.Ref, result tool.Result) (tool.Result, string) {
 	name, ok := ref.BuiltIn()
 	if !ok {
 		return result, ""
@@ -45,23 +45,11 @@ func (Presenter) Present(ref tool.Ref, arguments tool.Arguments, result tool.Res
 	if !ok {
 		return result, ""
 	}
-	return contract.project(arguments, result)
-}
-
-func presentCommand(_ tool.Arguments, result tool.Result) (tool.Result, string) {
-	return presentCommandResult(result)
-}
-
-func presentSearch(_ tool.Arguments, result tool.Result) (tool.Result, string) {
-	return presentSearchResult(result), ""
-}
-
-func presentApplyPatch(arguments tool.Arguments, result tool.Result) (tool.Result, string) {
-	return presentApplyPatchResult(arguments, result), ""
+	return contract.project(result)
 }
 
 func commandResultContract() resultProjectionContract {
-	return resultProjectionContract{project: presentCommand, resultType: reflect.TypeFor[builtincontract.CommandResult]()}
+	return resultProjectionContract{project: presentCommandResult, resultType: reflect.TypeFor[builtincontract.CommandResult]()}
 }
 
 type commandExecutionResult struct {
@@ -99,7 +87,7 @@ func presentCommandResult(result tool.Result) (tool.Result, string) {
 }
 
 func searchResultContract() resultProjectionContract {
-	return resultProjectionContract{project: presentSearch, resultType: reflect.TypeFor[builtincontract.SearchResult]()}
+	return resultProjectionContract{project: presentSearchResult, resultType: reflect.TypeFor[builtincontract.SearchResult]()}
 }
 
 type localSearchExecutionResult struct {
@@ -124,13 +112,13 @@ type localSearchCount struct {
 	Count int    `json:"count"`
 }
 
-func presentSearchResult(result tool.Result) tool.Result {
+func presentSearchResult(result tool.Result) (tool.Result, string) {
 	if _, ok := decodeResult[builtincontract.SearchResult](result, "hits"); ok {
-		return result
+		return result, ""
 	}
 	raw, ok := decodeResult[localSearchExecutionResult](result, "matches", "files", "paths", "counts")
 	if !ok {
-		return result
+		return result, ""
 	}
 	hits := make([]builtincontract.SearchHit, 0, len(raw.Matches)+len(raw.Files)+len(raw.Paths)+len(raw.Counts))
 	for _, match := range raw.Matches {
@@ -152,12 +140,12 @@ func presentSearchResult(result tool.Result) tool.Result {
 			RemainingFiles: raw.Coverage.RemainingFiles, SourceBytes: raw.Coverage.SourceBytes,
 		}
 	}
-	return projectResult(result, presentation)
+	return projectResult(result, presentation), ""
 }
 
 func patchResultContract() resultProjectionContract {
 	return resultProjectionContract{
-		project: presentApplyPatch, resultType: reflect.TypeFor[builtincontract.PatchResult](), enums: patchResultEnums,
+		project: presentApplyPatchResult, resultType: reflect.TypeFor[builtincontract.PatchResult](), enums: patchResultEnums,
 	}
 }
 
@@ -169,7 +157,7 @@ func patchResultEnums() map[reflect.Type][]string {
 
 func scriptResultContract() resultProjectionContract {
 	return resultProjectionContract{
-		project:    func(_ tool.Arguments, result tool.Result) (tool.Result, string) { return result, "" },
+		project:    func(result tool.Result) (tool.Result, string) { return result, "" },
 		resultType: reflect.TypeFor[builtincontract.ScriptResult](),
 		enums: func() map[reflect.Type][]string {
 			return map[reflect.Type][]string{
@@ -180,24 +168,11 @@ func scriptResultContract() resultProjectionContract {
 	}
 }
 
-type patchExecutionResult struct {
-	Files []struct {
-		Path      string `json:"path"`
-		Created   bool   `json:"created"`
-		Deleted   bool   `json:"deleted"`
-		MovedFrom string `json:"moved_from"`
-	} `json:"files"`
-}
-
-func presentApplyPatchResult(arguments tool.Arguments, result tool.Result) tool.Result {
-	if _, ok := decodeResult[builtincontract.PatchResult](result, "changes"); ok {
-		return result
-	}
-	decoded, ok := decodeResult[patchExecutionResult](result, "files")
+func presentApplyPatchResult(result tool.Result) (tool.Result, string) {
+	decoded, ok := decodeResult[scopefs.ApplyPatchResponse](result, "files")
 	if !ok || len(decoded.Files) == 0 {
-		return result
+		return result, ""
 	}
-	counts := patchLineCounts(arguments)
 	changes := make([]builtincontract.AppliedChange, 0, len(decoded.Files))
 	for _, file := range decoded.Files {
 		status := builtincontract.Modified
@@ -209,35 +184,11 @@ func presentApplyPatchResult(arguments tool.Arguments, result tool.Result) tool.
 		case file.Deleted:
 			status = builtincontract.Deleted
 		}
-		count := counts[file.Path]
 		changes = append(changes, builtincontract.AppliedChange{
-			Path: file.Path, Status: status, From: file.MovedFrom,
-			Added: count.added, Removed: count.removed,
+			Path: file.Path, Status: status, From: file.MovedFrom, Hunks: file.Hunks,
 		})
 	}
-	return projectResult(result, builtincontract.PatchResult{Changes: changes})
-}
-
-type patchLineCount struct{ added, removed int }
-
-func patchLineCounts(arguments tool.Arguments) map[string]patchLineCount {
-	args, ok := decodeArguments[applyPatchArguments](arguments, "patch")
-	if !ok || args.Patch == "" {
-		return nil
-	}
-	files, err := git.SummarizePatch([]byte(args.Patch))
-	if err != nil {
-		return nil
-	}
-	counts := make(map[string]patchLineCount, len(files))
-	for _, file := range files {
-		counts[file.Path] = patchLineCount{added: file.Added, removed: file.Removed}
-	}
-	return counts
-}
-
-type applyPatchArguments struct {
-	Patch string `json:"patch"`
+	return projectResult(result, builtincontract.PatchResult{Changes: changes}), ""
 }
 
 func decodeResult[T any](result tool.Result, knownFields ...string) (T, bool) {
@@ -246,10 +197,6 @@ func decodeResult[T any](result tool.Result, knownFields ...string) (T, bool) {
 		return *new(T), false
 	}
 	return decodePresentation[T](data, knownFields...)
-}
-
-func decodeArguments[T any](arguments tool.Arguments, knownFields ...string) (T, bool) {
-	return decodePresentation[T]([]byte(arguments.Canonical()), knownFields...)
 }
 
 func decodePresentation[T any](data []byte, knownFields ...string) (T, bool) {

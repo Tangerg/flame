@@ -132,7 +132,7 @@ func (i *interactionSession) investigateToolReceipt(ctx context.Context, tree sc
 }
 
 func (i *interactionSession) publishToolReceipt(ctx context.Context, request scoperun.EffectRequest, owner *observedInteractionTool, capture toolCallCapture, output toolcontract.Output, outcomeErr error) (bool, error) {
-	projection, err := owner.projectToolResult(capture.Start.ToolName, capture.Start.Input.Arguments(), output, outcomeErr, nil)
+	projection, err := owner.projectToolResult(capture.Start.ToolName, output, outcomeErr, nil)
 	if err != nil {
 		return false, err
 	}

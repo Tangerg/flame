@@ -43,24 +43,19 @@ function readRecordedFileChange(value: unknown): RecordedFileChange | undefined 
   const change = readToolResultObject(value);
   if (!change || typeof change.path !== "string") return undefined;
   const status = CHANGE_STATUSES.find((candidate) => candidate === change.status);
-  const added = readRepresentableNumber(change.added);
-  const removed = readRepresentableNumber(change.removed);
+  const hunks = readRepresentableNumber(change.hunks);
   if (
     status === undefined ||
-    added === undefined ||
-    removed === undefined ||
-    !Number.isSafeInteger(added) ||
-    added < 0 ||
-    !Number.isSafeInteger(removed) ||
-    removed < 0 ||
+    hunks === undefined ||
+    !Number.isSafeInteger(hunks) ||
+    hunks < 0 ||
     (change.from !== undefined && typeof change.from !== "string")
   )
     return undefined;
   return {
     path: change.path,
     status,
-    added,
-    removed,
+    hunks,
     ...(typeof change.from === "string" ? { from: change.from } : {}),
   };
 }

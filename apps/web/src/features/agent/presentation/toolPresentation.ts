@@ -91,14 +91,6 @@ function skillTextOffset(tool: ToolCall): number | undefined {
   return typeof snapshot === "string" && SKILL_SNAPSHOT.test(snapshot) ? offset : undefined;
 }
 
-export function toolDiffStat(tool: ToolCall): Pick<ToolCall, "added" | "removed"> | undefined {
-  if (tool.status === "denied" || tool.status === "err") return undefined;
-  const { added, removed } = tool;
-  if (added === undefined && removed === undefined) return undefined;
-  if (added === 0 && removed === 0) return undefined;
-  return { added, removed };
-}
-
 export function isReadOnlyTool(tool: ToolCall): boolean {
   return tool.safetyClass === "safe";
 }

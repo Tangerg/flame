@@ -32,7 +32,7 @@ type interactionToolInterpreter interface {
 }
 
 type interactionToolPresenter interface {
-	Present(ref tool.Ref, arguments tool.Arguments, result tool.Result) (tool.Result, string)
+	Present(ref tool.Ref, result tool.Result) (tool.Result, string)
 }
 
 type ToolAuthorizationRequest struct {

@@ -3,15 +3,9 @@ package git
 import (
 	"bytes"
 	"fmt"
-	"math"
 	"strconv"
 	"strings"
 )
-
-func SummarizePatch(patch []byte) ([]DiffFile, error) {
-	parsed, err := parseUnifiedDiff(patch, math.MaxInt, math.MaxInt, false)
-	return parsed.files, err
-}
 
 type parsedDiff struct {
 	files     []DiffFile
@@ -49,12 +43,9 @@ const (
 	renameFromHeader      = "rename from "
 	renameToHeader        = "rename to "
 	binaryFilesHeader     = "Binary files "
-	oldFileHeader         = "--- "
-	newFileHeader         = "+++ "
 	hunkHeader            = "@@"
 	oldPathPrefix         = "a/"
 	newPathPrefix         = "b/"
-	nullPatchPath         = "/dev/null"
 	noNewlineMarker       = `\ No newline at end of file`
 )
 
@@ -65,19 +56,18 @@ const (
 )
 
 type unifiedDiffParser struct {
-	maxFiles     int
-	maxRows      int
-	files        []DiffFile
-	current      *DiffFile
-	preimagePath string
-	left         hunkRange
-	right        hunkRange
-	rows         int
-	currentRows  int
-	retainRows   bool
-	lastRow      *Row
-	scratch      Row
-	acceptedEnd  int
+	maxFiles    int
+	maxRows     int
+	files       []DiffFile
+	current     *DiffFile
+	left        hunkRange
+	right       hunkRange
+	rows        int
+	currentRows int
+	retainRows  bool
+	lastRow     *Row
+	scratch     Row
+	acceptedEnd int
 }
 
 func (parser *unifiedDiffParser) consume(encoded []byte, offset int) (bool, error) {
@@ -125,7 +115,6 @@ func (parser *unifiedDiffParser) startFile(header string, offset int) (bool, err
 		Path:   sameFilePatchPath(header),
 		Status: StatusModified,
 	}
-	parser.preimagePath = ""
 	parser.left = hunkRange{}
 	parser.right = hunkRange{}
 	parser.currentRows = 0
@@ -167,14 +156,6 @@ func (parser *unifiedDiffParser) applyMetadata(line string) bool {
 		parser.current.Status = StatusRenamed
 	case strings.HasPrefix(line, binaryFilesHeader):
 		parser.current.Binary = true
-	case parser.current.Path == "" && strings.HasPrefix(line, oldFileHeader):
-		parser.preimagePath = parsePatchPath(strings.TrimPrefix(line, oldFileHeader), oldPathPrefix)
-	case parser.current.Path == "" && strings.HasPrefix(line, newFileHeader):
-		path := parsePatchPath(strings.TrimPrefix(line, newFileHeader), newPathPrefix)
-		if path == nullPatchPath {
-			path = parser.preimagePath
-		}
-		parser.current.Path = path
 	default:
 		return false
 	}
@@ -256,7 +237,6 @@ func (parser *unifiedDiffParser) rowBudgetExhausted() bool {
 }
 
 func parsePatchPath(value, prefix string) string {
-	value, _, _ = strings.Cut(value, "\t")
 	if strings.HasPrefix(value, "\"") {
 		if unquoted, err := strconv.Unquote(value); err == nil {
 			value = unquoted

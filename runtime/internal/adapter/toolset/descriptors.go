@@ -11,7 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
-type resultProjection func(tool.Arguments, tool.Result) (tool.Result, string)
+type resultProjection func(tool.Result) (tool.Result, string)
 
 type outcomeProjection uint8
 

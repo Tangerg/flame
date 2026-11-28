@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-11-28.2";
+export const PROTOCOL_VERSION = "2026-11-28.3";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 32;
@@ -274,10 +274,9 @@ export interface AnnotationSource {
 }
 
 export interface AppliedChange {
-  added: number;
   from?: string;
+  hunks: number;
   path: string;
-  removed: number;
   status: ChangeStatus;
 }
 

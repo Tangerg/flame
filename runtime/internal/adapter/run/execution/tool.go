@@ -115,7 +115,7 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 	if executed.failure == nil && executed.result.InputRequest != nil {
 		return toolcontract.Result{InputRequest: executed.result.InputRequest}, nil
 	}
-	projection, err := o.projectToolResult(start.ToolName, arguments, executed.result.Output, executed.failure, executed.mutatedPaths)
+	projection, err := o.projectToolResult(start.ToolName, executed.result.Output, executed.failure, executed.mutatedPaths)
 	if err != nil {
 		return toolcontract.Result{}, err
 	}
@@ -258,7 +258,7 @@ type projectedToolResult struct {
 	outcome      error
 }
 
-func (o *observedInteractionTool) projectToolResult(toolName string, arguments tool.Arguments, output toolcontract.Output, callErr error, mutatedPaths []string) (projectedToolResult, error) {
+func (o *observedInteractionTool) projectToolResult(toolName string, output toolcontract.Output, callErr error, mutatedPaths []string) (projectedToolResult, error) {
 	failure, knownFailure := toolcontract.ClassifyFailure(callErr)
 	if callErr != nil {
 		if !knownFailure {
@@ -288,7 +288,7 @@ func (o *observedInteractionTool) projectToolResult(toolName string, arguments t
 		return projectedToolResult{}, err
 	}
 	if present {
-		parsed, presentation.outputText = o.presenter.Present(o.ref, arguments, parsed)
+		parsed, presentation.outputText = o.presenter.Present(o.ref, parsed)
 		presentation.result = &parsed
 	}
 	var outcome error

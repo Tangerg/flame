@@ -1,7 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { useId } from "react";
 import { type ToolCall } from "@/features/agent/public/sessionView";
-import { DiffStat } from "@flame/ui";
 import { AgentActivityDisclosure } from "@/ui/agent/index";
 import { type ToolMetaItem } from "@/features/agent/public/messagePresentation";
 import { useT } from "@/lib/i18n/index";
@@ -74,9 +73,6 @@ export function ToolCard({ tool, inlineRenderer, expanded, onExpandedChange }: P
         detailPlacement={stackDetail ? "below" : undefined}
         trailing={
           <>
-            {model.diffStat && (
-              <DiffStat added={model.diffStat.added} removed={model.diffStat.removed} />
-            )}
             <ToolMeta items={model.metaItems} />
             <ToolStatusMarks model={model} />
           </>

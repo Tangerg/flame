@@ -10,7 +10,6 @@ export type {
 export {
   summarizeActivity,
   toolActivityStatus,
-  toolDiffStat,
   toolGroupNeedsAttention,
   toolIntent,
   toolMetaItems,

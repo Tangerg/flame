@@ -259,14 +259,9 @@
               "tag": "json:\"from,omitempty\""
             },
             {
-              "name": "Added",
+              "name": "Hunks",
               "type": "int",
-              "tag": "json:\"added\""
-            },
-            {
-              "name": "Removed",
-              "type": "int",
-              "tag": "json:\"removed\""
+              "tag": "json:\"hunks\""
             }
           ]
         },
@@ -10755,7 +10750,7 @@
         {
           "name": "Version",
           "type": "untyped string",
-          "value": "\"2026-11-28.2\""
+          "value": "\"2026-11-28.3\""
         },
         {
           "name": "WorkspaceAvailable",

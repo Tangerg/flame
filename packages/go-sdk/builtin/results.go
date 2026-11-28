@@ -54,11 +54,10 @@ func (ChangeStatus) Values() []string {
 }
 
 type AppliedChange struct {
-	Path    string       `json:"path"`
-	Status  ChangeStatus `json:"status"`
-	From    string       `json:"from,omitempty"`
-	Added   int          `json:"added"`
-	Removed int          `json:"removed"`
+	Path   string       `json:"path"`
+	Status ChangeStatus `json:"status"`
+	From   string       `json:"from,omitempty"`
+	Hunks  int          `json:"hunks"`
 }
 
 type ScriptResult struct {

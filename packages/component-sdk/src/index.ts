@@ -10,7 +10,7 @@ import {
 } from "react";
 import type { FlameClient } from "@flame/runtime-client";
 import type {
-  ChangeStatus,
+  AppliedChange,
   ResultShape,
   SafetyClass,
   Session,
@@ -67,13 +67,7 @@ export interface WorkspaceChangesActionInput {
   openView(origin?: HTMLElement): void;
 }
 
-export interface RecordedFileChange {
-  readonly path: string;
-  readonly status: ChangeStatus;
-  readonly from?: string;
-  readonly added: number;
-  readonly removed: number;
-}
+export type RecordedFileChange = Readonly<AppliedChange>;
 
 export interface CapturedToolSource {
   readonly modelName: string;
@@ -97,8 +91,6 @@ export interface CapturedToolResult {
   readonly args: string;
   readonly status: "running" | "ok" | "err" | "denied";
   readonly resultShape?: ResultShape;
-  readonly added?: number;
-  readonly removed?: number;
   readonly changes?: readonly RecordedFileChange[];
   readonly hits?: number;
   readonly files?: number;

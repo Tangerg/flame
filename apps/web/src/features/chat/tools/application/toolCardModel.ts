@@ -1,7 +1,6 @@
 import { type Translate } from "@/lib/i18n/index";
 import { type ToolCall, type ToolCallStatus } from "@/features/agent/public/sessionView";
 import {
-  toolDiffStat,
   toolIntent,
   toolMetaItems,
   type ToolDetail,
@@ -15,7 +14,6 @@ export interface ToolCardModel {
   intent: ToolIntent;
   detail?: ToolDetail;
   error?: string;
-  diffStat?: ReturnType<typeof toolDiffStat>;
   metaItems: ToolMetaItem[];
 }
 
@@ -26,14 +24,12 @@ function namesOneOfMany(detail: ToolDetail | undefined, tool: ToolCall): boolean
 export function toolCardModel(t: Translate, tool: ToolCall): ToolCardModel {
   const intent = toolIntent(t, tool);
   const metaItems = toolMetaItems(t, tool);
-  const diffStat = toolDiffStat(tool);
   return {
     status: tool.status,
     disclosable: tool.status !== "denied" || tool.args.length > 0,
     intent,
     detail: namesOneOfMany(intent.detail, tool) ? undefined : intent.detail,
     ...(tool.status === "err" && tool.error ? { error: tool.error } : {}),
-    diffStat,
     metaItems,
   };
 }

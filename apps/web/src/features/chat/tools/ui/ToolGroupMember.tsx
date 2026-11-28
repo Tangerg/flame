@@ -5,7 +5,7 @@ import { Icon } from "@/ui/index";
 
 import { reveal } from "@/ui/index";
 import { chevron } from "@/ui/index";
-import { DiffStat, vocab, ButtonPrimitive } from "@flame/ui";
+import { vocab, ButtonPrimitive } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
 import {
   headlineToolMetaItem,
@@ -106,7 +106,6 @@ function MemberSummary({
         </span>
       )}
       <span aria-hidden {...stylex.props(vocab.fill)} />
-      {model.diffStat && <DiffStat added={model.diffStat.added} removed={model.diffStat.removed} />}
       {headline && (
         <span
           data-tone={headline.tone}

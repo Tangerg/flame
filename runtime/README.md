@@ -462,8 +462,9 @@ Built-in names, shell arguments and normalized transcript result values are
 declared once in the SDK's `builtin` package. Domain references, executable
 declarations, transcript presentation, schema generation and CLI presentation
 consume those contracts. Scope retains filesystem and HTTP request ownership.
-The former Runtime-private names and result types are removed; rebuild Go
-consumers together. This move changes neither wire nor persisted result shapes.
+Patch receipts record the paths, operations and hunk counts acknowledged by
+Scope's filesystem executor. Rebuild the generated consumers together when the
+SDK result contract changes.
 
 ## Accepted interrupt answers
 

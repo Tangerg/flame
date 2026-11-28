@@ -230,19 +230,11 @@ function shellFields(tool: AgentToolInvocation): Partial<ToolCall> {
   };
 }
 
-// The runtime projects the per-file change receipt, counts and all; the client
-// renders it without re-parsing the patch.
 function editFields(tool: AgentToolInvocation): Partial<ToolCall> {
   const changes = patchToolResult(tool.result)?.changes ?? [];
   return {
     ...(changes.length > 1 ? { files: changes.length } : {}),
-    ...(changes.length > 0
-      ? {
-          changes,
-          added: changes.reduce((sum, file) => sum + file.added, 0),
-          removed: changes.reduce((sum, file) => sum + file.removed, 0),
-        }
-      : {}),
+    ...(changes.length > 0 ? { changes } : {}),
     ...rawResult(tool.result),
   };
 }
