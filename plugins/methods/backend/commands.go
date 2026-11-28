@@ -145,20 +145,30 @@ func (c *connector) approve(ctx context.Context, in wire.ApproveInput, _ string)
 	if work.State != wire.Awaiting || work.Digest == "" || work.Digest != in.Digest {
 		return plan, refuse("select the current review report for approval")
 	}
-	host, err := hostClient(ctx)
-	if err != nil {
-		return plan, err
+	disposition := in.Decision
+	switch disposition {
+	case "reject":
+		work.State = wire.Blocked
+		work.Reason = "A person rejected the original report."
+	case "", "approve":
+		host, err := hostClient(ctx)
+		if err != nil {
+			return plan, err
+		}
+		defer func() { err = errors.Join(err, host.Close()) }()
+		preview, err := currentWorktree(ctx, host, work)
+		if err != nil {
+			return plan, err
+		}
+		if preview.Digest != work.Handoff {
+			return plan, refuse("the worktree or handoff target changed after review")
+		}
+		disposition = "approve"
+		work.State = wire.Approved
+	default:
+		return plan, refuse("choose approval or rejection of the original report")
 	}
-	defer func() { err = errors.Join(err, host.Close()) }()
-	preview, err := currentWorktree(ctx, host, work)
-	if err != nil {
-		return plan, err
-	}
-	if preview.Digest != work.Handoff {
-		return plan, refuse("the worktree or handoff target changed after review")
-	}
-	work.State = wire.Approved
-	work.Decision = &wire.Decision{Digest: work.Digest, At: instant.Timestamp{Time: time.Now().UTC()}}
+	work.Decision = &wire.Decision{Digest: work.Digest, Disposition: disposition, At: instant.Timestamp{Time: time.Now().UTC()}}
 	return pluginstorage.NewCommandPlan(work.Execution, func(ctx context.Context) error { return c.store.update(ctx, work) })
 }
 

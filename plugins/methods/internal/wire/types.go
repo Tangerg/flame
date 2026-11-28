@@ -46,7 +46,8 @@ type ExecutionInput struct {
 
 type ApproveInput struct {
 	ExecutionInput
-	Digest string `json:"digest"`
+	Digest   string `json:"digest"`
+	Decision string `json:"decision,omitempty"`
 }
 
 type State string
@@ -73,8 +74,9 @@ type Review struct {
 }
 
 type Decision struct {
-	Digest string            `json:"digest"`
-	At     instant.Timestamp `json:"at"`
+	Disposition string            `json:"disposition,omitempty"`
+	Digest      string            `json:"digest"`
+	At          instant.Timestamp `json:"at"`
 }
 
 type Execution struct {

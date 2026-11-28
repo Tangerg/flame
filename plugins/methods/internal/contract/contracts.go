@@ -27,7 +27,7 @@ func New() (Methods, error) {
 	read, e2 := method[wire.ExecutionInput, wire.Execution](wire.ReadMethod, frame.Query, "Read the original method execution and captured evidence.")
 	save, e3 := method[wire.SaveInput, wire.Version](wire.SaveMethod, frame.Command, "Save an immutable project method version.")
 	start, e4 := method[wire.StartInput, wire.Execution](wire.StartMethod, frame.Command, "Admit one execution of a captured method on a managed worktree.")
-	approve, e5 := method[wire.ApproveInput, wire.Execution](wire.ApproveMethod, frame.Command, "Approve the original method report and retain the human decision.")
+	approve, e5 := method[wire.ApproveInput, wire.Execution](wire.ApproveMethod, frame.Command, "Approve or reject the original method report and retain the human decision.")
 	return Methods{board, read, save, start, approve}, errors.Join(e1, e2, e3, e4, e5)
 }
 

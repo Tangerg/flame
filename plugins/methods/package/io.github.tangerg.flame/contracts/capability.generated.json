@@ -8,12 +8,15 @@
       "name": "flame.methods/approve.v1",
       "kind": "command",
       "target": "installation",
-      "description": "Approve the original method report and retain the human decision.",
+      "description": "Approve or reject the original method report and retain the human decision.",
       "input": {
         "$defs": {
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWV0aG9kcy9pbnRlcm5hbC93aXJl.QXBwcm92ZUlucHV0": {
             "additionalProperties": false,
             "properties": {
+              "decision": {
+                "type": "string"
+              },
               "digest": {
                 "type": "string"
               },
@@ -35,6 +38,9 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
+          "decision": {
+            "type": "string"
+          },
           "digest": {
             "type": "string"
           },
@@ -64,6 +70,9 @@
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               },
               "digest": {
+                "type": "string"
+              },
+              "disposition": {
                 "type": "string"
               }
             },
@@ -341,6 +350,9 @@
               },
               "digest": {
                 "type": "string"
+              },
+              "disposition": {
+                "type": "string"
               }
             },
             "required": [
@@ -560,6 +572,9 @@
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               },
               "digest": {
+                "type": "string"
+              },
+              "disposition": {
                 "type": "string"
               }
             },
@@ -990,6 +1005,9 @@
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               },
               "digest": {
+                "type": "string"
+              },
+              "disposition": {
                 "type": "string"
               }
             },

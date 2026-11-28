@@ -12,6 +12,6 @@ keeps its original Run and the final evidence. A report becomes available for
 human approval after both checks pass. Open either phase's conversation to answer
 its pending questions.
 
-The Methods view retains the original report and decision. A changed handoff
-requires a fresh review. Saving a new version leaves active executions bound to
+The Methods view retains the original report and decision. Reject a report to keep its evidence and decision while releasing the worktree
+for another execution. A changed handoff requires a fresh review. Saving a new version leaves active executions bound to
 the version selected at admission.

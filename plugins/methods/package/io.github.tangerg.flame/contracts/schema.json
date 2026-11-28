@@ -4,6 +4,9 @@
     "ApproveInput": {
       "additionalProperties": false,
       "properties": {
+        "decision": {
+          "type": "string"
+        },
         "digest": {
           "type": "string"
         },
@@ -37,6 +40,9 @@
           "$ref": "#/$defs/ApproveV1OutputInstantTimestamp"
         },
         "digest": {
+          "type": "string"
+        },
+        "disposition": {
           "type": "string"
         }
       },
@@ -220,6 +226,9 @@
         },
         "digest": {
           "type": "string"
+        },
+        "disposition": {
+          "type": "string"
         }
       },
       "required": [
@@ -399,6 +408,9 @@
           "$ref": "#/$defs/ExecutionV1OutputInstantTimestamp"
         },
         "digest": {
+          "type": "string"
+        },
+        "disposition": {
           "type": "string"
         }
       },
@@ -673,6 +685,9 @@
           "$ref": "#/$defs/StartV1OutputInstantTimestamp"
         },
         "digest": {
+          "type": "string"
+        },
+        "disposition": {
           "type": "string"
         }
       },

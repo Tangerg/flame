@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/planworkflow"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
@@ -27,7 +28,7 @@ type methodTestExecution struct {
 	Version                                           struct{ ID, Change string }
 	Change, Review                                    *struct{ ID, SessionID string }
 	Checks                                            []struct{ Slot, RunID, Status, Result string }
-	Decision                                          *struct{ Digest, At string }
+	Decision                                          *struct{ Digest, At, Disposition string }
 }
 
 func TestMethodsRetainVersionAndOriginalSiblingAcrossRestart(t *testing.T) {
@@ -51,6 +52,7 @@ func TestMethodsRetainVersionAndOriginalSiblingAcrossRestart(t *testing.T) {
 	tree := r.must(delivery.TaskWorktreesCreate, protocol.CreateTaskWorktreeRequest{
 		Source: protocol.WorkspaceRef{Path: source}, Base: base,
 	}, "create-method-worktree").(*protocol.TaskWorktree)
+	activateWorkflow(r, filepath.Join(firstPartyPackages, "plans"), "method-plans", planworkflow.Reference, "plan-workflow")
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "methods"))
 	waitConnected := func() {
 		t.Helper()
@@ -140,7 +142,7 @@ func TestMethodsRetainVersionAndOriginalSiblingAcrossRestart(t *testing.T) {
 	}}
 	ctx := delivery.WithRequestMeta(t.Context(), meta)
 	var pendingID string
-	paused := wait(func(current methodTestExecution) bool {
+	hasQuestion := func(current methodTestExecution) bool {
 		if current.Review == nil || len(current.Checks) != 2 || current.Checks[0].Status != "passed" {
 			return false
 		}
@@ -152,9 +154,16 @@ func TestMethodsRetainVersionAndOriginalSiblingAcrossRestart(t *testing.T) {
 			pendingID = pending.Data[0].Interrupts[0].ItemID
 		}
 		return pendingID != ""
-	})
+	}
+	paused := wait(hasQuestion)
 	if paused.Version.ID != version || !strings.Contains(paused.Patch, "+updated") || paused.Checks[0].Result != "PASS: observed the original change" {
 		t.Fatalf("review inputs or retained evidence changed: %+v", paused)
+	}
+	plan, err := r.api.GetPlan(ctx, protocol.GetPlanRequest{SessionID: paused.Change.SessionID})
+	if err != nil || plan.State == nil || !slices.ContainsFunc(plan.State.Steps, func(step protocol.PlanStep) bool {
+		return step.Description == "Apply the captured method change"
+	}) {
+		t.Fatalf("the change did not use the original Plan workflow: %+v, %v", plan, err)
 	}
 	r = reopenPluginRuntime(t, r, &cfg)
 	waitConnected()
@@ -203,6 +212,36 @@ func TestMethodsRetainVersionAndOriginalSiblingAcrossRestart(t *testing.T) {
 	if origin, err := os.ReadFile(filepath.Join(source, "message.txt")); err != nil || string(origin) != "original\n" {
 		t.Fatalf("method wrote outside its managed worktree: %q, %v", origin, err)
 	}
+
+	if err := os.WriteFile(changedFile, []byte("original\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	decode(invoke("start", "rerun-method-after-original-approval", args), &started)
+	pendingID = ""
+	next := wait(hasQuestion)
+	_, events, err = r.api.ResumeRun(ctx, protocol.ResumeRunRequest{
+		RunID: next.Review.ID,
+		Responses: []protocol.InterruptResponse{{
+			ItemID: pendingID, Response: protocol.InterruptResponseValue{Type: protocol.InterruptResponseAnswer, Answers: [][]string{{"Proceed"}}},
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitForRunEvents(t, collectRunEvents(events), "rerun method review")
+	next = wait(func(current methodTestExecution) bool { return current.State == "awaiting_approval" })
+	if err := os.WriteFile(changedFile, []byte("changed after review\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	var rejected methodTestExecution
+	decode(invoke("approve", "reject-the-stale-method-report", map[string]string{
+		"id": next.ID, "digest": next.Digest, "decision": "reject",
+	}), &rejected)
+	if rejected.State != "blocked" || rejected.Decision == nil || rejected.Decision.Disposition != "reject" ||
+		rejected.Digest != next.Digest || !slices.Equal(rejected.Checks, next.Checks) {
+		t.Fatalf("rejection altered the original report evidence or left the worktree locked: %+v", rejected)
+	}
+
 }
 
 func methodRestartScript(t *testing.T, finishedChecks *atomic.Int32) chat.ModelFunc {
@@ -220,6 +259,10 @@ func methodRestartScript(t *testing.T, finishedChecks *atomic.Int32) chat.ModelF
 		if strings.HasPrefix(prompt, "Make the requested changes") {
 			if !strings.Contains(prompt, "Implement the original change.") {
 				t.Error("the change Run received instructions for another version")
+			}
+			if toolResultNamed(request, "set_plan") == nil {
+				return filewatchToolCall(chat.ToolCall{ID: "method-captured-plan", Name: "set_plan",
+					Arguments: `{"steps":[{"description":"Apply the captured method change","status":"in_progress"}]}`})
 			}
 			if result := toolResultNamed(request, "edit"); result != nil {
 				if result.IsError {

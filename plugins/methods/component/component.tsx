@@ -59,6 +59,8 @@ const en = {
   none: "No method executions",
   changes: "Captured changes",
   approve: "Approve report",
+  reject: "Reject report",
+  rejected: "Rejected",
   run: "Open change conversation",
   review: "Open review conversation",
   recover: "Recover original action",
@@ -90,6 +92,8 @@ const zh: typeof en = {
   none: "暂无方法执行",
   changes: "捕获的改动",
   approve: "批准报告",
+  reject: "驳回报告",
+  rejected: "已驳回",
   run: "打开改动会话",
   review: "打开审核会话",
   recover: "恢复原操作",
@@ -420,25 +424,46 @@ function MethodBoard({
             </details>
           )}
           {execution.state === "awaiting_approval" && execution.digest && (
-            <Button
-              variant="primary"
-              disabled={locked}
-              onClick={() =>
-                void perform(() =>
-                  ops.command(approve, {
-                    projectId: project,
-                    id: execution.id,
-                    digest: execution.digest!,
-                  }),
-                )
-              }
-            >
-              {t.approve}
-            </Button>
+            <FormActions label={t.awaiting_approval}>
+              <Button
+                variant="primary"
+                disabled={locked}
+                onClick={() =>
+                  void perform(() =>
+                    ops.command(approve, {
+                      projectId: project,
+                      id: execution.id,
+                      digest: execution.digest!,
+                    }),
+                  )
+                }
+              >
+                {t.approve}
+              </Button>
+              <Button
+                variant="ghost"
+                disabled={locked}
+                onClick={() =>
+                  void perform(() =>
+                    ops.command(approve, {
+                      projectId: project,
+                      id: execution.id,
+                      digest: execution.digest!,
+                      decision: "reject",
+                    }),
+                  )
+                }
+              >
+                {t.reject}
+              </Button>
+            </FormActions>
           )}
           {execution.decision && (
             <Metadata>
-              {t.approved} · {execution.decision.at}
+              {execution.decision.disposition === "reject"
+                ? t.rejected
+                : t.approved}{" "}
+              · {execution.decision.at}
             </Metadata>
           )}
         </PanelSection>
